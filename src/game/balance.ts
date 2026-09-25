@@ -88,7 +88,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyMods> = {
 export const enemyHpScale = (level: number): number => 1 + 0.32 * (level - 1) + 0.004 * (level - 1) ** 2;
 /** Multiplier applied to enemy base attack for its level. */
 export const enemyAtkScale = (level: number): number => 1 + 0.2 * (level - 1);
-export const enemyDefScale = (level: number): number => 1 + 0.25 * (level - 1);
+export const enemyDefScale = (level: number): number => 1 + 0.18 * (level - 1);
 
 /** XP awarded for killing an enemy of `enemyLevel` as a hero of `heroLevel`. */
 export function xpReward(baseXp: number, enemyLevel: number, heroLevel: number): number {

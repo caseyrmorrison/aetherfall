@@ -305,10 +305,11 @@ export class Hud {
     if (!t || t.map !== world.data.id) {
       // point toward the exit that leads to the target zone
       if (t && world.data.id === 'town') {
-        const warp = world.data.objects.find(
-          (o) => o.kind === 'warp' && o.to === t.map.replace(/_boss$/, ''),
-        );
+        const target = t.map.replace(/_boss$/, '');
+        const warp = world.data.objects.find((o) => o.kind === 'warp' && o.to === target);
         if (warp && warp.kind === 'warp') return { x: warp.x + warp.w / 2, y: warp.y + warp.h / 2 };
+        const portal = world.data.objects.find((o) => o.kind === 'portal' && o.to === target);
+        if (portal) return { x: portal.x, y: portal.y - 16 };
       }
       if (t && world.data.id !== 'town' && !t.map.startsWith(world.data.id)) {
         const warp = world.data.objects.find((o) => o.kind === 'warp' && o.to === 'town');
@@ -444,7 +445,7 @@ export class Hud {
     const b = world.game.banner;
     if (!b) return;
     const a = Math.min(1, b.t * 4, (3.2 - b.t) * 2);
-    const y = Math.round(H * 0.3);
+    const y = Math.round(H * 0.36);
     ctx.globalAlpha = a * 0.7;
     ctx.fillStyle = UI.bg;
     const bandH = b.sub ? 34 : 22;
@@ -483,7 +484,7 @@ export class Hud {
     const z = this.zoneCard;
     if (!z) return;
     const a = Math.min(1, z.t * 2, (3.5 - z.t) * 1.5);
-    const y = Math.round(H * 0.2);
+    const y = Math.round(H * 0.11);
     ctx.globalAlpha = a;
     const tw = measureText(z.title) * 2;
     ctx.fillStyle = '#ffffff';

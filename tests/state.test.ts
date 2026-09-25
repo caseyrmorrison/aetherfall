@@ -114,3 +114,31 @@ describe('persistence', () => {
     expect(decodeBits('%%%corrupt', 10).every((b) => b === 0)).toBe(true);
   });
 });
+
+describe('quests', () => {
+  it('skips boss objectives that were already completed', async () => {
+    const { QuestSystem } = await import('../src/game/quests');
+    const save = newGame(0, 'Q', 'normal');
+    const events = { on: () => () => undefined, emit: () => undefined };
+    const fakeGame = {
+      save,
+      events,
+      toast: () => undefined,
+      giveGold: () => undefined,
+      giveXp: () => undefined,
+      giveItem: () => true,
+      rollItem: () => generateItem(new RNG(1), 5),
+      invalidateStats: () => undefined,
+      banner: null,
+    } as unknown as ConstructorParameters<typeof QuestSystem>[0];
+    const qs = new QuestSystem(fakeGame);
+    qs.start('mq_fallen_star', true);
+    qs.onBoss('thornmaw'); // killed before talking to Maren
+    expect(save.quests.mq_fallen_star.stage).toBe(0);
+    qs.talk('maren'); // stage 0 -> boss stage (already done) -> return to Maren
+    expect(save.quests.mq_fallen_star.stage).toBe(2);
+    qs.talk('maren');
+    expect(save.quests.mq_fallen_star.done).toBe(true);
+    expect(save.quests.mq_deep).toBeDefined();
+  });
+});

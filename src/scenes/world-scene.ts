@@ -10,12 +10,14 @@ import { parseLine, type Step } from '../game/dialogue';
 import type { Game } from '../game/game';
 import { hasFlag, setFlag } from '../game/state';
 import { Hud } from '../ui/hud';
+import { Tips } from '../ui/tips';
 import type { Enemy } from '../world/entities/enemy';
 import type { Npc } from '../world/entities/npc';
 import type { MapObject } from '../world/mapdata';
 import { World, type WorldHooks } from '../world/world';
 import { BossIntroScene } from './boss-intro';
 import { ConfirmScene } from './confirm';
+import { CreditsScene } from './credits';
 import { playCutscene } from './cutscene';
 import { showDialogue } from './dialogue';
 import { GameOverScene } from './gameover';
@@ -27,12 +29,14 @@ export class WorldScene implements Scene, WorldHooks {
   readonly opaque = true;
   readonly world: World;
   readonly hud = new Hud();
+  readonly tips: Tips;
   private busy = false;
   private autosaveT = 0;
 
   constructor(readonly game: Game) {
     this.world = new World(game, game.quests, game.app.input);
     this.world.hooks = this;
+    this.tips = new Tips(this.world);
   }
 
   /** Load a map and announce it. */
@@ -76,6 +80,7 @@ export class WorldScene implements Scene, WorldHooks {
     this.world.inputBlocked = this.busy || this.game.app.fading;
     this.world.update(dt);
     this.hud.update(dt, this.world);
+    if (!this.busy) this.tips.update(dt);
     // periodic autosave while exploring safely
     this.autosaveT += dt;
     if (this.autosaveT > 90 && !this.world.inCombat && !this.world.boss) {
@@ -91,6 +96,7 @@ export class WorldScene implements Scene, WorldHooks {
   render(ctx: CanvasRenderingContext2D): void {
     this.world.render(ctx);
     this.hud.render(ctx, this.world);
+    this.tips.render(ctx, this.game.app.width);
   }
 
   openMenu(tab: MenuTab): void {
@@ -184,6 +190,31 @@ export class WorldScene implements Scene, WorldHooks {
     openService(this.game, this, kind);
   }
 
+  /** The town portal: after the story it can also lead down into the Abyss. */
+  portal(to: string, spawn: string): void {
+    const save = this.game.save;
+    if (!hasFlag(save, 'game_clear') || to !== 'citadel') {
+      this.warp(to, spawn);
+      return;
+    }
+    const best = save.stats.abyssBest;
+    const resume = Math.max(1, Math.floor(best / 5) * 5 + 1);
+    const choices = [
+      { label: 'Sky Citadel', action: () => this.warp('citadel', 'entry') },
+      { label: 'The Abyss \u2014 Floor 1', action: () => this.warp('abyss_1', 'entry') },
+    ];
+    if (resume > 1)
+      choices.push({
+        label: `The Abyss \u2014 Floor ${resume}`,
+        action: () => this.warp(`abyss_${resume}`, 'entry'),
+      });
+    choices.push({ label: 'Stay', action: () => undefined });
+    void showDialogue(this.game, [
+      { text: `The portal hums with two destinations. {gray}(Deepest Abyss floor: ${best}){/}` },
+      { choices },
+    ]);
+  }
+
   sign(text: string): void {
     void showDialogue(this.game, [{ text }]);
   }
@@ -223,12 +254,14 @@ export class WorldScene implements Scene, WorldHooks {
     const introId = BOSS_INTRO[id];
     const seen = hasFlag(this.game.save, `intro_${id}`);
     this.busy = true;
+    this.world.focus = e;
     const splash = (): void => {
       audio.playSfx('stinger_boss_intro');
       audio.playMusic(e.def.boss?.music ?? 'boss', { fade: 0.3 });
       this.game.app.push(
         new BossIntroScene(this.game, e, () => {
           this.busy = false;
+          this.world.focus = null;
         }),
       );
     };
@@ -283,12 +316,6 @@ export class WorldScene implements Scene, WorldHooks {
   }
 
   private rollCredits(): void {
-    void import('./credits').then(({ CreditsScene }) => {
-      this.game.app.push(
-        new CreditsScene(this.game, () => {
-          this.travelTo('town', 'portal');
-        }),
-      );
-    });
+    this.game.app.push(new CreditsScene(this.game, () => this.travelTo('town', 'portal')));
   }
 }

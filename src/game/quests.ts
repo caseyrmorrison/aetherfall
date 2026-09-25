@@ -54,6 +54,7 @@ export class QuestSystem {
     const tracked = def.main || !Object.values(this.save.quests).some((q) => q.tracked && !q.done);
     if (tracked) for (const q of Object.values(this.save.quests)) q.tracked = false;
     this.save.quests[id] = { id, stage: 0, progress: 0, done: false, tracked };
+    if (this.alreadySatisfied(def.objectives[0])) this.advance(this.save.quests[id]);
     if (!silent) {
       audio.playSfx('quest_accept');
       this.game.toast(`New quest: {gold}${def.name}{/}`, 'ui_quest');
@@ -89,10 +90,21 @@ export class QuestSystem {
       this.complete(q);
       return;
     }
+    if (this.alreadySatisfied(def.objectives[q.stage])) {
+      this.advance(q);
+      return;
+    }
     audio.playSfx('ui_select');
     this.game.toast(`${def.name}: ${def.objectives[q.stage].text}`, 'ui_quest');
     this.checkCollect();
     this.game.events.emit('questChanged', { id: q.id });
+  }
+
+  /** Objectives completed before the quest reached them (e.g. a boss killed early). */
+  private alreadySatisfied(o: Objective): boolean {
+    if (o.type === 'boss') return hasFlag(this.save, `boss_${o.boss}`);
+    if (o.type === 'flag') return hasFlag(this.save, o.flag);
+    return false;
   }
 
   private complete(q: QuestState): void {

@@ -53,6 +53,7 @@ export interface WorldHooks {
   bossDefeated(e: Enemy): void;
   enterArena(o: Extract<MapObject, { kind: 'bossGate' }>): void;
   message(text: string): void;
+  portal(to: string, spawn: string): void;
 }
 
 interface Effect {
@@ -106,6 +107,8 @@ export class World {
   private texts: FloatText[] = [];
   labels: { x: number; y: number; text: string }[] = [];
   boss: Enemy | null = null;
+  /** Camera focus override (boss intros). */
+  focus: Entity | null = null;
   time = 0;
   private hitstopT = 0;
   private slowT = 0;
@@ -132,6 +135,7 @@ export class World {
   hooks!: WorldHooks;
   abyssFloor = 0;
   private abyssCleared = false;
+  private heartT = 0;
 
   constructor(
     readonly game: Game,
@@ -533,6 +537,12 @@ export class World {
       this.shoutText.t += dt;
       if (this.shoutText.t > 2.6) this.shoutText = null;
     }
+    // heartbeat when in danger
+    this.heartT -= realDt;
+    if (this.player.state !== 'dead' && this.player.hp < this.player.maxHp * 0.25 && this.heartT <= 0) {
+      this.heartT = 0.9;
+      audio.playSfx('low_hp');
+    }
     // sync hero state
     const h = this.game.save.hero;
     h.hp = Math.round(this.player.hp);
@@ -541,8 +551,12 @@ export class World {
 
   private camTarget(): [number, number] {
     const p = this.player;
+    if (this.focus) return [this.focus.x, this.focus.y - 16];
     if (this.boss && !this.boss.dead && this.boss.targetable && this.bossIntroDone) {
-      return [p.x + (this.boss.x - p.x) * 0.25, p.y - 8 + (this.boss.y - p.y) * 0.25];
+      // keep both fighters framed when they're reasonably close
+      const d = dist(p.x, p.y, this.boss.x, this.boss.y);
+      const k = d < this.game.app.height * 0.9 ? 0.5 : 0.3;
+      return [p.x + (this.boss.x - p.x) * k, p.y - 8 + (this.boss.y - p.y) * k];
     }
     const look = this.input.mouseAimActive() ? 0 : 10;
     return [p.x + Math.cos(p.aim) * look, p.y - 8 + Math.sin(p.aim) * look * 0.6];
@@ -683,7 +697,7 @@ export class World {
       case 'portal':
         if (t.portalOpen(this)) {
           audio.playSfx('teleport');
-          this.hooks.warp(o.to, o.spawn);
+          this.hooks.portal(o.to, o.spawn);
         }
         break;
       case 'board':
@@ -707,7 +721,10 @@ export class World {
       if (o.requires && !hasFlag(this.game.save, o.requires.flag)) {
         if (this.blockedWarpId !== o.id) {
           this.blockedWarpId = o.id;
-          this.hooks.message(o.requires.message);
+          if (this.isArena) {
+            this.popText(p.x, p.y - 24, 'The way is sealed!', '#b55088');
+            audio.playSfx('ui_error');
+          } else this.hooks.message(o.requires.message);
         }
         // push back out of the warp strip
         const cx = o.x + o.w / 2;

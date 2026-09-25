@@ -740,7 +740,7 @@ export function generateArena(zoneId: string): MapData {
     props,
     objects,
     spawns: [],
-    spawnPoints: { entry: { x: cx * TILE, y: (h - 4) * TILE } },
+    spawnPoints: { entry: { x: cx * TILE, y: (cy + 6) * TILE } },
     boss: { enemy: def.boss.enemy, x: cx * TILE, y: (cy - 3) * TILE },
     arena: true,
     tint: def.tint,
