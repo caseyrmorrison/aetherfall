@@ -58,7 +58,9 @@ export class BossIntroScene implements Scene {
     ctx.beginPath();
     ctx.rect(0, cy - bandH / 2 - 20, W, bandH + 40);
     ctx.clip();
-    drawSpeedLines(ctx, W * 0.7, cy, W, H, t * 3, '#3e2731', 0.8);
+    ctx.globalAlpha = 0.4;
+    drawSpeedLines(ctx, W * 0.7, cy, W, H, t * 3, '#e43b44', 0.8);
+    ctx.globalAlpha = 1;
     // boss art: portrait for humanoids, big sprite for monsters
     const bx = W * 0.68 + (1 - inK) * 80 - out * 80;
     const portrait = this.boss.def.boss?.portrait;
@@ -74,7 +76,7 @@ export class BossIntroScene implements Scene {
         Math.floor(t * 4) % (info.anims.idle?.frames ?? 1),
         'left',
       );
-      const scale = Math.max(1, Math.floor(96 / Math.max(img.width, img.height)));
+      const scale = Math.max(2, Math.floor(110 / Math.max(img.width, img.height)));
       ctx.drawImage(
         img,
         Math.round(bx - (img.width * scale) / 2),

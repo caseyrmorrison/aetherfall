@@ -106,7 +106,7 @@ export const QUESTS: Record<string, QuestDef> = {
       { type: 'boss', boss: 'ignis', map: 'volcano', text: 'Defeat the drake atop Emberpeak' },
       { type: 'talk', npc: 'lyra', text: 'Find Lyra in Havenbrook' },
     ],
-    reward: { xp: 3500, gold: 1000, skillPoints: 1, item: { rarity: 'epic', ilvl: 18 } },
+    reward: { xp: 2000, gold: 1000, skillPoints: 1, item: { rarity: 'epic', ilvl: 18 } },
     next: 'mq_frost',
     talkLines: {
       1: [
@@ -129,7 +129,7 @@ export const QUESTS: Record<string, QuestDef> = {
       { type: 'talk', npc: 'maren', text: 'Return to Havenbrook' },
     ],
     reward: {
-      xp: 8000,
+      xp: 4000,
       gold: 2000,
       skillPoints: 1,
       item: { rarity: 'legendary', ilvl: 24, legendary: true },

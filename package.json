@@ -2,7 +2,7 @@
   "name": "aetherfall",
   "private": true,
   "version": "0.1.0",
-  "description": "Aetherfall \u2014 a pixel-art action RPG with anime cutscenes, built for the browser.",
+  "description": "Aetherfall — a pixel-art action RPG with anime cutscenes, built for the browser.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.2",
     "eslint": "^10.11.0",
     "globals": "^17.12.0",
     "jsdom": "^30.1.1",

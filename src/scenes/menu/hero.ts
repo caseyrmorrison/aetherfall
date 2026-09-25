@@ -175,6 +175,8 @@ export class HeroTab implements TabView {
         color: UI.dim,
       });
       drawText(ctx, `Power {gold}${powerRating(st)}{/}`, x + 40, r.y + 34);
+      const pct = (v: number, sign = '+'): string =>
+        Math.round(v * 100) === 0 ? '0%' : `${sign}${Math.round(v * 100)}%`;
       const rows: [string, string][] = [
         ['HP', `${st.maxHp}`],
         ['MP', `${st.maxMp}`],
@@ -182,14 +184,14 @@ export class HeroTab implements TabView {
         ['Magic', `${Math.round(st.mag)}`],
         ['Defense', `${Math.round(st.def)}`],
         ['Crit', `${Math.round(st.crit * 100)}%`],
-        ['Crit Dmg', `+${Math.round(st.critDmg * 100)}%`],
-        ['Atk Speed', `+${Math.round(st.atkSpeed * 100)}%`],
-        ['Move', `+${Math.round(st.moveSpeed * 100)}%`],
+        ['Crit Dmg', pct(st.critDmg)],
+        ['Atk Speed', pct(st.atkSpeed)],
+        ['Move', pct(st.moveSpeed)],
         ['Lifesteal', `${Math.round(st.lifesteal * 100)}%`],
-        ['Cooldown', `-${Math.round(st.cdr * 100)}%`],
-        ['Skill Dmg', `+${Math.round(st.skillDmg * 100)}%`],
-        ['Gold Find', `+${Math.round(st.goldFind * 100)}%`],
-        ['Magic Find', `+${Math.round(st.magicFind * 100)}%`],
+        ['Cooldown', pct(st.cdr, '-')],
+        ['Skill Dmg', pct(st.skillDmg)],
+        ['Gold Find', pct(st.goldFind)],
+        ['Magic Find', pct(st.magicFind)],
         ['HP Regen', `${st.hpRegen.toFixed(1)}/s`],
       ];
       let y = r.y + 48;

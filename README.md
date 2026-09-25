@@ -6,6 +6,14 @@ The art, music and sound effects are all generated in code; the repo contains no
 
 **▶ Play it: https://caseyrmorrison.github.io/aetherfall/**
 
+![Malachar's reveal, one of the anime cutscenes](docs/screenshots/cutscene.png)
+
+|                                                                |                                                                         |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| ![Title screen](docs/screenshots/title.png)                    | ![Havenbrook, the hub town](docs/screenshots/town.png)                  |
+| ![Combat in the Whispering Woods](docs/screenshots/combat.png) | ![Inventory with item comparison](docs/screenshots/inventory.png)       |
+| ![Boss VS splash](docs/screenshots/boss-intro.png)             | ![Fighting Ignis, Tyrant of Emberpeak](docs/screenshots/boss-fight.png) |
+
 ## Features
 
 - **Action combat.** Three-hit weapon combos, a dodge roll with invulnerability frames, and a _perfect dodge_

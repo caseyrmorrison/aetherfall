@@ -58,7 +58,7 @@ export class TouchControls {
           { action: 'ultimate', label: 'SRG', x: bx - 76, y: by + 16, r: 11 },
           { action: 'potionHp', label: 'HP', x: 64, y: 58, r: 10 },
           { action: 'potionMp', label: 'MP', x: 88, y: 58, r: 10 },
-          { action: 'menu', label: 'MENU', x: W - 90, y: 10, r: 9 },
+          { action: 'menu', label: 'MENU', x: 18, y: 66, r: 10 },
         ]
       : [
           { action: 'confirm', label: 'OK', x: W - 30, y: H - 34, r: 16 },

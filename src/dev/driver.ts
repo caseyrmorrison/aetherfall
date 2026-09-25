@@ -4,6 +4,7 @@
  */
 import type { App } from '../engine/app';
 import type { Game } from '../game/game';
+import { playCutscene } from '../scenes/cutscene';
 import type { WorldScene } from '../scenes/world-scene';
 import type { World } from '../world/world';
 
@@ -61,6 +62,22 @@ export function installDriver(app: App, game: Game): void {
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(app.screen.canvas, x, y, w, h, 0, 0, w * scale, h * scale);
       c.style.display = 'block';
+    },
+    /** Save a 2x screenshot of the game canvas to docs/screenshots/<name>.png (dev/preview server only). */
+    async shot(name: string): Promise<number> {
+      const src = app.screen.canvas;
+      const c = document.createElement('canvas');
+      c.width = src.width * 2;
+      c.height = src.height * 2;
+      const x = c.getContext('2d')!;
+      x.imageSmoothingEnabled = false;
+      x.drawImage(src, 0, 0, c.width, c.height);
+      const data = c.toDataURL('image/png').split(',')[1];
+      const r = await fetch('/__screenshot', { method: 'POST', body: JSON.stringify({ name, data }) });
+      return r.status;
+    },
+    cutscene(id: string): Promise<void> {
+      return playCutscene(game, id);
     },
     unzoom(): void {
       const c = document.getElementById('__zoom');
