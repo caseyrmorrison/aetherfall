@@ -150,7 +150,7 @@ const PAD: Record<Action, number[]> = {
   potionMp: [13],
   menu: [9],
   map: [8],
-  pause: [9],
+  pause: [], // Start opens the main menu; System is one tab away (LB)
   tabPrev: [4],
   tabNext: [5],
   menuAlt: [2],
