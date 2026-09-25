@@ -131,6 +131,8 @@ export class World {
   private warpCooldown = 0.6;
   private blockedWarpId: string | null = null;
   private deathT = -1;
+  /** The game-over screen has been requested for the current death. */
+  private deathHandled = false;
   private bossIntroDone = false;
   private shoutText: { text: string; t: number } | null = null;
   dustColor = '#8b9bb4';
@@ -162,6 +164,7 @@ export class World {
     this.bossIntroDone = false;
     this.particles.clear();
     this.deathT = -1;
+    this.deathHandled = false;
     this.cutin = null;
     this.abyssCleared = false;
     this.abyssFloor = mapId.startsWith('abyss') ? Number(mapId.split('_')[1]) : 0;
@@ -535,10 +538,9 @@ export class World {
 
     // death
     if (this.player.state === 'dead') {
-      if (this.deathT < 0) this.deathT = 0;
-      this.deathT += realDt;
-      if (this.deathT > 1.6) {
-        this.deathT = -999;
+      this.deathT = Math.max(0, this.deathT) + realDt;
+      if (this.deathT > 1.6 && !this.deathHandled) {
+        this.deathHandled = true;
         this.hooks.death();
       }
     }
