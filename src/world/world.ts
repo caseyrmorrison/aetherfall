@@ -932,6 +932,8 @@ export class World {
     if (!byPlayer) return;
     save.stats.kills++;
     save.bestiary[def.id] = (save.bestiary[def.id] ?? 0) + 1;
+    if (e.elite) this.game.count('elites');
+    if (e.isBoss && save.difficulty === 'nightmare') this.game.count('nightmare_boss');
     const st = this.game.stats();
     if (st.legendaries.has('vampire_kiss')) this.healPlayer(this.player.maxHp * 0.03, false);
     const xp = xpReward(e.xp, e.level, save.hero.level) * (e.isBoss ? 1 : 1);
@@ -1150,6 +1152,7 @@ export class World {
   private perfectDodge(): void {
     const p = this.player;
     p.perfectUsed = true;
+    this.game.count('perfects');
     this.slowT = 0.9;
     const hero = this.game.save.hero;
     if (hero.surgeUnlocked) hero.surge = Math.min(100, hero.surge + 15);
@@ -1693,6 +1696,7 @@ export class World {
     }
     if (p.state === 'dead') return;
     hero.surge = 0;
+    this.game.count('surges');
     this.cutin = { id: 'kai_surge', t: 0 };
     audio.playSfx('surge_cutin');
     audio.duckMusic(0.5, 1.5);

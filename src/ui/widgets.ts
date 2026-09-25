@@ -162,6 +162,8 @@ export function drawItemCell(
   y: number,
   selected: boolean,
   placeholder?: IconId,
+  /** Show a green arrow when this is better than what's equipped. */
+  upgrade = false,
 ): void {
   ctx.fillStyle = selected ? UI.sel : '#1d1a2e';
   ctx.fillRect(x, y, 18, 18);
@@ -184,6 +186,7 @@ export function drawItemCell(
     }
     if (item.upgrade > 0)
       drawText(ctx, `+${item.upgrade}`, x + 17, y + 10, { align: 'right', color: UI.accent, outline: UI.bg });
+    if (upgrade) drawText(ctx, '\u25b2', x + 1, y + 10, { color: UI.good, outline: UI.bg });
   } else if (placeholder) {
     drawIcon(ctx, placeholder, x + 1, y + 1, 0, 0.25);
   }

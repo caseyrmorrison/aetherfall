@@ -11,11 +11,13 @@ import { HeroTab } from './hero';
 import { ItemsTab } from './items';
 import { MapTab } from './map';
 import { QuestsTab } from './quests';
+import { RecordsTab } from './records';
 import { SkillsTab } from './skills';
 import { SystemTab } from './system';
 import { TalentsTab } from './talents';
 
-export type MenuTab = 'hero' | 'items' | 'skills' | 'talents' | 'quests' | 'map' | 'bestiary' | 'system';
+export type MenuTab =
+  'hero' | 'items' | 'skills' | 'talents' | 'quests' | 'map' | 'bestiary' | 'records' | 'system';
 
 export interface TabView {
   readonly label: string;
@@ -27,7 +29,17 @@ export interface TabView {
   badge?(): boolean;
 }
 
-const ORDER: MenuTab[] = ['hero', 'items', 'skills', 'talents', 'quests', 'map', 'bestiary', 'system'];
+const ORDER: MenuTab[] = [
+  'hero',
+  'items',
+  'skills',
+  'talents',
+  'quests',
+  'map',
+  'bestiary',
+  'records',
+  'system',
+];
 
 export class MenuScene implements Scene {
   readonly opaque = false;
@@ -49,6 +61,7 @@ export class MenuScene implements Scene {
       quests: new QuestsTab(this),
       map: new MapTab(this),
       bestiary: new BestiaryTab(this),
+      records: new RecordsTab(this),
       system: new SystemTab(this),
     };
     this.cur = ORDER.indexOf(tab);
@@ -107,16 +120,19 @@ export class MenuScene implements Scene {
     let tx = x + 2;
     const keyW = drawHintsKey(ctx, input.label('tabPrev'), tx, 4);
     tx += keyW + 3;
+    // abbreviate tab labels when the screen is narrow
+    const full = ORDER.reduce((n, id) => n + measureText(this.tabs[id].label) + 12, 30);
+    const short = full > W - 8;
     ORDER.forEach((id, i) => {
       const tab = this.tabs[id];
-      const label = tab.label;
-      const tw = measureText(label) + 10;
+      const label = short && i !== this.cur ? tab.label.slice(0, 3) : tab.label;
+      const tw = measureText(label) + (short ? 6 : 10);
       const sel = i === this.cur;
       ctx.fillStyle = sel ? UI.accent : UI.bg;
       ctx.globalAlpha = sel ? 1 : 0.85;
       ctx.fillRect(tx, 3, tw, 13);
       ctx.globalAlpha = 1;
-      drawText(ctx, label, tx + 5, 5, { color: sel ? UI.bg : UI.dim, shadow: false });
+      drawText(ctx, label, tx + (short ? 3 : 5), 5, { color: sel ? UI.bg : UI.dim, shadow: false });
       if (tab.badge?.()) {
         ctx.fillStyle = UI.cyan;
         ctx.fillRect(tx + tw - 3, 3, 3, 3);

@@ -300,7 +300,7 @@ export class Hud {
     drawText(ctx, gold, x - 5, y + 3, { align: 'right', color: UI.accent, outline: UI.bg });
   }
 
-  private questTargetPos(world: World): { x: number; y: number } | null {
+  questTargetPos(world: World): { x: number; y: number } | null {
     const t = world.quests.target();
     if (!t || t.map !== world.data.id) {
       // point toward the exit that leads to the target zone

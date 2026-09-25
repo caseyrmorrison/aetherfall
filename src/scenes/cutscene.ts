@@ -19,6 +19,7 @@ import { parseLine, type Line } from '../game/dialogue';
 import type { Game } from '../game/game';
 import { TEXT_SPEED_CPS } from '../game/settings';
 import { drawBar, drawPanel, UI } from '../ui/widgets';
+import { BacklogScene } from './backlog';
 
 export class CutsceneScene implements Scene {
   readonly opaque = true;
@@ -127,9 +128,11 @@ export class CutsceneScene implements Scene {
     } else if ('say' in s) {
       this.line = parseLine(s.say, hero);
       this.setText(this.line.text, this.line.portrait ? 360 : 440);
+      this.game.logLine(this.line.who, this.line.text);
     } else if ('narrate' in s) {
       this.narration = s.narrate.replace(/\{hero\}/g, hero);
       this.setText(this.narration, Math.min(this.game.app.width - 60, 380));
+      this.game.logLine(undefined, this.narration);
     } else if ('sfx' in s) {
       audio.playSfx(s.sfx);
       this.advance();
@@ -200,6 +203,14 @@ export class CutsceneScene implements Scene {
 
     const s = this.steps[this.i];
     if (!s) return;
+    if (input.pressed('menuAlt2')) {
+      this.game.app.push(new BacklogScene(this.game));
+      return;
+    }
+    if (input.pressed('menuAlt')) {
+      this.game.settings.autoAdvance = !this.game.settings.autoAdvance;
+      this.game.persistSettings();
+    }
     if (this.stepT > 0.25 && ('say' in s || 'narrate' in s)) this.preloadAhead();
     const click = input.pressed('confirm') || input.pressed('interact') || input.mouse.clicked;
     if ('say' in s || 'narrate' in s) {
@@ -277,12 +288,16 @@ export class CutsceneScene implements Scene {
     if (this.skipHold > 0) {
       drawText(ctx, 'Skipping…', W - 8, 3, { align: 'right', color: '#ffffff' });
       drawBar(ctx, W - 60, 12, 52, 1, this.skipHold / 0.9, UI.accent, { shine: false });
-    } else if (this.t < 4) {
-      drawText(ctx, `Hold [${this.game.app.input.label('cancel')}] to skip`, W - 6, 3, {
-        align: 'right',
-        color: UI.dim,
-        alpha: Math.min(1, (4 - this.t) * 2),
-      });
+    } else {
+      const input = this.game.app.input;
+      const auto = this.game.settings.autoAdvance;
+      drawText(
+        ctx,
+        `[${input.label('menuAlt')}] ${auto ? '{cyan}AUTO{/}' : 'Auto'}  [${input.label('menuAlt2')}] Log  Hold [${input.label('cancel')}] Skip`,
+        W - 6,
+        3,
+        { align: 'right', color: UI.dim, alpha: this.t < 4 || auto ? 1 : 0.55 },
+      );
     }
   }
 

@@ -85,6 +85,8 @@ export class MapTab implements TabView {
     }
     for (const n of world.npcs) mark(n.x, n.y, '#fee761', 2);
     for (const o of d.objects) if (o.kind === 'warp') mark(o.x + o.w / 2, o.y + o.h / 2, '#63c74d', 4);
+    const qt = this.menu.ws.hud.questTargetPos(world);
+    if (qt && Math.floor(this.t * 2) % 2 === 0) mark(qt.x, qt.y + 12, '#fee761', 5);
     if (Math.floor(this.t * 3) % 2 === 0) mark(world.player.x, world.player.y, '#ffffff', 4);
     // legend
     const lx = r.x + r.w - 104;
@@ -97,7 +99,7 @@ export class MapTab implements TabView {
       ['#ff0044', 'Boss Gate'],
       [UI.accent, 'Chest'],
       ['#63c74d', 'Exit'],
-      ['#fee761', 'Person'],
+      ['#fee761', 'Person / Quest'],
     ];
     for (const [c, label] of legend) {
       ctx.fillStyle = c;

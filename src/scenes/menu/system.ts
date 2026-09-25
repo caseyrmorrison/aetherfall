@@ -117,28 +117,15 @@ export class SystemTab implements TabView {
     this.list.draw(ctx, r.x + 4, r.y + 8, 150, (o, x, y, sel) =>
       drawText(ctx, labels[o], x + 2, y, { color: sel ? UI.accent : '#ffffff' }),
     );
-    const sx = r.x + 180;
-    let y = r.y + 8;
-    const row = (k: string, v: string): void => {
-      drawText(ctx, k, sx, y, { color: UI.dim });
-      drawText(ctx, v, sx + 150, y, { align: 'right' });
-      y += 11;
-    };
-    drawText(ctx, 'Journey', sx, y, { color: UI.accent });
-    y += 14;
-    row('Play time', formatPlayTime(s.playTime));
-    row(
-      'Difficulty',
-      s.difficulty[0].toUpperCase() + s.difficulty.slice(1) + (s.ngPlus ? ` NG+${s.ngPlus}` : ''),
+    drawText(
+      ctx,
+      `Save slot ${s.slot + 1}  \u2022  Play time ${formatPlayTime(s.playTime)}`,
+      r.x + 180,
+      r.y + 8,
+      { color: UI.dim },
     );
-    row('Monsters slain', `${s.stats.kills}`);
-    row('Bosses defeated', `${s.stats.bosses}`);
-    row('Deaths', `${s.stats.deaths}`);
-    row('Gold earned', `${s.stats.goldEarned}`);
-    row('Items found', `${s.stats.itemsFound}`);
-    row('Legendaries', `${s.stats.legendaries}`);
-    row('Damage dealt', `${Math.round(s.stats.damageDealt)}`);
-    if (s.stats.abyssBest) row('Deepest Abyss floor', `${s.stats.abyssBest}`);
-    row('Save slot', `${s.slot + 1}`);
+    drawText(ctx, 'Statistics and achievements are in the Records tab.', r.x + 180, r.y + 20, {
+      color: UI.dim,
+    });
   }
 }

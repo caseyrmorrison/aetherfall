@@ -7,6 +7,7 @@ import { isChoice, isLine, type Choice, type Line, type Step } from '../game/dia
 import type { Game } from '../game/game';
 import { TEXT_SPEED_CPS } from '../game/settings';
 import { drawPanel, ListView, UI } from '../ui/widgets';
+import { BacklogScene } from './backlog';
 
 export class DialogueScene implements Scene {
   readonly opaque = false;
@@ -63,6 +64,7 @@ export class DialogueScene implements Scene {
         this.t = 0;
         this.doneT = 0;
         if (this.game.settings.textSpeed === 'instant') this.shown = this.total;
+        this.game.logLine(this.line.who, this.line.text);
         return;
       }
       if (isChoice(s)) {
@@ -93,6 +95,10 @@ export class DialogueScene implements Scene {
       return;
     }
     if (!this.line) return;
+    if (input.pressed('menuAlt2')) {
+      this.game.app.push(new BacklogScene(this.game));
+      return;
+    }
     const typing = this.shown < this.total;
     if (typing) {
       const cps = TEXT_SPEED_CPS[this.game.settings.textSpeed];

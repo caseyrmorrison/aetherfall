@@ -10,6 +10,7 @@ import { Emitter } from '../engine/events';
 import { rng } from '../engine/rng';
 import { DIFFICULTY, xpToNext } from './balance';
 import { displayName, generateItem, type GenerateOptions } from './items';
+import { Achievements } from './achievements';
 import { QuestSystem } from './quests';
 import { SaveStore } from './saves';
 import { loadSettings, saveSettings, type Settings } from './settings';
@@ -40,16 +41,20 @@ export class Game {
   readonly events = new Emitter<GameEvents>();
   readonly saves = new SaveStore();
   readonly quests: QuestSystem;
+  readonly achievements: Achievements;
   settings: Settings = loadSettings();
   private _save: SaveData | null = null;
   private statsCache: HeroStats | null = null;
   buffs: Buffs = { might: 0, guard: 0 };
   toasts: Toast[] = [];
+  /** Recent dialogue for the backlog viewer. */
+  backlog: { who?: string; text: string }[] = [];
   /** Big centered banner (level up, area discovered). */
   banner: { title: string; sub?: string; t: number; color?: string } | null = null;
 
   constructor(readonly app: App) {
     this.quests = new QuestSystem(this);
+    this.achievements = new Achievements(this);
     this.applySettings();
   }
 
@@ -157,14 +162,25 @@ export class Game {
     return generateItem(rng, ilvl, { ...opts, rarityRoll: { magicFind: mf, ...(opts.rarityRoll ?? {}) } });
   }
 
+  logLine(who: string | undefined, text: string): void {
+    this.backlog.push({ who, text });
+    if (this.backlog.length > 80) this.backlog.shift();
+  }
+
   toast(text: string, icon?: IconId, tier?: number, color?: string): void {
     this.toasts.push({ text, icon, tier, color, t: 0 });
     if (this.toasts.length > 6) this.toasts.shift();
   }
 
   // ---------------------------------------------------------------- time ----
+  /** Increment a numeric counter stored in save flags. */
+  count(flag: string, n = 1): void {
+    this.save.flags[flag] = (this.save.flags[flag] ?? 0) + n;
+  }
+
   tick(dt: number): void {
     if (!this._save) return;
+    this.achievements.update(dt);
     this.save.playTime += dt;
     for (const t of this.toasts) t.t += dt;
     this.toasts = this.toasts.filter((t) => t.t < 4);

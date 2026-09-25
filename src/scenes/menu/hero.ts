@@ -226,7 +226,11 @@ export class HeroTab implements TabView {
         if (idx >= INVENTORY_SIZE) break;
         const cx = x + c * CELL;
         const cy = r.y + 14 + (row - this.scroll) * CELL;
-        drawItemCell(ctx, s.inventory[idx] ?? null, cx, cy, this.col === c && this.row === row);
+        const bagItem = s.inventory[idx] ?? null;
+        const better =
+          !!bagItem &&
+          itemScore(bagItem) > (s.equipment[bagItem.slot] ? itemScore(s.equipment[bagItem.slot]!) : 0);
+        drawItemCell(ctx, bagItem, cx, cy, this.col === c && this.row === row, undefined, better);
         this.cellRects.push({ r: { x: cx, y: cy, w: 18, h: 18 }, col: c, row });
       }
     }

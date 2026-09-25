@@ -168,6 +168,7 @@ export class Player extends Actor {
     const moveLen = Math.hypot(mv.x, mv.y);
     if (canAct) {
       if (input.pressed('attack')) this.attackBuffer = 0.22;
+      else if (input.isDown('attack')) this.attackBuffer = Math.max(this.attackBuffer, 0.05); // hold to keep attacking
       if (input.pressed('dodge')) this.dodgeBuffer = 0.16;
       this.updateAim(world, mv);
       if (input.pressed('potionHp')) this.drinkFlask(world, 'hp');
