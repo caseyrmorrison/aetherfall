@@ -143,6 +143,12 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
 
 export const getFlag = (s: SaveData, f: string): number => s.flags[f] ?? 0;
 export const hasFlag = (s: SaveData, f: string): boolean => (s.flags[f] ?? 0) > 0;
+/** Has this zone guardian been fully defeated? (Malachar needs both of his forms.) */
+export function bossCleared(s: SaveData, boss: string): boolean {
+  if (boss === 'malachar') return hasFlag(s, 'boss_malachar_true');
+  return hasFlag(s, `boss_${boss}`);
+}
+
 export function setFlag(s: SaveData, f: string, v = 1): void {
   s.flags[f] = v;
 }

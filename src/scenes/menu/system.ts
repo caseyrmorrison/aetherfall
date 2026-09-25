@@ -65,7 +65,9 @@ export class SystemTab implements TabView {
               s.bounties = [];
               const keep = ['game_clear'];
               s.flags = Object.fromEntries(
-                Object.entries(s.flags).filter(([k]) => keep.includes(k) || k.startsWith('visited_')),
+                Object.entries(s.flags).filter(
+                  ([k]) => keep.includes(k) || k.startsWith('visited_') || k.startsWith('tip_'),
+                ),
               );
               s.hero.surgeUnlocked = false;
               s.hero.surge = 0;

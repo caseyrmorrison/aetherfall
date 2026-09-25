@@ -141,7 +141,21 @@ export function installDriver(app: App, game: Game): void {
       window.addEventListener('error', onErr);
       const startBoss = w.boss?.def.id;
       while (t < maxT && p.state !== 'dead') {
-        const b = this.w!.boss;
+        const pickTarget = (): typeof w.boss => {
+          if (w.boss && !w.boss.dead) return w.boss;
+          let best: typeof w.boss = null;
+          let bd = 260;
+          for (const e of w.enemies) {
+            if (e.dead || !e.targetable) continue;
+            const d = Math.hypot(e.x - p.x, e.y - p.y);
+            if (d < bd) {
+              bd = d;
+              best = e;
+            }
+          }
+          return best;
+        };
+        const b = pickTarget();
         if (app.scenes.length > 1) {
           await press('Enter');
           await this.step(8);
@@ -185,7 +199,9 @@ export function installDriver(app: App, game: Game): void {
       for (const k of [...keys]) set(k, false);
       window.removeEventListener('error', onErr);
       const b = this.w!.boss;
+      const kills = game.save.stats.kills;
       return {
+        kills,
         t: +t.toFixed(1),
         startBoss,
         boss: b?.def.id ?? null,

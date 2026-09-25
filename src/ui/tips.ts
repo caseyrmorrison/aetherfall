@@ -33,6 +33,7 @@ export class Tips {
 
   /** Request a tip (ignored if already seen). */
   show(id: string): void {
+    if (!this.world.game.settings.tips) return;
     if (!TIPS[id] || hasFlag(this.save, `tip_${id}`) || this.queue.includes(id) || this.current?.id === id)
       return;
     setFlag(this.save, `tip_${id}`);

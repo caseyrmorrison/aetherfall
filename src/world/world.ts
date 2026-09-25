@@ -23,7 +23,15 @@ import { rng } from '../engine/rng';
 import { computeDamage, goldDrop, xpReward } from '../game/balance';
 import type { Game } from '../game/game';
 import type { QuestSystem } from '../game/quests';
-import { addConsumable, addMaterial, decodeBits, encodeBits, hasFlag, setFlag } from '../game/state';
+import {
+  addConsumable,
+  addMaterial,
+  bossCleared,
+  decodeBits,
+  encodeBits,
+  hasFlag,
+  setFlag,
+} from '../game/state';
 import type { Rarity } from '../game/types';
 import { Camera } from './camera';
 import type { Entity } from './entities/actor';
@@ -107,6 +115,8 @@ export class World {
   private texts: FloatText[] = [];
   labels: { x: number; y: number; text: string }[] = [];
   boss: Enemy | null = null;
+  /** Set before loading an arena to fight its (already defeated) guardian again. */
+  rematch = false;
   /** Camera focus override (boss intros). */
   focus: Entity | null = null;
   time = 0;
@@ -244,7 +254,11 @@ export class World {
       );
     }
     const b = this.data.boss;
-    if (b && !this.boss) {
+    // defeated story bosses only return when the player asks for a rematch at the gate
+    const cleared = b && !this.abyssFloor && bossCleared(this.game.save, b.enemy);
+    const wantBoss = b && (!cleared || this.rematch);
+    this.rematch = false;
+    if (b && wantBoss && !this.boss) {
       const lvl = (this.abyssFloor ? abyssLevel(this.abyssFloor) : Math.max(this.data.levels[1], 1)) + ng;
       this.spawnBoss(b.enemy, lvl, b.x, b.y);
     }
@@ -268,8 +282,11 @@ export class World {
     return SHARD_BOSSES.filter((b) => hasFlag(this.game.save, `boss_${b}`)).length;
   }
 
+  /** Chests in temporary maps (Abyss floors) are tracked here instead of in the save. */
+  private transientChests = new Set<string>();
+
   isChestOpen(id: string): boolean {
-    return hasFlag(this.game.save, `chest_${id}`);
+    return this.transientChests.has(id) || hasFlag(this.game.save, `chest_${id}`);
   }
 
   markerActive(id: string): boolean {
@@ -547,6 +564,12 @@ export class World {
     const h = this.game.save.hero;
     h.hp = Math.round(this.player.hp);
     h.mp = Math.round(this.player.mp);
+    if (this.player.state !== 'dead') {
+      const loc = this.game.save.location;
+      loc.map = this.data.id;
+      loc.x = Math.round(this.player.x);
+      loc.y = Math.round(this.player.y);
+    }
   }
 
   private camTarget(): [number, number] {
@@ -1597,7 +1620,8 @@ export class World {
 
   private openChest(o: Extract<MapObject, { kind: 'chest' }>): void {
     const save = this.game.save;
-    setFlag(save, `chest_${o.id}`);
+    if (this.abyssFloor > 0) this.transientChests.add(o.id);
+    else setFlag(save, `chest_${o.id}`);
     audio.playSfx('chest_open');
     const ilvl = Math.max(o.ilvl, 1) + save.ngPlus * 30;
     const n = o.rare ? rng.int(2, 3) : 1;
@@ -1964,6 +1988,21 @@ export class World {
     if (!this.game.settings.damageNumbers && /^\d+$/.test(text)) return;
     this.texts.push({ x, y, text, color, t: 0, dur: o.big ? 1.1 : 0.8, big: !!o.big, small: !!o.small });
     if (this.texts.length > 60) this.texts.shift();
+  }
+
+  levelUpBurst(): void {
+    const p = this.player;
+    this.novaEffect(p.x, p.y - 4, 40, 'arcane');
+    this.particles.emit(p.x, p.y - 8, {
+      count: 40,
+      color: ['#feae34', '#fee761', '#ffffff'],
+      speed: [30, 90],
+      vz: [30, 90],
+      gravity: 60,
+      life: [0.6, 1.2],
+      emissive: true,
+      shape: 'glow',
+    });
   }
 
   bossShout(text: string): void {

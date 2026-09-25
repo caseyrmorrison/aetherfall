@@ -15,6 +15,7 @@ export interface Settings {
   enemyHealthBars: boolean;
   autoLoot: boolean;
   showFps: boolean;
+  tips: boolean;
   reduceFlashing: boolean;
   touchControls: 'auto' | 'on' | 'off';
   aimAssist: boolean;
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enemyHealthBars: true,
   autoLoot: true,
   showFps: false,
+  tips: true,
   reduceFlashing: false,
   touchControls: 'auto',
   aimAssist: true,

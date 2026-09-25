@@ -16,6 +16,7 @@ type Row =
       kind: 'toggle';
       label: string;
       key:
+        | 'tips'
         | 'autoAdvance'
         | 'damageNumbers'
         | 'enemyHealthBars'
@@ -85,6 +86,12 @@ export class SettingsScene implements Scene {
         label: 'Aim Assist',
         key: 'aimAssist',
         help: 'Attacks and skills snap toward nearby enemies (keyboard/gamepad).',
+      },
+      {
+        kind: 'toggle',
+        label: 'Gameplay Tips',
+        key: 'tips',
+        help: 'Show one-time hints about mechanics as you play.',
       },
       {
         kind: 'toggle',

@@ -15,6 +15,18 @@ const touch = new TouchControls(app, game);
 app.preUpdate = (dt) => touch.update(dt);
 app.postRender = (ctx) => {
   touch.render(ctx);
+  if (app.screen.isPortrait && 'ontouchstart' in window) {
+    ctx.fillStyle = 'rgba(11,10,18,0.85)';
+    ctx.fillRect(0, app.height / 2 - 18, app.width, 36);
+    drawText(ctx, 'Rotate your device to landscape', app.width / 2, app.height / 2 - 10, {
+      align: 'center',
+      color: '#feae34',
+    });
+    drawText(ctx, 'for the best experience', app.width / 2, app.height / 2 + 2, {
+      align: 'center',
+      color: '#c0cbdc',
+    });
+  }
   if (game.settings.showFps)
     drawText(ctx, `${app.fps} FPS`, app.width - 4, app.height - 12, {
       align: 'right',

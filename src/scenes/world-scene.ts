@@ -8,7 +8,7 @@ import type { Scene } from '../engine/app';
 import { DIFFICULTY } from '../game/balance';
 import { parseLine, type Step } from '../game/dialogue';
 import type { Game } from '../game/game';
-import { hasFlag, setFlag } from '../game/state';
+import { bossCleared, hasFlag, setFlag } from '../game/state';
 import { Hud } from '../ui/hud';
 import { Tips } from '../ui/tips';
 import type { Enemy } from '../world/entities/enemy';
@@ -33,11 +33,31 @@ export class WorldScene implements Scene, WorldHooks {
   private busy = false;
   private autosaveT = 0;
 
+  private unsubs: (() => void)[] = [];
+
   constructor(readonly game: Game) {
     this.world = new World(game, game.quests, game.app.input);
     this.world.hooks = this;
     this.tips = new Tips(this.world);
   }
+
+  enter(): void {
+    // level-up flourish on the hero
+    this.unsubs.push(this.game.events.on('levelUp', () => this.world.levelUpBurst()));
+    window.addEventListener('blur', this.onBlur);
+  }
+
+  exit(): void {
+    for (const u of this.unsubs) u();
+    this.unsubs = [];
+    window.removeEventListener('blur', this.onBlur);
+  }
+
+  /** Auto-pause when the window loses focus (only if nothing else is open). */
+  private onBlur = (): void => {
+    if (this.game.app.top() === this && !this.busy && this.world.player.state !== 'dead')
+      this.openMenu('system');
+  };
 
   /** Load a map and announce it. */
   start(mapId: string, spawn: string | { x: number; y: number }): void {
@@ -51,8 +71,8 @@ export class WorldScene implements Scene, WorldHooks {
   private announce(mapId: string): void {
     const save = this.game.save;
     const zone = ZONES[mapId];
-    const first = !hasFlag(save, `visited_${mapId}`);
-    setFlag(save, `visited_${mapId}`);
+    const first = !mapId.startsWith('abyss') && !hasFlag(save, `visited_${mapId}`);
+    if (!mapId.startsWith('abyss')) setFlag(save, `visited_${mapId}`);
     if (mapId === 'town')
       this.hud.zoneCard = { title: 'Havenbrook', sub: 'A quiet village beneath the broken sky', t: 0 };
     else if (zone)
@@ -232,8 +252,11 @@ export class WorldScene implements Scene, WorldHooks {
   }
 
   enterArena(o: Extract<MapObject, { kind: 'bossGate' }>): void {
-    const defeated = hasFlag(this.game.save, `boss_${o.boss}`);
-    const go = (): void => this.warp(o.to, 'entry');
+    const defeated = bossCleared(this.game.save, o.boss);
+    const go = (): void => {
+      this.world.rematch = defeated;
+      this.warp(o.to, 'entry');
+    };
     if (defeated) {
       this.game.app.push(
         new ConfirmScene(

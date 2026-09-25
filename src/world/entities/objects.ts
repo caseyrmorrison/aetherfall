@@ -2,7 +2,7 @@
 import { getProp, propInfo } from '../../art/pixel';
 import type { PropId } from '../../art/pixel/types';
 import { dist } from '../../engine/math';
-import { hasFlag } from '../../game/state';
+import { bossCleared, hasFlag } from '../../game/state';
 import type { MapObject } from '../mapdata';
 import type { World } from '../world';
 import { Entity } from './actor';
@@ -27,7 +27,7 @@ export class WorldObject extends Entity {
         return { id: 'save_crystal', frame: Math.floor(this.t * pi.fps) % pi.frames };
       }
       case 'bossGate':
-        return { id: 'boss_gate', frame: hasFlag(world.game.save, `boss_${o.boss}`) ? 1 : 0 };
+        return { id: 'boss_gate', frame: bossCleared(world.game.save, o.boss) ? 1 : 0 };
       case 'portal': {
         if (!this.portalOpen(world)) return null;
         const pi = propInfo('portal');
@@ -56,7 +56,7 @@ export class WorldObject extends Entity {
       case 'door':
         return o.label;
       case 'bossGate':
-        return hasFlag(world.game.save, `boss_${o.boss}`) ? 'Enter (cleared)' : 'Challenge';
+        return bossCleared(world.game.save, o.boss) ? 'Enter (cleared)' : 'Challenge';
       case 'portal':
         return this.portalOpen(world)
           ? world.game.save.flags['game_clear']
