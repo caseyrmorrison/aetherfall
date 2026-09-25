@@ -7,6 +7,7 @@ import { memo, type Canvas } from './core';
 import type { IconId } from './types';
 import { Grid } from './env/raster';
 import { amulet, armor, boots, dagger, greatsword, helm, ring, staff, sword } from './icons/equip';
+import { belt, charm, gloves } from './icons/gear-extra';
 import { material } from './icons/materials';
 import { ITEM_ICONS } from './icons/items';
 import { SKILL_ICONS } from './icons/skills';
@@ -22,6 +23,11 @@ const EQUIP: Partial<Record<IconId, (tier: number) => Grid>> = {
   icon_boots: (t) => boots(material(t)),
   icon_ring: (t) => ring(material(t)),
   icon_amulet: (t) => amulet(material(t)),
+  icon_gloves: (t) => gloves(material(t)),
+  icon_belt: (t) => belt(material(t)),
+  icon_charm_small: (t) => charm(material(t), 'small'),
+  icon_charm_large: (t) => charm(material(t), 'large'),
+  icon_charm_grand: (t) => charm(material(t), 'grand'),
 };
 
 const OTHER: Partial<Record<IconId, () => Grid>> = { ...ITEM_ICONS, ...SKILL_ICONS, ...UI_ICONS };

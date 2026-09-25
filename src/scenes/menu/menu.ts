@@ -1,4 +1,4 @@
-/** Tabbed pause/game menu (Hero, Items, Skills, Talents, Quests, Map, Bestiary, System). */
+/** Tabbed pause/game menu (Hero, Stats, Items, Skills, Talents, Quests, Map, Bestiary, Records, System). */
 import { audio } from '../../audio';
 import type { Scene } from '../../engine/app';
 import { drawText, measureText } from '../../engine/font';
@@ -13,11 +13,12 @@ import { MapTab } from './map';
 import { QuestsTab } from './quests';
 import { RecordsTab } from './records';
 import { SkillsTab } from './skills';
+import { StatsTab } from './stats';
 import { SystemTab } from './system';
 import { TalentsTab } from './talents';
 
 export type MenuTab =
-  'hero' | 'items' | 'skills' | 'talents' | 'quests' | 'map' | 'bestiary' | 'records' | 'system';
+  'hero' | 'stats' | 'items' | 'skills' | 'talents' | 'quests' | 'map' | 'bestiary' | 'records' | 'system';
 
 export interface TabView {
   readonly label: string;
@@ -31,6 +32,7 @@ export interface TabView {
 
 const ORDER: MenuTab[] = [
   'hero',
+  'stats',
   'items',
   'skills',
   'talents',
@@ -55,6 +57,7 @@ export class MenuScene implements Scene {
   ) {
     this.tabs = {
       hero: new HeroTab(this),
+      stats: new StatsTab(this),
       items: new ItemsTab(this),
       skills: new SkillsTab(this),
       talents: new TalentsTab(this),

@@ -1,29 +1,78 @@
-/** Hero tab: character stats, equipment slots and the bag grid with comparisons. */
-import { getSprite } from '../../art/pixel';
+/**
+ * Hero tab: a paper doll (gear slots sit on the hero's body), the bag grid with
+ * charms, and item tooltips with comparisons.
+ */
+import { getIcon, getSprite, spriteInfo } from '../../art/pixel';
 import { audio } from '../../audio';
-import { SLOT_ICON, SLOT_LABEL } from '../../data/items';
+import { SLOT_ICON } from '../../data/items';
 import { drawText } from '../../engine/font';
 import { pointInRect, type Rect } from '../../engine/math';
-import { xpToNext } from '../../game/balance';
-import { itemScore, RARITY_INDEX } from '../../game/items';
+import { activeCharms, compareTarget, itemScore, RARITY_INDEX } from '../../game/items';
 import { equipItem, INVENTORY_SIZE, unequip } from '../../game/state';
-import { powerRating } from '../../game/stats';
-import type { Item, Slot } from '../../game/types';
-import { SLOTS } from '../../game/types';
+import { deriveStats, equipDelta, powerRating } from '../../game/stats';
+import type { EquipSlot, Item, Slot } from '../../game/types';
+import { CHARM_LIMIT, EQUIP_SLOTS } from '../../game/types';
 import { drawItemCell, drawTooltip, itemTooltipLines, UI } from '../../ui/widgets';
 import type { MenuScene, TabView } from './menu';
 
 const COLS = 8;
 const CELL = 19;
+/** Doll scale: the hero sprite is drawn this many times larger. */
+const S = 6;
+
+/** Where each gear slot sits on the hero sprite (sprite pixel coordinates). */
+const DOLL: Record<EquipSlot, [number, number]> = {
+  helm: [8, 5],
+  amulet: [8, 10.8],
+  armor: [8, 14.6],
+  belt: [8, 18.3],
+  boots: [8, 22.2],
+  gloves: [0.4, 15.2],
+  ring1: [0.4, 19.4],
+  weapon: [15.6, 15.2],
+  ring2: [15.6, 19.4],
+};
+
+const DOLL_LABEL: Record<EquipSlot, string> = {
+  helm: 'Head',
+  amulet: 'Neck',
+  armor: 'Chest',
+  belt: 'Waist',
+  boots: 'Feet',
+  gloves: 'Hands',
+  ring1: 'Left Ring',
+  weapon: 'Main Hand',
+  ring2: 'Right Ring',
+};
+
+const PLACEHOLDER: Record<EquipSlot, Slot> = {
+  helm: 'helm',
+  amulet: 'amulet',
+  armor: 'armor',
+  belt: 'belt',
+  boots: 'boots',
+  gloves: 'gloves',
+  ring1: 'ring',
+  weapon: 'weapon',
+  ring2: 'ring',
+};
+
+type Sel = { kind: 'doll'; slot: EquipSlot } | { kind: 'bag'; i: number };
+
+interface Cell {
+  sel: Sel;
+  rect: Rect;
+}
+
+const same = (a: Sel, b: Sel): boolean =>
+  a.kind === 'doll' ? b.kind === 'doll' && a.slot === b.slot : b.kind === 'bag' && a.i === b.i;
 
 export class HeroTab implements TabView {
   readonly label = 'Hero';
-  /** -1 = equipment column. */
-  private col = 0;
-  private row = 0;
+  private sel: Sel = { kind: 'bag', i: 0 };
+  private cells: Cell[] = [];
   private scroll = 0;
   private rowsVisible = 8;
-  private cellRects: { r: Rect; col: number; row: number }[] = [];
   private t = 0;
 
   constructor(private menu: MenuScene) {}
@@ -33,72 +82,94 @@ export class HeroTab implements TabView {
   }
 
   private selectedItem(): Item | null {
-    if (this.col < 0) return this.save.equipment[SLOTS[this.row]] ?? null;
-    return this.save.inventory[this.row * COLS + this.col] ?? null;
+    return this.sel.kind === 'doll'
+      ? this.save.equipment[this.sel.slot]
+      : (this.save.inventory[this.sel.i] ?? null);
   }
 
   badge(): boolean {
     return this.save.inventory.some((i) => i.isNew);
   }
 
+  /** Move the selection to the nearest cell in a direction (works across doll and bag). */
+  private navigate(dx: number, dy: number): boolean {
+    const cur = this.cells.find((c) => same(c.sel, this.sel));
+    if (!cur) {
+      this.sel = { kind: 'bag', i: 0 };
+      return true;
+    }
+    const cx = cur.rect.x + cur.rect.w / 2;
+    const cy = cur.rect.y + cur.rect.h / 2;
+    let best: Cell | null = null;
+    let bestScore = Infinity;
+    for (const c of this.cells) {
+      if (c === cur) continue;
+      const ox = c.rect.x + c.rect.w / 2 - cx;
+      const oy = c.rect.y + c.rect.h / 2 - cy;
+      const along = ox * dx + oy * dy;
+      if (along <= 2) continue;
+      const across = Math.abs(ox * dy - oy * dx);
+      if (across > along * 2.2) continue;
+      const score = along + across * 2;
+      if (score < bestScore) {
+        bestScore = score;
+        best = c;
+      }
+    }
+    // scroll the bag when moving past the visible rows
+    if (!best && this.sel.kind === 'bag') {
+      const row = Math.floor(this.sel.i / COLS);
+      const bagRows = Math.ceil(INVENTORY_SIZE / COLS);
+      if (dy > 0 && row < bagRows - 1) {
+        this.sel = { kind: 'bag', i: Math.min(INVENTORY_SIZE - 1, this.sel.i + COLS) };
+        return true;
+      }
+      if (dy < 0 && row > 0) {
+        this.sel = { kind: 'bag', i: this.sel.i - COLS };
+        return true;
+      }
+    }
+    if (!best) return false;
+    this.sel = best.sel;
+    return true;
+  }
+
   update(dt: number): 'close' | void {
     this.t += dt;
     const g = this.menu.game;
     const input = g.app.input;
-    const bagRows = Math.ceil(INVENTORY_SIZE / COLS);
     let moved = false;
-    if (input.repeat('left')) {
-      if (this.col === 0) {
-        this.col = -1;
-        this.row = Math.min(this.row - this.scroll, SLOTS.length - 1);
-      } else if (this.col > 0) this.col--;
-      moved = true;
-    }
-    if (input.repeat('right')) {
-      if (this.col === -1) {
-        this.col = 0;
-        this.row = this.scroll + this.row;
-      } else if (this.col < COLS - 1) this.col++;
-      moved = true;
-    }
-    if (input.repeat('up')) {
-      this.row = Math.max(0, this.row - 1);
-      moved = true;
-    }
-    if (input.repeat('down')) {
-      this.row = Math.min(this.col < 0 ? SLOTS.length - 1 : bagRows - 1, this.row + 1);
-      moved = true;
-    }
-    // mouse
+    if (input.repeat('left')) moved = this.navigate(-1, 0);
+    if (input.repeat('right')) moved = this.navigate(1, 0) || moved;
+    if (input.repeat('up')) moved = this.navigate(0, -1) || moved;
+    if (input.repeat('down')) moved = this.navigate(0, 1) || moved;
     const m = input.mouse;
-    for (const c of this.cellRects) {
-      if (!pointInRect(m.x, m.y, c.r)) continue;
-      if (m.moved && (c.col !== this.col || c.row !== this.row)) {
-        this.col = c.col;
-        this.row = c.row;
+    for (const c of this.cells) {
+      if (!pointInRect(m.x, m.y, c.rect)) continue;
+      const already = same(c.sel, this.sel);
+      if (m.moved && !already) {
+        this.sel = c.sel;
         moved = true;
       }
       if (m.clicked) {
-        const same = c.col === this.col && c.row === this.row;
-        this.col = c.col;
-        this.row = c.row;
-        if (same) this.activate();
+        this.sel = c.sel;
+        if (already) this.activate();
         return;
       }
       if (m.rightClicked) {
-        this.col = c.col;
-        this.row = c.row;
+        this.sel = c.sel;
         this.toggleLock();
         return;
       }
     }
-    if (m.wheel && this.col >= 0)
-      this.scroll = Math.max(0, Math.min(bagRows - this.rowsVisible, this.scroll + m.wheel));
+    const bagRows = Math.ceil(INVENTORY_SIZE / COLS);
+    if (m.wheel) this.scroll = Math.max(0, Math.min(bagRows - this.rowsVisible, this.scroll + m.wheel));
     if (moved) {
       audio.playSfx('ui_move');
-      if (this.col >= 0) {
-        if (this.row < this.scroll) this.scroll = this.row;
-        if (this.row >= this.scroll + this.rowsVisible) this.scroll = this.row - this.rowsVisible + 1;
+      if (this.sel.kind === 'bag') {
+        const row = Math.floor(this.sel.i / COLS);
+        if (row < this.scroll) this.scroll = row;
+        if (row >= this.scroll + this.rowsVisible) this.scroll = row - this.rowsVisible + 1;
       }
       const it = this.selectedItem();
       if (it?.isNew) it.isNew = false;
@@ -113,14 +184,19 @@ export class HeroTab implements TabView {
     const g = this.menu.game;
     const it = this.selectedItem();
     if (!it) return;
-    if (this.col < 0) {
-      if (unequip(this.save, it.slot)) {
+    if (this.sel.kind === 'doll') {
+      if (unequip(this.save, this.sel.slot)) {
         audio.playSfx('equip');
         g.invalidateStats();
       } else {
         audio.playSfx('ui_error');
         g.toast('Bag is full.', 'ui_lock', 0, UI.bad);
       }
+      return;
+    }
+    if (it.slot === 'charm') {
+      audio.playSfx('ui_error');
+      g.toast('Charms work from your bag — no need to equip them.', 'icon_charm_small', it.tier);
       return;
     }
     equipItem(this.save, it.uid);
@@ -137,127 +213,209 @@ export class HeroTab implements TabView {
   }
 
   private sortBag(): void {
-    const order: Record<Slot, number> = { weapon: 0, helm: 1, armor: 2, boots: 3, ring: 4, amulet: 5 };
+    const order: Record<Slot, number> = {
+      charm: 0,
+      weapon: 1,
+      helm: 2,
+      armor: 3,
+      gloves: 4,
+      belt: 5,
+      boots: 6,
+      ring: 7,
+      amulet: 8,
+    };
+    // charms first (best first, so they stay active), then gear by type/rarity/power
     this.save.inventory.sort(
       (a, b) =>
         order[a.slot] - order[b.slot] ||
         RARITY_INDEX[b.rarity] - RARITY_INDEX[a.rarity] ||
         itemScore(b) - itemScore(a),
     );
+    this.menu.game.invalidateStats();
     audio.playSfx('ui_tab');
-    this.menu.game.toast('Bag sorted', 'ui_check');
+    this.menu.game.toast('Bag sorted (charms first)', 'ui_check');
   }
 
   hints(): [string, string][] {
     const it = this.selectedItem();
     const h: [string, string][] = [];
-    if (it) h.push(['confirm', this.col < 0 ? 'Unequip' : 'Equip']);
+    if (it && it.slot !== 'charm') h.push(['confirm', this.sel.kind === 'doll' ? 'Unequip' : 'Equip']);
     if (it) h.push(['menuAlt', it.locked ? 'Unlock' : 'Lock']);
     h.push(['menuAlt2', 'Sort']);
     return h;
   }
 
   render(ctx: CanvasRenderingContext2D, r: Rect): void {
-    const g = this.menu.game;
     const s = this.save;
-    const st = g.stats();
-    this.cellRects = [];
-    const showStats = r.w >= 420;
-    let x = r.x;
-    // ---- stats column
-    if (showStats) {
-      const hero = getSprite('hero', 'idle', Math.floor(this.t * 2) % 2, 'down');
-      ctx.drawImage(hero, x + 4, r.y + 2, hero.width * 2, hero.height * 2);
-      drawText(ctx, s.hero.name, x + 40, r.y + 4, { color: UI.accent });
-      drawText(ctx, `Level ${s.hero.level}`, x + 40, r.y + 14);
-      const need = xpToNext(s.hero.level);
-      drawText(ctx, Number.isFinite(need) ? `XP ${s.hero.xp}/${need}` : 'MAX LEVEL', x + 40, r.y + 24, {
-        color: UI.dim,
-      });
-      drawText(ctx, `Power {gold}${powerRating(st)}{/}`, x + 40, r.y + 34);
-      const pct = (v: number, sign = '+'): string =>
-        Math.round(v * 100) === 0 ? '0%' : `${sign}${Math.round(v * 100)}%`;
-      const rows: [string, string][] = [
-        ['HP', `${st.maxHp}`],
-        ['MP', `${st.maxMp}`],
-        ['Attack', `${Math.round(st.atk)}`],
-        ['Magic', `${Math.round(st.mag)}`],
-        ['Defense', `${Math.round(st.def)}`],
-        ['Crit', `${Math.round(st.crit * 100)}%`],
-        ['Crit Dmg', pct(st.critDmg)],
-        ['Atk Speed', pct(st.atkSpeed)],
-        ['Move', pct(st.moveSpeed)],
-        ['Lifesteal', `${Math.round(st.lifesteal * 100)}%`],
-        ['Cooldown', pct(st.cdr, '-')],
-        ['Skill Dmg', pct(st.skillDmg)],
-        ['Gold Find', pct(st.goldFind)],
-        ['Magic Find', pct(st.magicFind)],
-        ['HP Regen', `${st.hpRegen.toFixed(1)}/s`],
-      ];
-      let y = r.y + 48;
-      for (const [k, v] of rows) {
-        if (y > r.y + r.h - 12) break;
-        drawText(ctx, k, x + 4, y, { color: UI.dim });
-        drawText(ctx, v, x + 112, y, { align: 'right' });
-        y += 10;
-      }
-      x += 120;
-    }
-    // ---- equipment column
-    drawText(ctx, 'Gear', x + 2, r.y + 2, { color: UI.dim });
-    SLOTS.forEach((slot, i) => {
-      const cx = x + 2;
-      const cy = r.y + 14 + i * 22;
-      const sel = this.col === -1 && this.row === i;
-      drawItemCell(ctx, s.equipment[slot], cx, cy, sel, SLOT_ICON[slot === 'weapon' ? 'sword' : slot]);
-      this.cellRects.push({ r: { x: cx, y: cy, w: 18, h: 18 }, col: -1, row: i });
-      if (!s.equipment[slot]) drawText(ctx, SLOT_LABEL[slot][0], cx + 21, cy + 5, { color: UI.dim });
-    });
-    x += 30;
+    this.cells = [];
+    const dollW = 124;
+    this.renderDoll(ctx, { x: r.x, y: r.y, w: dollW, h: r.h });
+
     // ---- bag grid
-    drawText(ctx, `Bag ${s.inventory.length}/${INVENTORY_SIZE}`, x, r.y + 2, {
+    const bx = r.x + dollW + 6;
+    const charms = activeCharms(s);
+    const charmCount = s.inventory.filter((i) => i.slot === 'charm').length;
+    drawText(ctx, `Bag ${s.inventory.length}/${INVENTORY_SIZE}`, bx, r.y + 2, {
       color: s.inventory.length >= INVENTORY_SIZE ? UI.bad : UI.dim,
     });
+    if (charmCount) {
+      drawText(
+        ctx,
+        `Charms ${Math.min(charmCount, CHARM_LIMIT)}/${CHARM_LIMIT}`,
+        bx + COLS * CELL - 2,
+        r.y + 2,
+        {
+          align: 'right',
+          color: charmCount > CHARM_LIMIT ? UI.accent : UI.cyan,
+        },
+      );
+    }
     this.rowsVisible = Math.max(3, Math.floor((r.h - 30) / CELL));
     const bagRows = Math.ceil(INVENTORY_SIZE / COLS);
+    const activeSet = new Set(charms.map((c) => c.uid));
     for (let row = this.scroll; row < Math.min(bagRows, this.scroll + this.rowsVisible); row++) {
       for (let c = 0; c < COLS; c++) {
         const idx = row * COLS + c;
         if (idx >= INVENTORY_SIZE) break;
-        const cx = x + c * CELL;
+        const cx = bx + c * CELL;
         const cy = r.y + 14 + (row - this.scroll) * CELL;
-        const bagItem = s.inventory[idx] ?? null;
-        const better =
-          !!bagItem &&
-          itemScore(bagItem) > (s.equipment[bagItem.slot] ? itemScore(s.equipment[bagItem.slot]!) : 0);
-        drawItemCell(ctx, bagItem, cx, cy, this.col === c && this.row === row, undefined, better);
-        this.cellRects.push({ r: { x: cx, y: cy, w: 18, h: 18 }, col: c, row });
+        const it = s.inventory[idx] ?? null;
+        const target = it && it.slot !== 'charm' ? compareTarget(s, it) : null;
+        const better = !!it && it.slot !== 'charm' && itemScore(it) > (target ? itemScore(target) : 0);
+        drawItemCell(ctx, it, cx, cy, this.sel.kind === 'bag' && this.sel.i === idx, undefined, better);
+        if (it?.slot === 'charm') this.charmBadge(ctx, it, cx, cy, activeSet.has(it.uid));
+        this.cells.push({ sel: { kind: 'bag', i: idx }, rect: { x: cx, y: cy, w: 18, h: 18 } });
       }
     }
-    if (bagRows > this.rowsVisible) {
-      const th = this.rowsVisible * CELL;
-      const bh = (th * this.rowsVisible) / bagRows;
-      ctx.fillStyle = UI.bg2;
-      ctx.fillRect(x + COLS * CELL + 1, r.y + 14, 2, th);
-      ctx.fillStyle = UI.border;
-      ctx.fillRect(
-        x + COLS * CELL + 1,
-        r.y + 14 + Math.round(((th - bh) * this.scroll) / (bagRows - this.rowsVisible)),
-        2,
-        Math.round(bh),
-      );
-    }
-    x += COLS * CELL + 8;
-    // ---- tooltip
-    const tipW = r.x + r.w - x;
+
+    // ---- tooltip (drawn over the doll on narrow screens)
+    const tx = bx + COLS * CELL + 8;
+    const tipW = r.x + r.w - tx;
+    const narrow = tipW < 110;
     const it = this.selectedItem();
-    if (it && tipW > 90) {
-      const compare = this.col < 0 ? null : s.equipment[it.slot];
-      const lines = itemTooltipLines(it, compare, { price: 'sell' });
-      if (compare && this.col >= 0) lines.push('', '{gray}Compared to equipped{/}');
-      drawTooltip(ctx, lines, x, r.y + 2, tipW, r.h - 16);
-    } else if (tipW > 90) {
-      drawText(ctx, 'Select an item', x + 4, r.y + 6, { color: UI.dim });
+    if (it) {
+      drawTooltip(
+        ctx,
+        this.tooltip(it, activeSet.has(it.uid)),
+        narrow ? r.x : tx,
+        r.y + 2,
+        narrow ? dollW : tipW,
+        r.h - 16,
+      );
+    } else if (!narrow) {
+      const label = this.sel.kind === 'doll' ? `${DOLL_LABEL[this.sel.slot]} — empty` : 'Select an item';
+      drawText(ctx, label, tx + 4, r.y + 6, { color: UI.dim });
+      if (this.sel.kind === 'doll')
+        drawText(ctx, 'Equip gear from your bag.', tx + 4, r.y + 18, { color: UI.dim });
     }
+  }
+
+  private tooltip(it: Item, active: boolean): string[] {
+    if (it.slot === 'charm') {
+      const lines = itemTooltipLines(it, null, { price: 'sell' });
+      lines.push('');
+      lines.push(
+        active
+          ? '{cyan}Active{/} {gray}— works from your bag{/}'
+          : `{gray}Inactive — only the first ${CHARM_LIMIT} charms in your bag are active.{/}`,
+      );
+      if (it.cursed) lines.push('{red}Cursed: great power, at a price.{/}');
+      return lines;
+    }
+    const compare = this.sel.kind === 'doll' ? null : compareTarget(this.save, it);
+    const lines = itemTooltipLines(it, compare, { price: 'sell' });
+    if (this.sel.kind === 'bag') {
+      const d = equipDelta(this.save, it, this.menu.game.buffs);
+      if (d) {
+        const fmt = (label: string, v: number, p?: number): string => {
+          const sign = v >= 0 ? '+' : '-';
+          const col = Math.abs(v) < 0.5 ? 'gray' : v > 0 ? 'green' : 'red';
+          const pctTxt =
+            p !== undefined && Math.abs(p) >= 0.001 ? ` (${sign}${Math.abs(p * 100).toFixed(1)}%)` : '';
+          return `{${col}}${sign}${Math.abs(Math.round(v))} ${label}${pctTxt}{/}`;
+        };
+        lines.push(
+          '',
+          '{gray}If equipped:{/}',
+          fmt('DPS', d.dps, d.dpsPct),
+          fmt('Toughness', d.toughness, d.toughPct),
+          fmt('Recovery', d.recovery),
+        );
+      }
+    }
+    return lines;
+  }
+
+  private charmBadge(ctx: CanvasRenderingContext2D, it: Item, x: number, y: number, active: boolean): void {
+    if (!active) {
+      ctx.fillStyle = 'rgba(24,20,37,0.55)';
+      ctx.fillRect(x + 1, y + 1, 16, 16);
+    } else if (Math.floor(this.t * 2) % 2 === 0) {
+      ctx.fillStyle = UI.cyan;
+      ctx.fillRect(x + 14, y + 14, 2, 2);
+    }
+    if (it.cursed) {
+      ctx.fillStyle = '#e43b44';
+      ctx.fillRect(x + 1, y + 14, 3, 3);
+      ctx.fillRect(x + 1, y + 13, 1, 1);
+    }
+  }
+
+  private renderDoll(ctx: CanvasRenderingContext2D, r: Rect): void {
+    const g = this.menu.game;
+    const s = this.save;
+    const info = spriteInfo('hero');
+    const frame = getSprite('hero', 'idle', Math.floor(this.t * 4) % (info.anims.idle?.frames ?? 1), 'down');
+    const cxMid = r.x + r.w / 2;
+    const ox = Math.round(cxMid - (info.w * S) / 2);
+    const oy = r.y + 2;
+    // backdrop: a soft glow and a pedestal shadow
+    const glow = ctx.createRadialGradient(cxMid, oy + 70, 4, cxMid, oy + 70, 74);
+    glow.addColorStop(0, 'rgba(44,232,245,0.18)');
+    glow.addColorStop(1, 'rgba(44,232,245,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(r.x, oy, r.w, info.h * S + 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cxMid, oy + info.h * S - 2, 36, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.85;
+    ctx.drawImage(frame, ox, oy, info.w * S, info.h * S);
+    ctx.globalAlpha = 1;
+    // gear sockets placed on the body
+    for (const slot of EQUIP_SLOTS) {
+      const [px, py] = DOLL[slot];
+      const cx = Math.round(ox + px * S - 9);
+      const cy = Math.round(oy + py * S - 9);
+      const item = s.equipment[slot];
+      const sel = this.sel.kind === 'doll' && this.sel.slot === slot;
+      if (!item) {
+        // translucent socket so the body shows through
+        ctx.fillStyle = 'rgba(24,20,37,0.45)';
+        ctx.fillRect(cx, cy, 18, 18);
+        ctx.strokeStyle = sel ? UI.accent : 'rgba(139,155,180,0.7)';
+        ctx.strokeRect(cx + 0.5, cy + 0.5, 17, 17);
+        const ph = PLACEHOLDER[slot];
+        ctx.globalAlpha = 0.35;
+        ctx.drawImage(getIcon(SLOT_ICON[ph === 'weapon' ? 'sword' : ph], 0), cx + 1, cy + 1);
+        ctx.globalAlpha = 1;
+      } else {
+        drawItemCell(ctx, item, cx, cy, sel);
+      }
+      this.cells.push({ sel: { kind: 'doll', slot }, rect: { x: cx, y: cy, w: 18, h: 18 } });
+    }
+    // summary under the doll
+    const st = g.stats();
+    const d = deriveStats(s.hero.level, st, s.equipment.weapon?.kind ?? 'sword');
+    let y = oy + info.h * S + 6;
+    const label =
+      this.sel.kind === 'doll' ? DOLL_LABEL[this.sel.slot] : `${s.hero.name} • Lv ${s.hero.level}`;
+    drawText(ctx, label, cxMid, y, { align: 'center', color: UI.accent });
+    y += 11;
+    drawText(ctx, `Power {gold}${powerRating(st)}{/}  DPS {red}${Math.round(d.dps)}{/}`, cxMid, y, {
+      align: 'center',
+    });
+    y += 10;
+    drawText(ctx, `Toughness {green}${Math.round(d.toughness)}{/}`, cxMid, y, { align: 'center' });
   }
 }

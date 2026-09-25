@@ -8,26 +8,44 @@ The art, music and sound effects are all generated in code; the repo contains no
 
 ![Malachar's reveal, one of the anime cutscenes](docs/screenshots/cutscene.png)
 
-|                                                                |                                                                         |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| ![Title screen](docs/screenshots/title.png)                    | ![Havenbrook, the hub town](docs/screenshots/town.png)                  |
-| ![Combat in the Whispering Woods](docs/screenshots/combat.png) | ![Inventory with item comparison](docs/screenshots/inventory.png)       |
-| ![Boss VS splash](docs/screenshots/boss-intro.png)             | ![Fighting Ignis, Tyrant of Emberpeak](docs/screenshots/boss-fight.png) |
+|                                                                     |                                                                         |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| ![Title screen](docs/screenshots/title.png)                         | ![Havenbrook, the hub town](docs/screenshots/town.png)                  |
+| ![Combat in the Whispering Woods](docs/screenshots/combat.png)      | ![Inventory with item comparison](docs/screenshots/inventory.png)       |
+| ![Boss VS splash](docs/screenshots/boss-intro.png)                  | ![Fighting Ignis, Tyrant of Emberpeak](docs/screenshots/boss-fight.png) |
+| ![Paper doll with gear on the body](docs/screenshots/paperdoll.png) | ![Character sheet](docs/screenshots/stats-sheet.png)                    |
+
+**Dragon Ball–style moments**
+
+|                                                             |                                                                      |
+| ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| ![Kai powering up](docs/screenshots/dbz-kai-shout.png)      | ![Rush exchange with Malachar](docs/screenshots/dbz-rush.png)        |
+| ![Beam struggle](docs/screenshots/dbz-beam-clash.png)       | ![Kai's beam wins](docs/screenshots/dbz-beam-win.png)                |
+| ![Aether Cannon in battle](docs/screenshots/dbz-cannon.png) | ![A boss powers up at a new phase](docs/screenshots/dbz-powerup.png) |
 
 ## Features
 
 - **Action combat.** Three-hit weapon combos, a dodge roll with invulnerability frames, and a _perfect dodge_
   (roll just as an attack lands) that slows time. Every enemy attack has a readable wind-up, so fights are hard but fair.
-- **Anime cutscenes.** Illustrated story scenes in a PC-98 style, character portraits with 8 expressions,
+- **Anime cutscenes.** Illustrated story scenes in a PC-98 style, character portraits with 9 expressions,
   ultimate-attack cut-ins, "VS" boss intros, speed lines, a typewriter text effect, and hold-to-skip.
+  Dragon Ball–style moments include screaming power-ups with flaming auras, a mid-air rush exchange,
+  a beam struggle in the finale, and manga "impact frames" with zoom punches.
+- **Aether Cannon.** The ultimate is a full-screen energy beam that follows its cut-in, and bosses that
+  reach a new phase freeze the fight to power up with an aura and a shockwave.
 - **Five zones and five bosses.** Each boss has multiple phases and telegraphed patterns, and there's a
   transformation for the final boss. Zones are generated procedurally but always the same (seeded), and every run
   checks that all key locations are reachable.
 - **Grind as much as you like.** Enemies respawn when you rest. Loot comes in five rarities with random affixes, and
   there are 10 legendaries with unique effects. Elite monsters have modifiers such as Frenzied, Vampiric and Warded.
   There are repeatable bounties and a blacksmith who upgrades (+10), salvages and reforges gear.
-- **Character build.** 8 active skills, each with 5 ranks, plus an Aether Surge ultimate and 18 passive talents
+- **Character build.** 8 active skills, each with 5 ranks, plus an ultimate and 18 passive talents
   across three trees. Talents can be reset at any time.
+- **Character sheet and paper doll.** Gear slots sit on the hero's body (head, neck, chest, hands, two rings,
+  waist, feet, main hand). A Diablo / Path of Exile–style Stats tab shows DPS, toughness, damage reduction,
+  attacks per second, recovery and every other stat, each with an explanation.
+- **Charms.** Charms work from your bag (up to 10 at once) and roll random bonuses. Cursed charms are much
+  stronger but carry a drawback. Mira sells Mystery Charms as a gamble, and Brom can reforge them.
 - **Post-game.** An endless Abyss tower that scales with depth, with a boss every 5th floor, and New Game+.
 - **Modern conveniences:**
   - autosave, 3 save slots, and save export/import

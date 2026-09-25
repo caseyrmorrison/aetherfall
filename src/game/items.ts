@@ -1,8 +1,9 @@
 /** Pure item logic: generation, stat totals, naming, scoring and descriptions. */
-import type { WeaponKind } from '../art/pixel/types';
+import type { IconId, WeaponKind } from '../art/pixel/types';
 import {
   AFFIXES,
   LEGENDARIES,
+  SLOT_ICON,
   SLOT_LABEL,
   TIER_NAMES,
   WEAPON_KINDS,
@@ -11,8 +12,19 @@ import {
 } from '../data/items';
 import type { RNG } from '../engine/rng';
 import { upgradeMult } from './balance';
-import type { Affix, Item, LegendaryId, Rarity, Slot, StatKey, Stats } from './types';
-import { RARITIES, SLOTS, STAT_INFO } from './types';
+import type {
+  Affix,
+  CharmSize,
+  EquipSlot,
+  GearSlot,
+  Item,
+  LegendaryId,
+  Rarity,
+  Slot,
+  StatKey,
+  Stats,
+} from './types';
+import { CHARM_LIMIT, GEAR_SLOTS, RARITIES, STAT_INFO, equipSlotsFor } from './types';
 
 export const RARITY_INDEX: Record<Rarity, number> = {
   common: 0,
@@ -59,7 +71,9 @@ const round = (stat: StatKey, v: number): number =>
     ? Math.round(v * 100) / 100
     : stat === 'hpRegen' || stat === 'mpRegen'
       ? Math.round(v * 10) / 10
-      : Math.max(1, Math.round(v));
+      : v < 0
+        ? Math.min(-1, Math.round(v))
+        : Math.max(1, Math.round(v));
 
 function rollAffixes(rng: RNG, slot: Slot, ilvl: number, count: number, exclude: StatKey[] = []): Affix[] {
   const pool = AFFIXES.filter((a) => a.slots.includes(slot) && !exclude.includes(a.stat));
@@ -74,6 +88,86 @@ function rollAffixes(rng: RNG, slot: Slot, ilvl: number, count: number, exclude:
   return out;
 }
 
+// ------------------------------------------------------------------ charms ----
+
+export const CHARM_INFO: Record<CharmSize, { name: string; affixes: number; scale: number; rarity: Rarity }> =
+  {
+    small: { name: 'Small Charm', affixes: 1, scale: 0.5, rarity: 'uncommon' },
+    large: { name: 'Large Charm', affixes: 2, scale: 0.45, rarity: 'rare' },
+    grand: { name: 'Grand Charm', affixes: 3, scale: 0.42, rarity: 'epic' },
+  };
+
+/** Drawbacks carried by cursed charms (values are negative). */
+const CURSES: readonly {
+  stat: StatKey;
+  lo: (l: number) => number;
+  hi: (l: number) => number;
+  name: string;
+}[] = [
+  { stat: 'maxHp', lo: (l) => 6 + 3 * l, hi: (l) => 10 + 5 * l, name: 'Frailty' },
+  { stat: 'def', lo: (l) => 1 + 0.5 * l, hi: (l) => 2 + 0.9 * l, name: 'Brittleness' },
+  { stat: 'moveSpeed', lo: () => 0.04, hi: () => 0.08, name: 'Lethargy' },
+  { stat: 'atkSpeed', lo: () => 0.04, hi: () => 0.1, name: 'Sloth' },
+  { stat: 'crit', lo: () => 0.02, hi: () => 0.05, name: 'Clumsiness' },
+  { stat: 'goldFind', lo: () => 0.1, hi: () => 0.25, name: 'Poverty' },
+  { stat: 'mpRegen', lo: (l) => 0.3 + 0.05 * l, hi: (l) => 0.6 + 0.1 * l, name: 'Silence' },
+];
+/** Cursed charms roll their bonuses this much stronger. */
+export const CURSE_BONUS = 1.8;
+export const CURSE_CHANCE = 0.3;
+
+export interface CharmOptions {
+  size?: CharmSize;
+  cursed?: boolean;
+}
+
+/** Charms work from the bag. Small ones roll 1 bonus, large 2, grand 3; cursed ones add a drawback. */
+export function generateCharm(rng: RNG, ilvl: number, opts: CharmOptions = {}): Item {
+  ilvl = Math.max(1, Math.round(ilvl));
+  const size: CharmSize =
+    opts.size ??
+    rng.weighted([
+      ['small', 6],
+      ['large', 3],
+      ['grand', 1],
+    ] as const);
+  const cursed = opts.cursed ?? rng.chance(CURSE_CHANCE);
+  const info = CHARM_INFO[size];
+  const pool = [...AFFIXES];
+  const affixes: Affix[] = [];
+  for (let i = 0; i < info.affixes && pool.length; i++) {
+    const def = rng.weighted(pool.map((a) => [a, a.weight] as const));
+    pool.splice(pool.indexOf(def), 1);
+    const lo = def.min(ilvl);
+    const hi = def.max(ilvl);
+    const v = (lo + (hi - lo) * rng.next()) * info.scale * (cursed ? CURSE_BONUS : 1);
+    affixes.push({ stat: def.stat, value: round(def.stat, v) });
+  }
+  let curseName = '';
+  if (cursed) {
+    const options = CURSES.filter((c) => !affixes.some((a) => a.stat === c.stat));
+    const c = rng.pick(options);
+    const v = c.lo(ilvl) + (c.hi(ilvl) - c.lo(ilvl)) * rng.next();
+    affixes.push({ stat: c.stat, value: round(c.stat, -v) });
+    curseName = ` of ${c.name}`;
+  }
+  const prefix = AFFIXES.find((a) => a.stat === affixes[0].stat)?.prefix ?? '';
+  return {
+    uid: newUid(rng),
+    slot: 'charm',
+    tier: tierForLevel(ilvl),
+    ilvl,
+    rarity: info.rarity,
+    name: `${cursed ? 'Cursed ' : ''}${prefix} ${info.name}${curseName}`,
+    base: {},
+    affixes,
+    upgrade: 0,
+    charmSize: size,
+    cursed,
+    isNew: true,
+  };
+}
+
 export interface GenerateOptions {
   slot?: Slot;
   kind?: WeaponKind;
@@ -84,6 +178,7 @@ export interface GenerateOptions {
 
 export function generateItem(rng: RNG, ilvl: number, opts: GenerateOptions = {}): Item {
   ilvl = Math.max(1, Math.round(ilvl));
+  if (opts.slot === 'charm') return generateCharm(rng, ilvl);
   let rarity = opts.rarity ?? rollRarity(rng, opts.rarityRoll);
   let legendary = opts.legendary;
   if (legendary) rarity = 'legendary';
@@ -97,7 +192,7 @@ export function generateItem(rng: RNG, ilvl: number, opts: GenerateOptions = {})
     slot = def.slot;
     kind = def.kind;
   } else {
-    slot = opts.slot ?? rng.weighted(SLOTS.map((s) => [s, s === 'weapon' ? 3 : 2] as const));
+    slot = opts.slot ?? rng.weighted(GEAR_SLOTS.map((s) => [s, s === 'weapon' ? 3 : 2] as const));
     if (slot === 'weapon')
       kind = opts.kind ?? rng.weighted(WEAPON_KINDS.map((k) => [k, k === 'sword' ? 3 : 2] as const));
   }
@@ -189,6 +284,8 @@ export function formatStat(stat: StatKey, value: number, signed = true): string 
 }
 
 export function itemTypeLabel(item: Item): string {
+  if (item.slot === 'charm')
+    return `${item.cursed ? 'Cursed ' : ''}${CHARM_INFO[item.charmSize ?? 'small'].name}`;
   return item.slot === 'weapon' && item.kind ? WEAPON_LABEL[item.kind] : SLOT_LABEL[item.slot];
 }
 
@@ -211,4 +308,41 @@ export function statDiff(candidate: Item, current: Item | null): Partial<Record<
     if (Math.abs(d) > 1e-6) out[k] = d;
   }
   return out;
+}
+
+// -------------------------------------------------------------- equipment ----
+
+interface EquipView {
+  equipment: Record<EquipSlot, Item | null>;
+  inventory: Item[];
+}
+
+/** The body slot an item would go into (empty ring finger first, else the weaker ring). */
+export function equipTargetFor(s: EquipView, item: Item): EquipSlot | null {
+  const slots = equipSlotsFor(item.slot);
+  if (!slots.length) return null;
+  const empty = slots.find((sl) => !s.equipment[sl]);
+  if (empty) return empty;
+  return slots.reduce((a, b) => (itemScore(s.equipment[a]!) <= itemScore(s.equipment[b]!) ? a : b));
+}
+
+/** The equipped item a bag item would replace (for comparisons). */
+export function compareTarget(s: EquipView, item: Item): Item | null {
+  const t = equipTargetFor(s, item);
+  return t ? s.equipment[t] : null;
+}
+
+/** Charms that are currently empowering the hero (the first CHARM_LIMIT in the bag). */
+export function activeCharms(s: EquipView): Item[] {
+  return s.inventory.filter((i) => i.slot === 'charm').slice(0, CHARM_LIMIT);
+}
+
+export function isGear(slot: Slot): slot is GearSlot {
+  return slot !== 'charm';
+}
+
+/** Icon for any item (weapons by kind, charms by size). */
+export function itemIcon(item: Item): IconId {
+  if (item.slot === 'charm') return `icon_charm_${item.charmSize ?? 'small'}`;
+  return SLOT_ICON[item.slot === 'weapon' ? (item.kind ?? 'sword') : item.slot];
 }

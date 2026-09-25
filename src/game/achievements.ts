@@ -2,7 +2,7 @@
 import { audio } from '../audio';
 import type { Game } from './game';
 import { hasFlag } from './state';
-import { SLOTS } from './types';
+import { EQUIP_SLOTS } from './types';
 
 export interface AchievementDef {
   id: string;
@@ -102,7 +102,7 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     name: 'Masterwork',
     desc: 'Upgrade an item to +10 at the forge.',
     check: (g) =>
-      SLOTS.some((sl) => (s(g).equipment[sl]?.upgrade ?? 0) >= 10) ||
+      EQUIP_SLOTS.some((sl) => (s(g).equipment[sl]?.upgrade ?? 0) >= 10) ||
       s(g).inventory.some((i) => i.upgrade >= 10),
   },
   {

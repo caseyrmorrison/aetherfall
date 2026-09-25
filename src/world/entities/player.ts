@@ -1,5 +1,6 @@
 /** The hero: movement, combo attacks, dodge roll, skills, flasks and rendering. */
 import { getSprite, getWeapon, silhouette, spriteInfo, weaponInfo } from '../../art/pixel';
+import { drawAura } from '../../art/anime';
 import { heroHand } from '../../art/pixel/actors';
 import type { AnimName, Dir, WeaponKind } from '../../art/pixel/types';
 import { audio } from '../../audio';
@@ -634,6 +635,8 @@ export class Player extends Actor {
     }
     const frame = this.currentFrame();
     const weaponBehind = this.dir === 'up';
+    const aura = this.auraIntensity(world);
+    if (aura > 0) drawAura(ctx, x, y, 30, this.animT, 'aether', 'back', aura);
     if (weaponBehind) this.renderWeapon(ctx, x, y, world);
     ctx.drawImage(frame, x - info.anchorX, y - info.anchorY);
     if (this.flash > 0) ctx.drawImage(silhouette(frame, '#ffffff'), x - info.anchorX, y - info.anchorY);
@@ -643,6 +646,7 @@ export class Player extends Actor {
     }
     ctx.globalAlpha = 1;
     if (!weaponBehind) this.renderWeapon(ctx, x, y, world);
+    if (aura > 0) drawAura(ctx, x, y, 30, this.animT, 'aether', 'front', aura);
     // spectral blades
     if (this.blades) {
       const b = this.blades;
@@ -659,6 +663,14 @@ export class Player extends Actor {
         ctx.restore();
       }
     }
+  }
+
+  /** Aura while the Aether Cannon fires (full) or when Surge is ready (a soft glow). */
+  private auraIntensity(world: World): number {
+    if (this.state === 'dead') return 0;
+    if (world.cannon || world.cutin) return 1;
+    const h = world.game.save.hero;
+    return h.surgeUnlocked && h.surge >= 100 ? 0.4 : 0;
   }
 
   private renderWeapon(ctx: CanvasRenderingContext2D, x: number, y: number, world: World): void {

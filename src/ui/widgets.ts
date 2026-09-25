@@ -3,7 +3,7 @@ import { RARITY_COLORS } from '../art/palette';
 import { getIcon } from '../art/pixel';
 import type { IconId } from '../art/pixel/types';
 import { audio } from '../audio';
-import { LEGENDARIES, SLOT_ICON } from '../data/items';
+import { LEGENDARIES } from '../data/items';
 import { drawText, LINE_HEIGHT, measureText, wrapText } from '../engine/font';
 import type { Action, Input } from '../engine/input';
 import { pointInRect, type Rect } from '../engine/math';
@@ -11,6 +11,7 @@ import { sellPrice } from '../game/balance';
 import {
   displayName,
   formatStat,
+  itemIcon,
   itemScore,
   itemStats,
   itemTypeLabel,
@@ -150,9 +151,7 @@ export function drawIcon(
   ctx.globalAlpha = 1;
 }
 
-export function itemIcon(item: Item): IconId {
-  return SLOT_ICON[item.slot === 'weapon' ? (item.kind ?? 'sword') : item.slot];
-}
+export { itemIcon };
 
 /** Item slot square with rarity frame. */
 export function drawItemCell(
@@ -216,7 +215,7 @@ export function itemTooltipLines(
   const st = itemStats(item);
   const diff = compare && compare !== item ? statDiff(item, compare) : null;
   for (const [k, v] of Object.entries(st) as [StatKey, number][]) {
-    let line = formatStat(k, v);
+    let line = v < 0 ? `{red}${formatStat(k, v)}{/}` : formatStat(k, v);
     if (diff && diff[k] !== undefined && Math.abs(diff[k]!) > 1e-6) {
       const d = diff[k]!;
       const txt = STAT_INFO[k].pct

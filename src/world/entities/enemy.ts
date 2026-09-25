@@ -3,6 +3,7 @@
  * recovery window, so fights are hard but fair. Bosses reuse the same machinery
  * with phases.
  */
+import { drawAura } from '../../art/anime';
 import { getSprite, silhouette, spriteInfo } from '../../art/pixel';
 import type { AnimName, Dir } from '../../art/pixel/types';
 import { audio } from '../../audio';
@@ -785,7 +786,7 @@ export class Enemy extends Actor {
     return getSprite(this.def.sprite, anim, frame, dir);
   }
 
-  render(ctx: CanvasRenderingContext2D, camX: number, camY: number, _world: World): void {
+  render(ctx: CanvasRenderingContext2D, camX: number, camY: number, world: World): void {
     const info = spriteInfo(this.def.sprite);
     const img = this.frame();
     const s = this.scale;
@@ -828,7 +829,20 @@ export class Enemy extends Actor {
       }
       ctx.globalAlpha = prev;
     }
+    // enraged bosses burn with an aura; the moment of powering up is a full blaze
+    const aura =
+      world.powerUp?.e === this
+        ? Math.min(1, world.powerUp.t * 1.5)
+        : this.isBoss && this.phase > 0 && !this.dead
+          ? 0.55
+          : 0;
+    const auraX = Math.round(this.x - camX);
+    const auraY = Math.round(this.y - camY - this.z - bobZ);
+    const auraH = Math.round(h * 1.25);
+    const pal = aura > 0 ? world.auraFor(this) : 'void';
+    if (aura > 0) drawAura(ctx, auraX, auraY, auraH, this.animT, pal, 'back', aura);
     ctx.drawImage(img, x, y, w, h);
+    if (aura > 0) drawAura(ctx, auraX, auraY, auraH, this.animT, pal, 'front', aura * 0.5);
     // telegraph blink
     if (this.state === 'windup' && Math.floor(this.stateT * 12) % 2 === 0) {
       const prev = ctx.globalAlpha;

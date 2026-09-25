@@ -5,9 +5,10 @@
 import type { SkillId } from '../data/skills';
 import { SKILLS, SKILL_ORDER } from '../data/skills';
 import { MAX_LEVEL, xpToNext } from './balance';
-import type { ConsumableId, Difficulty, Item, MaterialId, Slot } from './types';
+import { equipTargetFor } from './items';
+import type { ConsumableId, Difficulty, EquipSlot, Item, MaterialId } from './types';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface QuestState {
   id: string;
@@ -58,7 +59,7 @@ export interface SaveData {
   ngPlus: number;
   hero: HeroState;
   inventory: Item[];
-  equipment: Record<Slot, Item | null>;
+  equipment: Record<EquipSlot, Item | null>;
   consumables: Partial<Record<ConsumableId, number>>;
   materials: Partial<Record<MaterialId, number>>;
   flags: Record<string, number>;
@@ -115,7 +116,17 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
       flaskUpgrades: 0,
     },
     inventory: [],
-    equipment: { weapon: null, helm: null, armor: null, boots: null, ring: null, amulet: null },
+    equipment: {
+      weapon: null,
+      helm: null,
+      amulet: null,
+      armor: null,
+      gloves: null,
+      belt: null,
+      ring1: null,
+      ring2: null,
+      boots: null,
+    },
     consumables: { elixir: 1 },
     materials: {},
     flags: {},
@@ -216,19 +227,21 @@ export function addItem(s: SaveData, item: Item): boolean {
 }
 
 /** Equip an item from the bag; the previously equipped item goes back to the bag. */
-export function equipItem(s: SaveData, uid: string): Item | null {
+export function equipItem(s: SaveData, uid: string, target?: EquipSlot): Item | null {
   const idx = s.inventory.findIndex((i) => i.uid === uid);
   if (idx < 0) return null;
   const item = s.inventory[idx];
-  const prev = s.equipment[item.slot];
+  const slot = target ?? equipTargetFor(s, item);
+  if (!slot) return null; // charms are never equipped
+  const prev = s.equipment[slot];
   s.inventory.splice(idx, 1);
   item.isNew = false;
-  s.equipment[item.slot] = item;
+  s.equipment[slot] = item;
   if (prev) s.inventory.splice(idx, 0, prev);
   return prev;
 }
 
-export function unequip(s: SaveData, slot: Slot): boolean {
+export function unequip(s: SaveData, slot: EquipSlot): boolean {
   const it = s.equipment[slot];
   if (!it || inventoryFull(s)) return false;
   s.equipment[slot] = null;
@@ -290,6 +303,13 @@ export function migrate(raw: unknown): SaveData | null {
     shop: s.shop ?? base.shop,
     version: SAVE_VERSION,
   } as SaveData;
+  // v1 -> v2: a single `ring` slot became two ring fingers, plus gloves & belt
+  const eq = { ...(s.equipment as unknown as Record<string, Item | null>) };
+  if ('ring' in eq) {
+    eq.ring1 = eq.ring1 ?? eq.ring;
+    delete eq.ring;
+  }
+  merged.equipment = { ...base.equipment, ...eq } as Record<EquipSlot, Item | null>;
   syncUnlockedSkills(merged);
   return merged;
 }

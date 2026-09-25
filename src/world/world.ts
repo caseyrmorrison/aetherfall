@@ -2,7 +2,7 @@
  * The live game world for one map: entities, combat resolution, loot, AI support
  * (flow field, attack tokens), interactions, effects and rendering.
  */
-import { drawCutIn, cutInDuration } from '../art/anime';
+import { drawCutIn, cutInDuration, drawSpeedLines, type CutInId } from '../art/anime';
 import { getSprite, silhouette, spriteInfo } from '../art/pixel';
 import type { FxId } from '../art/pixel/types';
 import { audio } from '../audio';
@@ -13,6 +13,7 @@ import type { Input } from '../engine/input';
 import { angleTo, circleHitsLine, circleInSector, clamp, dist, dist2, normalize, TAU } from '../engine/math';
 import { rng } from '../engine/rng';
 import { computeDamage, goldDrop, xpReward } from '../game/balance';
+import { generateCharm } from '../game/items';
 import type { Game } from '../game/game';
 import type { QuestSystem } from '../game/quests';
 import {
@@ -39,7 +40,8 @@ import { getMap } from './maps';
 import { CELL, TILE, type MapData, type MapObject } from './mapdata';
 import { Particles } from './particles';
 import { BG_COLOR, MapRenderer, type Drawable, type Light } from './render';
-import { surgeBlast } from './skills';
+import { fireCannon } from './skills';
+import { applyImpactFrame, impactStyleAt, zoomPunch } from '../ui/fx';
 import { TileMap } from './tilemap';
 
 export interface WorldHooks {
@@ -121,7 +123,14 @@ export class World {
   private maxTokens = 2;
   inputBlocked = false;
   inCombat = false;
-  cutin: { id: 'kai_surge'; t: number } | null = null;
+  cutin: { id: CutInId; t: number } | null = null;
+  /** The Aether Cannon beam (ultimate), while it fires. */
+  cannon: { t: number; dur: number; angle: number; tick: number; mult: number; hits: number } | null = null;
+  /** A boss powering up at a phase change (freezes the fight briefly, DBZ-style). */
+  powerUp: { e: Enemy; t: number; dur: number; peaked: boolean } | null = null;
+  private impactT = 0;
+  private impactDur = 0;
+  private zoomFx: { scale: number; t: number; dur: number; x: number; y: number } | null = null;
   interactTarget: WorldObject | Npc | null = null;
   private flow: Int16Array = new Int16Array(0);
   private flowT = 0;
@@ -452,15 +461,28 @@ export class World {
     this.flashT = Math.max(0, this.flashT - dt);
     this.game.tick(dt);
 
+    this.impactT = Math.max(0, this.impactT - dt);
+    if (this.zoomFx) {
+      this.zoomFx.t += dt;
+      if (this.zoomFx.t >= this.zoomFx.dur) this.zoomFx = null;
+    }
+
     // ultimate cut-in freezes the action
     if (this.cutin) {
       this.cutin.t += dt;
       if (this.cutin.t >= cutInDuration(this.cutin.id)) {
         this.cutin = null;
-        surgeBlast(this, this.player);
+        fireCannon(this, this.player);
       }
       return;
     }
+
+    // boss power-up: everything holds while the aura erupts
+    if (this.powerUp) {
+      this.updatePowerUp(dt);
+      return;
+    }
+    if (this.cannon) this.updateCannon(dt);
 
     this.cam.shakeScale = this.game.settings.screenShake;
     this.cam.follow(
@@ -861,14 +883,185 @@ export class World {
     else if (e.isBoss) this.checkBossPhase(e);
   }
 
+  /** Brief two-tone manga impact frame. */
+  impact(dur: number): void {
+    if (this.game.settings.reduceFlashing) return;
+    this.impactT = this.impactDur = dur;
+  }
+
+  /** Quick camera punch-in toward a world point. */
+  zoomAt(x: number, y: number, scale: number, dur: number): void {
+    this.zoomFx = { scale, t: 0, dur, x, y };
+  }
+
+  /** Aura palette that matches an enemy's element. */
+  auraFor(e: Enemy): 'aether' | 'void' | 'ice' | 'fire' {
+    const el = e.def.element;
+    return el === 'fire' ? 'fire' : el === 'ice' ? 'ice' : el === 'earth' ? 'aether' : 'void';
+  }
+
+  private updatePowerUp(dt: number): void {
+    const pu = this.powerUp!;
+    pu.t += dt;
+    const e = pu.e;
+    this.cam.shakeScale = this.game.settings.screenShake;
+    this.cam.follow(e.x, e.y - 16, dt, this.game.app.width, this.game.app.height, this.map.pxW, this.map.pxH);
+    this.particles.update(dt);
+    this.updateEffects(dt);
+    this.updateTexts(dt);
+    e.animT += dt;
+    // debris and energy rising around the boss
+    if (Math.random() < dt * 40) {
+      const a = Math.random() * TAU;
+      const r = e.radius + 6 + Math.random() * 30;
+      const col = {
+        fire: ['#feae34', '#f77622'],
+        ice: ['#2ce8f5', '#ffffff'],
+        void: ['#b55088', '#ff0044'],
+        aether: ['#2ce8f5', '#fee761'],
+      }[this.auraFor(e)];
+      this.particles.emit(e.x + Math.cos(a) * r, e.y + Math.sin(a) * r * 0.5, {
+        count: 1,
+        color: [...col, '#8b9bb4'],
+        angle: -Math.PI / 2,
+        spread: 0.3,
+        speed: [30, 70],
+        life: [0.4, 0.9],
+        size: [1, 3],
+        emissive: true,
+        drag: 0.5,
+      });
+    }
+    if (!pu.peaked && pu.t > 0.75) {
+      pu.peaked = true;
+      audio.playSfx('roar');
+      audio.playSfx('explosion', { volume: 0.7 });
+      this.impact(0.18);
+      this.zoomAt(e.x, e.y - 16, 1.3, 0.35);
+      this.shake(9, 0.6);
+      this.novaEffect(
+        e.x,
+        e.y - 4,
+        90,
+        e.def.element === 'fire' ? 'fire' : e.def.element === 'ice' ? 'ice' : 'void',
+      );
+      this.novaEffect(e.x, e.y - 4, 60, 'arcane');
+    }
+    if (pu.t >= pu.dur) {
+      this.powerUp = null;
+      const next = e.def.boss?.phases[e.phase];
+      if (next?.summon) this.summon(e, next.summon.enemy, next.summon.count);
+    }
+  }
+
+  private cannonEnd(): { x: number; y: number; ex: number; ey: number; width: number } {
+    const c = this.cannon!;
+    const p = this.player;
+    const len = 330;
+    const k = c.t / c.dur;
+    const grow = Math.min(1, c.t / 0.12);
+    const fade = k > 0.82 ? 1 - (k - 0.82) / 0.18 : 1;
+    const width = 24 * grow * fade * (1 + Math.sin(c.t * 45) * 0.1);
+    const x = p.x + Math.cos(c.angle) * 16;
+    const y = p.y - 9 + Math.sin(c.angle) * 12;
+    const reach = len * Math.min(1, c.t / 0.18);
+    return { x, y, ex: x + Math.cos(c.angle) * reach, ey: y + Math.sin(c.angle) * reach, width };
+  }
+
+  private updateCannon(dt: number): void {
+    const c = this.cannon!;
+    c.t += dt;
+    c.tick -= dt;
+    const b = this.cannonEnd();
+    if (c.tick <= 0) {
+      c.tick = 0.1;
+      for (const e of this.enemiesNear((b.x + b.ex) / 2, (b.y + b.ey) / 2, 200)) {
+        if (!circleHitsLine(e.x, e.y - 6 * e.scale, e.radius, b.x, b.y, b.ex, b.ey, b.width / 2 + 4))
+          continue;
+        const st = this.game.stats();
+        this.playerHit(e, {
+          power: 'custom',
+          customPower: (st.atk + st.mag) / 2,
+          mult: c.mult,
+          knock: 50,
+          dir: c.angle,
+          isSkill: true,
+          forceCrit: c.hits === 0,
+          noShake: true,
+          noSurge: true,
+        });
+      }
+      c.hits++;
+    }
+    // sparks peeling off the beam
+    for (let i = 0; i < 3; i++) {
+      const k = Math.random();
+      this.particles.emit(b.x + (b.ex - b.x) * k, b.y + (b.ey - b.y) * k, {
+        count: 1,
+        color: ['#2ce8f5', '#ffffff', '#fee761'],
+        angle: c.angle + (Math.random() < 0.5 ? 1 : -1) * 1.4,
+        spread: 0.8,
+        speed: [30, 90],
+        life: [0.15, 0.35],
+        size: [1, 2],
+        emissive: true,
+        shape: 'line',
+      });
+    }
+    if (c.t >= c.dur) this.cannon = null;
+  }
+
+  private renderCannon(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {
+    const b = this.cannonEnd();
+    if (b.width < 0.5) return;
+    const x = b.x - camX;
+    const y = b.y - camY;
+    const ex = b.ex - camX;
+    const ey = b.ey - camY;
+    ctx.save();
+    ctx.lineCap = 'round';
+    const layers: [string, number, number][] = [
+      ['#0099db', b.width + 12, 0.35],
+      ['#2ce8f5', b.width + 4, 0.8],
+      ['#9ff6ff', b.width * 0.7, 1],
+      ['#ffffff', b.width * 0.38, 1],
+    ];
+    for (const [col, w, a] of layers) {
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = Math.max(1, w);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+    }
+    // muzzle ball and impact burst
+    for (const [px, py, r] of [
+      [x, y, b.width * 0.42],
+      [ex, ey, b.width * 0.95],
+    ] as const) {
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#2ce8f5';
+      ctx.beginPath();
+      ctx.arc(px, py, r + 4, 0, TAU);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(px, py, Math.max(1, r * 0.6), 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   private checkBossPhase(e: Enemy): void {
     const phases = e.def.boss?.phases ?? [];
     const next = phases[e.phase + 1];
     if (next && e.hp / e.maxHp <= next.at) {
       e.phase++;
-      audio.playSfx('roar');
-      this.shake(6, 0.5);
-      this.flashScreen('#ffffff', 0.15);
+      audio.playSfx('charge_up');
+      this.powerUp = { e, t: 0, dur: 1.7, peaked: false };
+      this.shake(3, 1.2);
       if (next.shout) this.bossShout(next.shout);
       if (next.summon) this.summon(e, next.summon.enemy, next.summon.count);
     }
@@ -972,6 +1165,10 @@ export class World {
     } else if (rng.chance(0.1 + st.magicFind * 0.03)) {
       drop(undefined, 0);
     }
+    // charms: rare from regular monsters, common from elites and guardians
+    const charmChance = e.isBoss ? 0.6 : e.elite ? 0.2 : 0.012 + st.magicFind * 0.004;
+    if (rng.chance(charmChance))
+      this.pickups.push(new Pickup(e.x, e.y - 4, 'item', 1, generateCharm(rng, ilvl)));
     for (const d of e.def.drops ?? []) {
       if (rng.chance(d.chance * (e.elite ? 2 : 1)))
         this.pickups.push(new Pickup(e.x, e.y - 4, 'material', 1, undefined, d.material));
@@ -1634,6 +1831,16 @@ export class World {
     for (let i = 0; i < 5; i++) this.pickups.push(new Pickup(o.x, o.y - 6, 'gold', Math.round(gold / 5)));
     if (o.rare && rng.chance(0.3))
       this.pickups.push(new Pickup(o.x, o.y - 6, 'material', 1, undefined, 'dust'));
+    if (rng.chance(o.rare ? 0.4 : 0.15))
+      this.pickups.push(
+        new Pickup(
+          o.x,
+          o.y - 6,
+          'item',
+          1,
+          generateCharm(rng, ilvl, { size: o.rare && rng.chance(0.4) ? 'grand' : undefined }),
+        ),
+      );
     this.particles.emit(o.x, o.y - 8, {
       count: 24,
       color: ['#fee761', '#feae34', '#ffffff'],
@@ -1691,7 +1898,7 @@ export class World {
     if (p.state === 'dead') return;
     hero.surge = 0;
     this.game.count('surges');
-    this.cutin = { id: 'kai_surge', t: 0 };
+    this.cutin = { id: 'kai_cannon', t: 0 };
     audio.playSfx('surge_cutin');
     audio.duckMusic(0.5, 1.5);
   }
@@ -2245,6 +2452,7 @@ export class World {
     }
     this.particles.render(ctx, camX, camY, false);
     this.particles.render(ctx, camX, camY, true);
+    if (this.cannon) this.renderCannon(ctx, camX, camY);
     if (this.data.tint) {
       ctx.fillStyle = this.data.tint;
       ctx.fillRect(0, 0, vw, vh);
@@ -2276,11 +2484,23 @@ export class World {
       ctx.fillRect(0, 0, vw, vh);
       ctx.globalAlpha = 1;
     }
+    if (this.powerUp) {
+      const b = this.powerUp.e;
+      ctx.globalAlpha = 0.45 * Math.min(1, this.powerUp.t * 3);
+      drawSpeedLines(ctx, b.x - camX, b.y - camY - 16, vw, vh, this.time * 2, '#ffffff', 0.8);
+      ctx.globalAlpha = 1;
+    }
+    if (this.zoomFx) {
+      const z = this.zoomFx;
+      const k = Math.min(1, z.t / z.dur);
+      zoomPunch(ctx, vw, vh, z.x - camX, z.y - camY, 1 + (z.scale - 1) * (1 - k) * (1 - k));
+    }
+    if (this.impactT > 0) applyImpactFrame(ctx, vw, vh, impactStyleAt(this.impactDur - this.impactT, 'cyan'));
     if (this.cutin) drawCutIn(ctx, this.cutin.id, this.cutin.t, vw, vh);
     if (this.cutin) {
       const k = this.cutin.t;
-      if (k > 0.2 && k < cutInDuration('kai_surge') - 0.15) {
-        drawText(ctx, 'AETHER SURGE', vw / 2, vh * 0.72, {
+      if (k > 0.2 && k < cutInDuration(this.cutin.id) - 0.15) {
+        drawText(ctx, 'AETHER CANNON', vw / 2, vh * 0.72, {
           align: 'center',
           color: '#2ce8f5',
           outline: '#181425',

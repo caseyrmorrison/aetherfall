@@ -19,6 +19,7 @@ import { parseLine, type Line } from '../game/dialogue';
 import type { Game } from '../game/game';
 import { TEXT_SPEED_CPS } from '../game/settings';
 import { drawBar, drawPanel, UI } from '../ui/widgets';
+import { applyImpactFrame, impactStyleAt, zoomPunch, type ImpactStyle } from '../ui/fx';
 import { BacklogScene } from './backlog';
 
 export class CutsceneScene implements Scene {
@@ -29,6 +30,7 @@ export class CutsceneScene implements Scene {
   private illus: IllustrationId | null = null;
   private illusT = 0;
   private illusFrozen = false;
+  private illusLoop: [number, number] | null = null;
   private prevIllus: IllustrationId | null = null;
   private prevT = 0;
   private crossT = 1;
@@ -43,6 +45,10 @@ export class CutsceneScene implements Scene {
   private fadeDur = 0;
   private fadeColor = '#000';
   private flashT = 0;
+  private impactT = 0;
+  private impactDur = 0;
+  private impactStyle: ImpactStyle = 'red';
+  private zoom: { scale: number; t: number; dur: number; x: number; y: number } | null = null;
   private flashDur = 0;
   private flashColor = '#fff';
   private shakeT = 0;
@@ -119,11 +125,18 @@ export class CutsceneScene implements Scene {
       this.illusT = 0;
       this.crossT = s.fade ?? (this.prevIllus ? 0 : 1);
       this.illusFrozen = false;
+      this.illusLoop = null;
       if (s.illus === 'shard_fusion') setPortraitFlags({ kaiMark: true });
       this.advance();
     } else if ('illusT' in s) {
       this.illusT = s.illusT;
       this.illusFrozen = !!s.freeze;
+      this.illusLoop = null;
+      this.advance();
+    } else if ('illusLoop' in s) {
+      this.illusLoop = s.illusLoop;
+      if (s.illusLoop && (this.illusT < s.illusLoop[0] || this.illusT > s.illusLoop[1]))
+        this.illusT = s.illusLoop[0];
       this.advance();
     } else if ('say' in s) {
       this.line = parseLine(s.say, hero);
@@ -164,6 +177,15 @@ export class CutsceneScene implements Scene {
     } else if ('cutin' in s) {
       this.cutin = s.cutin;
       audio.playSfx('surge_cutin');
+    } else if ('impact' in s) {
+      if (!this.game.settings.reduceFlashing) {
+        this.impactT = this.impactDur = s.impact;
+        this.impactStyle = s.style ?? 'red';
+      }
+      this.advance();
+    } else if ('zoom' in s) {
+      this.zoom = { scale: s.zoom, t: 0, dur: s.dur ?? 0.35, x: s.x ?? 0.5, y: s.y ?? 0.45 };
+      this.advance();
     }
   }
 
@@ -186,9 +208,16 @@ export class CutsceneScene implements Scene {
     this.t += dt;
     this.stepT += dt;
     if (!this.illusFrozen) this.illusT += dt;
+    if (this.illusLoop && this.illusT > this.illusLoop[1])
+      this.illusT = this.illusLoop[0] + (this.illusT - this.illusLoop[1]);
     this.prevT += dt;
     this.crossT = Math.min(1, this.crossT + dt / 0.6);
     this.flashT = Math.max(0, this.flashT - dt);
+    this.impactT = Math.max(0, this.impactT - dt);
+    if (this.zoom) {
+      this.zoom.t += dt;
+      if (this.zoom.t >= this.zoom.dur) this.zoom = null;
+    }
     this.shakeT = Math.max(0, this.shakeT - dt);
 
     // hold to skip
@@ -266,6 +295,14 @@ export class CutsceneScene implements Scene {
     ctx.fillRect(0, H - 14, W, 14);
 
     if (this.cutin) drawCutIn(ctx, this.cutin, this.stepT, W, H);
+    if (this.zoom) {
+      const k = Math.min(1, this.zoom.t / this.zoom.dur);
+      // snap in, ease back out
+      const scale = 1 + (this.zoom.scale - 1) * (1 - k) * (1 - k);
+      zoomPunch(ctx, W, H, this.zoom.x * W, this.zoom.y * H, scale);
+    }
+    if (this.impactT > 0)
+      applyImpactFrame(ctx, W, H, impactStyleAt(this.impactDur - this.impactT, this.impactStyle));
 
     if (this.fade > 0) {
       ctx.globalAlpha = this.fade;
