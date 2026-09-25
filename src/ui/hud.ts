@@ -422,7 +422,7 @@ export class Hud {
 
   private drawToasts(ctx: CanvasRenderingContext2D, world: World, H: number): void {
     const toasts = world.game.toasts;
-    let y = H - 36;
+    let y = H - 54;
     for (let i = toasts.length - 1; i >= 0; i--) {
       const t = toasts[i];
       const a = Math.min(1, t.t * 6, (4 - t.t) * 2);
