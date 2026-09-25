@@ -17,11 +17,14 @@ import { ILLUS } from './illustrations';
 import { beginFrame } from './illustrations/kit';
 import { cutIn, cutInLength } from './cutins';
 import { speedLines } from './fx';
+import { aura, type AuraLayer, type AuraPalette } from './aura';
+
+export type { AuraLayer, AuraPalette };
 
 export type PortraitId = 'kai' | 'lyra' | 'maren' | 'brom' | 'mira' | 'seraphine' | 'malachar';
 
 export type Expression =
-  'neutral' | 'happy' | 'sad' | 'angry' | 'surprised' | 'determined' | 'hurt' | 'smirk';
+  'neutral' | 'happy' | 'sad' | 'angry' | 'surprised' | 'determined' | 'hurt' | 'smirk' | 'shout';
 
 export interface PortraitOptions {
   /** Mouth open frame for talking animation. */
@@ -41,9 +44,14 @@ export type IllustrationId =
   | 'malachar_reveal'
   | 'seraphine_memory'
   | 'final_clash'
-  | 'ending_dawn';
+  | 'ending_dawn'
+  | 'kai_powerup'
+  | 'malachar_powerup'
+  | 'beam_clash'
+  | 'rush_exchange'
+  | 'kai_kneeling';
 
-export type CutInId = 'kai_surge' | 'lyra_support' | 'malachar_rage';
+export type CutInId = 'kai_surge' | 'lyra_support' | 'malachar_rage' | 'kai_cannon';
 
 export const PORTRAIT_IDS: readonly PortraitId[] = [
   'kai',
@@ -63,6 +71,7 @@ export const EXPRESSIONS: readonly Expression[] = [
   'determined',
   'hurt',
   'smirk',
+  'shout',
 ];
 export const ILLUSTRATION_IDS: readonly IllustrationId[] = [
   'title',
@@ -74,8 +83,13 @@ export const ILLUSTRATION_IDS: readonly IllustrationId[] = [
   'seraphine_memory',
   'final_clash',
   'ending_dawn',
+  'kai_powerup',
+  'malachar_powerup',
+  'beam_clash',
+  'rush_exchange',
+  'kai_kneeling',
 ];
-export const CUTIN_IDS: readonly CutInId[] = ['kai_surge', 'lyra_support', 'malachar_rage'];
+export const CUTIN_IDS: readonly CutInId[] = ['kai_surge', 'lyra_support', 'malachar_rage', 'kai_cannon'];
 
 /** Draw a bust portrait (head + shoulders) fitted into the rect. */
 export function drawPortrait(
@@ -198,4 +212,23 @@ export function drawSpeedLines(
   density = 1,
 ): void {
   speedLines(ctx, cx, cy, w, h, t, color, density);
+}
+
+/**
+ * DBZ flame aura for in-world sprites. (cx, footY) = the sprite's feet on the
+ * low-res screen, `height` = sprite height (24–90px). Draw layer 'back' before
+ * the sprite (flame body) and 'front' after it (thin wisps + sparks).
+ * Frames are cached per palette / height bucket; each call is one drawImage.
+ */
+export function drawAura(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  footY: number,
+  height: number,
+  t: number,
+  palette: AuraPalette,
+  layer: AuraLayer,
+  intensity = 1,
+): void {
+  aura(ctx, cx, footY, height, t, palette, layer, intensity);
 }

@@ -11,7 +11,7 @@ import { Raster, bayer, dither, type Ink } from './raster';
 import { clamp, lerp, spline, splinePts, strand, type P } from './geom';
 
 export type Expression =
-  'neutral' | 'happy' | 'sad' | 'angry' | 'surprised' | 'determined' | 'hurt' | 'smirk';
+  'neutral' | 'happy' | 'sad' | 'angry' | 'surprised' | 'determined' | 'hurt' | 'smirk' | 'shout';
 
 export type EyeShape = 'open' | 'arc' | 'closed' | 'wince';
 
@@ -31,7 +31,9 @@ export type MouthShape =
   | 'grimaceOpen'
   | 'smirk'
   | 'smirkOpen'
-  | 'cruel';
+  | 'cruel'
+  | 'yell'
+  | 'yellTalk';
 
 export interface EyeParams {
   shape: EyeShape;
@@ -61,6 +63,8 @@ export interface ExprParams {
   tears: boolean;
   glint: boolean;
   scratch: boolean;
+  /** DBZ strain: forehead vein + tension lines + flying sweat. */
+  strain: boolean;
 }
 
 const eye = (shape: EyeShape, open = 1, low = 0, tilt = 0, iris = 1): EyeParams => ({
@@ -87,6 +91,7 @@ export function exprParams(e: Expression, happyEyes: 'arc' | 'open'): ExprParams
     tears: false,
     glint: false,
     scratch: false,
+    strain: false,
   };
   switch (e) {
     case 'neutral':
@@ -163,6 +168,19 @@ export function exprParams(e: Expression, happyEyes: 'arc' | 'open'): ExprParams
         sweat: true,
         scratch: true,
         blush: 0.15,
+      };
+    case 'shout':
+      return {
+        ...base,
+        near: eye('open', 0.7, 0.26, 0.9, 0.44),
+        far: eye('open', 0.7, 0.26, 0.9, 0.44),
+        browNear: brow(1.55, 0.45, -0.55),
+        browFar: brow(1.55, 0.45, -0.55),
+        lookX: 0.05,
+        mouth: 'yell',
+        talk: 'yellTalk',
+        sweat: true,
+        strain: true,
       };
     case 'smirk':
       return {
@@ -382,6 +400,8 @@ export interface BustOpts {
   eyesOnly?: boolean;
   /** Mouth shape override. */
   mouth?: MouthShape;
+  /** Post-process the hair layers (front + back) before compositing, e.g. glowing tips. */
+  postHair?: (layer: Raster) => void;
 }
 
 export interface DrawCtx {
@@ -1007,6 +1027,41 @@ export function drawMouth(dc: DrawCtx, r: Raster, shape: MouthShape): void {
         { teethTop: true, teethBot: true },
       );
       break;
+    case 'yell':
+    case 'yellTalk': {
+      const big = shape === 'yellTalk' ? 1.2 : 0;
+      const pts = [
+        x - 6.6,
+        y - 3,
+        x + 6,
+        y - 3.3,
+        x + 4.6,
+        y + 3.4 + big,
+        x + 0.4,
+        y + 5.6 + big * 1.4,
+        x - 4.4,
+        y + 3.4 + big,
+      ];
+      r.poly(pts, C.plum);
+      const scr = dc.L.scratch;
+      scr.clear();
+      scr.copyTransform(r);
+      scr.poly(pts, 1);
+      const th = Math.max(1.4, 1.2 / s);
+      r.with({ clip: scr }, () => {
+        r.ellipse(x + 0.6, y + 5 + big * 1.3, 3.8, 2.1, C.red);
+        r.ellipse(x + 0.2, y + 5.5 + big * 1.3, 2.3, 1.1, C.pink);
+        r.poly([x - 8, y - 4.5, x + 8, y - 4.5, x + 8, y - 3.3 + th, x - 8, y - 2.9 + th], C.white);
+        r.poly([x - 4.2, y - 2, x - 3.2, y - 2, x - 3.7, y - 1 + 0.5 / s], C.white);
+        r.poly([x + 2.8, y - 2.2, x + 3.8, y - 2.2, x + 3.3, y - 1.2 + 0.5 / s], C.white);
+        r.poly(
+          [x - 8, y + 2.8 + big, x + 8, y + 2.8 + big, x + 8, y + 3.8 + big, x - 8, y + 3.8 + big],
+          C.lightGray,
+        );
+      });
+      r.line([...pts, pts[0], pts[1]], L);
+      break;
+    }
     case 'shout':
       filled(
         [
@@ -1092,6 +1147,29 @@ export function drawNeck(dc: DrawCtx, width = 8.2, bottom = 86): void {
 export function torsoPts(dc: DrawCtx, broad = 1, top = 78): number[] {
   const T = dc.g.T;
   const k = (x: number): number => 50 + (x - 50) * broad * (x > 50 ? 1 - 0.08 * T : 1);
+  if (dc.variant === 'full') {
+    // full-figure torso: shoulder caps, then tapering to the waist (arms drawn separately)
+    return spline(
+      [
+        [k(40), top],
+        [k(22), top + 5],
+        [k(12), top + 11],
+        [k(11), top + 19],
+        [k(19), top + 24],
+        [k(23), 112],
+        [k(25), 128],
+        [k(75), 128],
+        [k(77), 112],
+        [k(81), top + 24],
+        [k(89), top + 19],
+        [k(88), top + 11],
+        [k(78), top + 5],
+        [k(60), top],
+      ],
+      true,
+      4,
+    );
+  }
   return spline(
     [
       [k(40), top],
@@ -1216,6 +1294,10 @@ export function renderBust(out: Raster, spec: Spec, expr: Expression, o: BustOpt
   L.body.outline(spec.clothLine);
   head.outline(spec.skinLine);
   L.front.outline(spec.hairLine);
+  if (o.postHair) {
+    o.postHair(L.back);
+    o.postHair(L.front);
+  }
 
   out.over(L.back);
   out.over(L.body);
@@ -1253,6 +1335,28 @@ function drawFeatures(dc: DrawCtx): void {
 function drawMarks(dc: DrawCtx): void {
   const { g, e, L, spec } = dc;
   const r = L.over;
+  if (e.strain) {
+    const h = L.head;
+    h.with({ only: spec.skin }, () => {
+      // tension lines under the eyes
+      for (const E of [g.near, g.far]) {
+        const bx = E.x + E.dir * E.w * 0.15;
+        const by = E.y + E.h * 0.62;
+        h.stroke([bx - 1.6, by + 0.4, bx - 0.4, by + 1.6], 0.5, 0.5, spec.skinShade, 1);
+        h.stroke([bx + 0.6, by + 0.2, bx + 1.8, by + 1.4], 0.5, 0.5, spec.skinShade, 1);
+      }
+      // bulging vein on the far temple
+      const vx = g.far.x + g.far.w * 0.55;
+      const vy = g.eyeY - 11;
+      h.stroke([vx - 2, vy - 1.5, vx, vy + 0.5, vx + 2.2, vy - 1], 0.8, 0.6, C.red, 1);
+      h.stroke([vx, vy + 0.5, vx + 0.4, vy + 2.8], 0.7, 0.5, C.red, 1);
+    });
+    // flying sweat droplets
+    outlinedMark(dc, C.sky, (m) => {
+      m.ellipse(80, 44, 1.3, 1.1, C.white);
+      m.ellipse(22, 40, 1.1, 1, C.white);
+    });
+  }
   if (e.sweat) {
     const x = 75;
     const y = 35;
