@@ -5,7 +5,7 @@ import { MATERIALS } from '../data/items';
 import { QUESTS, SIDE_QUESTS, type Objective, type QuestDef, type QuestReward } from '../data/quests';
 import { ZONES, ZONE_ORDER } from '../data/zones';
 import { rng } from '../engine/rng';
-import { flaskUpgradeCost, MAX_FLASK_UPGRADES } from './balance';
+import { MAX_FLASK_UPGRADES } from './balance';
 import type { Game } from './game';
 import { addConsumable, addMaterial, hasFlag, setFlag, type Bounty, type QuestState } from './state';
 
@@ -312,5 +312,3 @@ export class QuestSystem {
     }
   }
 }
-
-export const flaskCost = flaskUpgradeCost;

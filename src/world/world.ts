@@ -3,19 +3,11 @@
  * (flow field, attack tokens), interactions, effects and rendering.
  */
 import { drawCutIn, cutInDuration } from '../art/anime';
-import { getIcon, getSprite, silhouette, spriteInfo } from '../art/pixel';
+import { getSprite, silhouette, spriteInfo } from '../art/pixel';
 import type { FxId } from '../art/pixel/types';
 import { audio } from '../audio';
-import {
-  ELITE_MODS,
-  enemyDef,
-  type AttackDef,
-  type EnemyDef,
-  type ProjectileSpec,
-  type StatusSpec,
-} from '../data/enemies';
+import { ELITE_MODS, enemyDef, type AttackDef, type ProjectileSpec, type StatusSpec } from '../data/enemies';
 import { NPCS, type Service } from '../data/npcs';
-import { ZONES } from '../data/zones';
 import { drawText } from '../engine/font';
 import type { Input } from '../engine/input';
 import { angleTo, circleHitsLine, circleInSector, clamp, dist, dist2, normalize, TAU } from '../engine/math';
@@ -1823,10 +1815,6 @@ export class World {
     );
   }
 
-  hitBreakables(_x: number, _y: number, _r: number, _aim: number, _half: number): void {
-    /* reserved for destructible props */
-  }
-
   novaEffect(x: number, y: number, radius: number, element?: string): void {
     const color =
       element === 'ice'
@@ -2459,14 +2447,4 @@ export class World {
     const y = Math.round(t.y - camY - (t instanceof Npc ? 34 : 30));
     drawText(ctx, text, x, y, { align: 'center', color: '#fee761', outline: '#181425' });
   }
-
-  /** Icon helper so HUD code can reuse the icon cache. */
-  static icon = getIcon;
 }
-
-export function zoneFor(mapId: string): string | undefined {
-  const base = mapId.replace(/_boss$/, '');
-  return ZONES[base] ? base : undefined;
-}
-
-export type { EnemyDef };

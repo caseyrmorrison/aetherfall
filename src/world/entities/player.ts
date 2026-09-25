@@ -398,7 +398,6 @@ export class Player extends Actor {
         heavy: sw.combo === 3,
       });
     }
-    world.hitBreakables(this.x, this.y - 4, sw.range, sw.aim, sw.arc / 2);
   }
 
   // ------------------------------------------------------------------ roll ----

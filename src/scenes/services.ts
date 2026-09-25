@@ -1,6 +1,6 @@
 /** Town services: Mira's shop, Brom's forge, the bounty board, the inn and talent respec. */
 import { audio } from '../audio';
-import { CONSUMABLES, MATERIALS } from '../data/items';
+import { CONSUMABLES } from '../data/items';
 import { ENEMIES } from '../data/enemies';
 import type { Service } from '../data/npcs';
 import { ZONES } from '../data/zones';
@@ -621,5 +621,3 @@ export class BoardScene extends TabbedService {
     );
   }
 }
-
-export { MATERIALS };
