@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aetherfall · actor sprites</title>
+    <style>
+      :root {
+        --bg: #1b1726;
+        --panel: #262033;
+        --ink: #c0cbdc;
+        --dim: #8b9bb4;
+        --accent: #feae34;
+        --stage: #2b2438;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          12px/1.35 ui-monospace,
+          Menlo,
+          Consolas,
+          monospace;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        align-items: center;
+        padding: 8px 16px;
+        background: #120f1b;
+        border-bottom: 1px solid #3a3350;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 13px;
+        color: var(--accent);
+      }
+      header label {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--dim);
+      }
+      header button {
+        background: var(--panel);
+        color: var(--ink);
+        border: 1px solid #3a3350;
+        border-radius: 4px;
+        padding: 3px 8px;
+        font: inherit;
+        cursor: pointer;
+      }
+      header button.on {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      main {
+        padding: 12px 16px 64px;
+      }
+      h2 {
+        margin: 24px 0 8px;
+        font-size: 14px;
+        color: var(--accent);
+        border-bottom: 1px solid #3a3350;
+        padding-bottom: 4px;
+      }
+      .sprite {
+        background: var(--panel);
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin: 0 0 10px;
+      }
+      .sprite > .title {
+        font-weight: bold;
+        color: #fff;
+      }
+      .sprite > .title span {
+        font-weight: normal;
+        color: var(--dim);
+        margin-left: 8px;
+      }
+      .anim {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 6px 14px;
+        margin-top: 6px;
+      }
+      .anim > .label {
+        width: 92px;
+        color: var(--dim);
+        align-self: center;
+      }
+      .dirgroup {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: flex-start;
+      }
+      .cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .cell small {
+        color: var(--dim);
+        font-size: 10px;
+      }
+      .strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        padding: 2px;
+        background: rgba(0, 0, 0, 0.18);
+        border-radius: 3px;
+      }
+      canvas {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        background: var(--stage);
+        display: block;
+      }
+      .lineup canvas {
+        background: none;
+      }
+      .weapons {
+        display: grid;
+        grid-template-columns: 90px repeat(6, max-content);
+        gap: 8px 14px;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Aetherfall · actors</h1>
+      <span id="groups"></span>
+      <label>filter <input id="filter" size="14" placeholder="hero,slime" /></label>
+      <label
+        >scale
+        <select id="scale">
+          <option>2</option>
+          <option>3</option>
+          <option selected>4</option>
+          <option>6</option>
+          <option>8</option>
+          <option>10</option>
+          <option>12</option>
+        </select></label
+      >
+      <label
+        >bg
+        <select id="bg">
+          <option value="#2b2438">dusk</option>
+          <option value="#3e8948">grass</option>
+          <option value="#8b9bb4">stone</option>
+          <option value="#ead4aa">sand</option>
+          <option value="#c0cbdc">snow</option>
+          <option value="#181425">black</option>
+        </select></label
+      >
+      <label><input type="checkbox" id="strips" checked /> frame strips</label>
+      <label><input type="checkbox" id="anchor" /> anchor</label>
+      <label><input type="checkbox" id="pause" /> pause</label>
+    </header>
+    <main id="root"></main>
+    <script type="module" src="./preview-actors.ts"></script>
+  </body>
+</html>

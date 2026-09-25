@@ -1,0 +1,267 @@
+/** Anime cutscene scripts. Lines use "speaker|expression: text"; {hero} = the hero's name. */
+import type { CutInId, IllustrationId } from '../art/anime';
+import type { MusicId, SfxId } from '../audio';
+
+export type CutStep =
+  | { music: MusicId | null }
+  | { illus: IllustrationId | null; fade?: number }
+  /** Seek the current illustration's clock (and optionally freeze it). */
+  | { illusT: number; freeze?: boolean }
+  | { say: string }
+  | { narrate: string }
+  | { wait: number }
+  | { flash: string; dur?: number }
+  | { shake: number; dur?: number }
+  | { sfx: SfxId }
+  | { fadeOut: number; color?: string }
+  | { fadeIn: number }
+  | { title: string; sub?: string; dur?: number }
+  | { cutin: CutInId }
+  | { speedlines: boolean };
+
+export const CUTSCENES: Record<string, CutStep[]> = {
+  intro: [
+    { music: 'cutscene_calm' },
+    { illus: 'sky_shatter' },
+    { illusT: 0.6, freeze: true },
+    { fadeIn: 1.2 },
+    { narrate: 'For a thousand years, the Aether Crystal watched over Elyria from the heavens.' },
+    { narrate: 'Its light kept the Void at bay. Its warmth made the fields grow.' },
+    { narrate: 'We thought it would shine forever.' },
+    { music: 'cutscene_tense' },
+    { illusT: 1.4, freeze: false },
+    { sfx: 'charge_up' },
+    { wait: 1.6 },
+    { sfx: 'explosion' },
+    { flash: '#ffffff', dur: 0.6 },
+    { shake: 8, dur: 1 },
+    { speedlines: true },
+    { narrate: 'Then, one night, the sky broke.' },
+    { speedlines: false },
+    { wait: 1.2 },
+    { fadeOut: 0.8 },
+    { illus: 'kai_awakens' },
+    { music: 'cutscene_calm' },
+    { fadeIn: 1 },
+    { wait: 1.5 },
+    { say: 'kai|hurt: Ngh… what… what happened?' },
+    { say: 'kai|surprised: The sky… it’s falling apart…' },
+    { fadeOut: 0.5 },
+    { illus: 'shard_fusion' },
+    { fadeIn: 0.4 },
+    { sfx: 'charge_up' },
+    { say: 'kai|surprised: A shard of the Crystal…? It’s so warm…' },
+    { flash: '#2ce8f5', dur: 0.5 },
+    { shake: 5, dur: 0.6 },
+    { sfx: 'surge_blast' },
+    { speedlines: true },
+    { say: 'kai|hurt: Aaagh! It’s burning into my hand!' },
+    { speedlines: false },
+    { fadeOut: 0.6, color: '#ffffff' },
+    { illus: 'lyra_arrives' },
+    { music: 'cutscene_epic' },
+    { fadeIn: 0.8 },
+    { say: 'lyra|surprised: You touched a Sky Shard… and you’re still breathing?' },
+    { say: 'lyra|happy: Incredible! I’m Lyra, a mage of the Order of Stars.' },
+    { say: 'kai|neutral: …{hero}. From Havenbrook, just south of here. What is going on?' },
+    {
+      say: 'lyra|determined: The Aether Crystal has shattered. Its shards are scattering across Elyria, corrupting everything they touch.',
+    },
+    { say: 'lyra|neutral: But that shard didn’t corrupt you. It chose you.' },
+    { say: 'lyra|sad: Which means you’re in a lot of danger. Go home. Speak to your elder. I’ll find you.' },
+    { fadeOut: 1 },
+    { illus: null },
+    { title: 'AETHERFALL', sub: 'Chapter I — The Fallen Star', dur: 3.2 },
+  ],
+
+  thornmaw_defeated: [
+    { music: 'cutscene_calm' },
+    { illus: 'shard_fusion' },
+    { fadeIn: 0.6 },
+    { say: 'kai|surprised: The Verdant Shard… it’s resonating with the first one!' },
+    { sfx: 'charge_up' },
+    { flash: '#2ce8f5', dur: 0.4 },
+    { cutin: 'kai_surge' },
+    {
+      narrate:
+        '{cyan}AETHER SURGE awakened!{/} Fight to charge the gauge, then unleash it. Perfect dodges charge it fast.',
+    },
+    { illus: 'lyra_arrives' },
+    { say: 'lyra|happy: You did it! Two shards, and you’re still standing.' },
+    {
+      say: 'lyra|neutral: Five great shards fell when the Crystal broke. Each one found something to corrupt… or someone.',
+    },
+    { say: 'kai|determined: Then I’ll gather them all and put the sky back together.' },
+    { sfx: 'void_pulse' },
+    { music: 'cutscene_tense' },
+    { shake: 4, dur: 1 },
+    { fadeOut: 0.3, color: '#68386c' },
+    { illus: 'malachar_reveal' },
+    { fadeIn: 0.5 },
+    { speedlines: true },
+    { say: 'malachar|smirk: How touching. The Crystal chose a village boy.' },
+    { speedlines: false },
+    { say: 'kai|angry: Who are you?!' },
+    { say: 'malachar|smirk: Your king. Soon, everyone’s. I am Malachar.' },
+    {
+      say: 'malachar|neutral: Gather the shards for me, little spark. It will save me the trouble of prying them from the world’s cold fingers.',
+    },
+    { say: 'malachar|smirk: When you have them all… I will take them from yours.' },
+    { flash: '#ff0044', dur: 0.4 },
+    { sfx: 'void_pulse' },
+    { fadeOut: 0.6 },
+    { illus: 'lyra_arrives' },
+    { music: 'cutscene_sad' },
+    { fadeIn: 0.6 },
+    { say: 'lyra|sad: Malachar. The Hollow King. He’s the one who shattered the Crystal.' },
+    {
+      say: 'lyra|determined: We have to reach the other shards before he does. Tell your elder — I’ll wait for you in Havenbrook.',
+    },
+    { fadeOut: 0.8 },
+    { illus: null },
+    { title: 'CHAPTER II', sub: 'Echoes in the Deep', dur: 2.6 },
+  ],
+
+  golem_defeated: [
+    { music: 'cutscene_calm' },
+    { illus: 'shard_fusion' },
+    { fadeIn: 0.6 },
+    { sfx: 'charge_up' },
+    { flash: '#2ce8f5', dur: 0.4 },
+    { say: 'kai|determined: The Prism Shard. Three heartbeats of light now… I can feel them.' },
+    { narrate: 'Your {cyan}Aether Surge{/} grows stronger with every shard.' },
+    { illus: 'lyra_arrives' },
+    { say: 'lyra|neutral: The next shard fell on Emberpeak. The whole mountain woke up screaming.' },
+    { say: 'lyra|happy: Try not to get cooked, okay? I’ve grown used to having you around.' },
+    { fadeOut: 0.8 },
+    { illus: null },
+    { title: 'CHAPTER III', sub: 'The Burning Peak', dur: 2.6 },
+  ],
+
+  ignis_defeated: [
+    { music: 'cutscene_calm' },
+    { illus: 'shard_fusion' },
+    { fadeIn: 0.6 },
+    { sfx: 'charge_up' },
+    { flash: '#f77622', dur: 0.4 },
+    { say: 'kai|determined: The Ember Shard is mine. That drake almost had me…' },
+    { narrate: 'Lyra waits in Havenbrook. Something weighs on her.' },
+    { fadeOut: 0.8 },
+    { illus: null },
+    { title: 'CHAPTER IV', sub: 'Heart of Winter', dur: 2.6 },
+  ],
+
+  seraphine_intro: [
+    { music: 'cutscene_tense' },
+    { illus: 'seraphine_memory' },
+    { fadeIn: 0.8 },
+    {
+      say: 'seraphine|neutral: So this is Lyra’s little hero. She sent you here to die. Just like she let me.',
+    },
+    { say: 'kai|determined: Lyra told me about you, Seraphine. She never stopped caring about you!' },
+    { say: 'seraphine|angry: Caring? The cold is all I have left. It doesn’t lie. It doesn’t leave.' },
+    { say: 'kai|angry: Then I’ll break through it!' },
+    { say: 'seraphine|smirk: Then shatter, child.' },
+    { flash: '#2ce8f5', dur: 0.4 },
+    { fadeOut: 0.4 },
+  ],
+
+  seraphine_defeated: [
+    { music: 'cutscene_sad' },
+    { illus: 'seraphine_memory' },
+    { fadeIn: 1.2 },
+    {
+      say: 'seraphine|sad: …Lyra… I remember now. The snowfields… you used to laugh at how I couldn’t cast a warming spell…',
+    },
+    { say: 'seraphine|sad: I was so tired of being cold. He promised me I’d never feel anything again.' },
+    { say: 'kai|sad: Seraphine…' },
+    {
+      say: 'seraphine|happy: Take the Rime Shard, {hero}. End this. For both of us… and tell her… I’m sorry.',
+    },
+    { narrate: 'The Frost Queen fades into drifting snow, smiling for the first time in years.' },
+    { sfx: 'charge_up' },
+    { flash: '#ffffff', dur: 0.6 },
+    { narrate: 'You obtained the {cyan}Rime Shard{/}. Return to Havenbrook.' },
+    { fadeOut: 1 },
+    { illus: null },
+    { title: 'CHAPTER V', sub: 'The Hollow King', dur: 2.6 },
+  ],
+
+  malachar_intro: [
+    { music: 'cutscene_tense' },
+    { illus: 'malachar_reveal' },
+    { fadeIn: 0.8 },
+    { say: 'malachar|smirk: Four shards. You’ve done beautifully, little spark. Exactly as I planned.' },
+    { say: 'kai|angry: You shattered the sky! People are suffering because of you!' },
+    {
+      say: 'malachar|neutral: Suffering? I emptied myself for the Void. I gave it my name, my heart, my kingdom. Now it will fill me with everything.',
+    },
+    { say: 'malachar|smirk: Give me the shards, and I’ll make your end painless.' },
+    { say: 'kai|determined: Come and take them.' },
+    { speedlines: true },
+    { flash: '#ff0044', dur: 0.3 },
+    { fadeOut: 0.4 },
+  ],
+
+  malachar_transform: [
+    { music: null },
+    { illus: 'malachar_reveal' },
+    { fadeIn: 0.3 },
+    { shake: 6, dur: 1.5 },
+    { sfx: 'roar' },
+    { say: 'malachar|angry: ENOUGH! You want to see what I sacrificed everything to become?!' },
+    { cutin: 'malachar_rage' },
+    { flash: '#68386c', dur: 0.8 },
+    { speedlines: true },
+    { say: 'malachar|angry: THEN BEHOLD THE VOID ITSELF!' },
+    { speedlines: false },
+    { fadeOut: 0.5, color: '#181425' },
+  ],
+
+  ending: [
+    { music: 'cutscene_epic' },
+    { illus: 'final_clash' },
+    { fadeIn: 0.4 },
+    { speedlines: true },
+    { say: 'kai|determined: Every shard… every heart in Elyria… lend me your light!' },
+    { cutin: 'kai_surge' },
+    { flash: '#ffffff', dur: 1 },
+    { shake: 10, dur: 1.5 },
+    { sfx: 'surge_blast' },
+    { say: 'malachar|hurt: No… the Void… it’s… so warm…?' },
+    { speedlines: false },
+    { narrate: 'The Hollow King dissolved into light — and for a moment, he looked almost peaceful.' },
+    { fadeOut: 1.5, color: '#ffffff' },
+    { illus: 'ending_dawn' },
+    { music: 'credits' },
+    { fadeIn: 2 },
+    { narrate: 'The five shards rose from {hero}’s hand and returned to the sky.' },
+    { narrate: 'By morning, the Aether Crystal shone again — whole, and a little brighter than before.' },
+    { say: 'lyra|happy: We did it, {hero}. We actually did it.' },
+    { say: 'kai|happy: We did. …So, what does a mage of the Order do after saving the world?' },
+    {
+      say: 'lyra|happy: Hmm. Maybe she finds out what’s lurking in that portal the Void left behind. Care to join me?',
+    },
+    {
+      narrate:
+        'THE END… or is it? {purple}The Abyss{/} awaits beyond the portal. {gold}New Game+{/} is unlocked.',
+    },
+    { fadeOut: 2 },
+  ],
+};
+
+/** Boss id → cutscene played the first time the boss is defeated. */
+export const BOSS_OUTRO: Record<string, string> = {
+  thornmaw: 'thornmaw_defeated',
+  crystal_golem: 'golem_defeated',
+  ignis: 'ignis_defeated',
+  seraphine: 'seraphine_defeated',
+  malachar: 'malachar_transform',
+  malachar_true: 'ending',
+};
+
+/** Boss id → cutscene played on the first encounter. */
+export const BOSS_INTRO: Record<string, string> = {
+  seraphine: 'seraphine_intro',
+  malachar: 'malachar_intro',
+};

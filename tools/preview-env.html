@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aetherfall — environment & icon preview</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px 24px 64px;
+        background: #0b0a12;
+        color: #c0cbdc;
+        font:
+          13px/1.4 ui-monospace,
+          Menlo,
+          monospace;
+      }
+      h2 {
+        margin: 28px 0 8px;
+        font-size: 15px;
+        color: #feae34;
+        letter-spacing: 0.04em;
+      }
+      canvas {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        display: block;
+      }
+      .controls {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #0b0a12ee;
+        padding: 8px 0;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
+      }
+      .cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: #8b9bb4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <strong style="color: #2ce8f5">Aetherfall env preview</strong>
+      <label><input type="checkbox" id="colliders" /> colliders</label>
+      <label><input type="checkbox" id="lights" checked /> lights</label>
+      <label><input type="checkbox" id="shadows" checked /> shadows</label>
+      <label><input type="checkbox" id="pause" /> pause</label>
+      <label
+        >theme filter
+        <select id="only"></select
+      ></label>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="./preview-env.ts"></script>
+  </body>
+</html>

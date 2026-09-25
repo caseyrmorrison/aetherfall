@@ -1,0 +1,222 @@
+/** Active skill implementations for the hero. */
+import { audio } from '../audio';
+import type { ProjectileSpec } from '../data/enemies';
+import { SKILLS, skillMult, type SkillId } from '../data/skills';
+import { angleDiff, angleTo, dist, TAU } from '../engine/math';
+import type { Enemy } from './entities/enemy';
+import type { Player } from './entities/player';
+import type { World } from './world';
+
+export function castSkill(world: World, p: Player, id: SkillId, rank: number): void {
+  const def = SKILLS[id];
+  const mult = skillMult(def, rank);
+  switch (id) {
+    case 'slash': {
+      p.state = 'dash';
+      p.stateT = 0;
+      p.dash = { t: 0, dur: 0.2, angle: p.aim, speed: 360, hit: new Set(), mult };
+      audio.playSfx('dash_slash');
+      world.addSlash(p, p.aim, 1.2, 30, 3, p.weaponKind);
+      world.shake(2, 0.15);
+      break;
+    }
+    case 'whirlwind': {
+      p.state = 'free';
+      p.whirl = { t: 0.8, tick: 0, mult };
+      break;
+    }
+    case 'fireball': {
+      const spec: ProjectileSpec = {
+        sprite: 'proj_fireball',
+        speed: 230,
+        radius: 5,
+        dmg: 0,
+        life: 1.2,
+        scale: 1.3,
+        explode: { radius: 32, dmg: mult, status: { kind: 'burn', duration: 3, power: 0.3 } },
+      };
+      world.spawnPlayerProjectile(
+        spec,
+        p.x + Math.cos(p.aim) * 8,
+        p.y - 8 + Math.sin(p.aim) * 8,
+        p.aim,
+        0,
+        'mag',
+      );
+      audio.playSfx('fireball');
+      break;
+    }
+    case 'frostnova': {
+      audio.playSfx('frost_nova');
+      const freeze = 1.5 + 0.2 * (rank - 1);
+      world.novaEffect(p.x, p.y - 4, 64, 'ice');
+      for (const e of world.enemiesNear(p.x, p.y, 64 + 16)) {
+        if (dist(p.x, p.y, e.x, e.y) > 64 + e.radius) continue;
+        world.playerHit(e, {
+          power: 'mag',
+          mult,
+          knock: 60,
+          dir: angleTo(p.x, p.y, e.x, e.y),
+          isSkill: true,
+          status: { kind: 'freeze', duration: freeze },
+        });
+      }
+      world.shake(3, 0.2);
+      break;
+    }
+    case 'heal': {
+      const st = world.game.stats();
+      p.hot = { t: 3, perSec: (st.maxHp * mult) / 3 };
+      p.clearStatuses();
+      audio.playSfx('heal');
+      world.particles.emit(p.x, p.y - 8, {
+        count: 30,
+        color: ['#63c74d', '#fee761', '#ffffff'],
+        speed: [10, 40],
+        vz: [20, 60],
+        gravity: -10,
+        life: [0.6, 1.2],
+        emissive: true,
+        shape: 'glow',
+        jitter: 8,
+      });
+      world.popText(p.x, p.y - 26, 'Healing Light', '#63c74d', { small: true });
+      break;
+    }
+    case 'lightning': {
+      audio.playSfx('lightning');
+      const max = 3 + rank;
+      const hit: Enemy[] = [];
+      let fromX = p.x;
+      let fromY = p.y - 10;
+      const pts: { x: number; y: number }[] = [{ x: fromX, y: fromY }];
+      // first target: favour the aim cone
+      let target: Enemy | null = null;
+      let best = Infinity;
+      for (const e of world.enemiesNear(p.x, p.y, 160)) {
+        if (!e.targetable) continue;
+        const da = Math.abs(angleDiff(p.aim, angleTo(p.x, p.y, e.x, e.y)));
+        const score = dist(p.x, p.y, e.x, e.y) + da * 80;
+        if (score < best) {
+          best = score;
+          target = e;
+        }
+      }
+      while (target && hit.length < max) {
+        hit.push(target);
+        pts.push({ x: target.x, y: target.y - 6 });
+        world.playerHit(target, {
+          power: 'mag',
+          mult,
+          knock: 30,
+          dir: angleTo(fromX, fromY, target.x, target.y),
+          isSkill: true,
+        });
+        fromX = target.x;
+        fromY = target.y - 6;
+        let next: Enemy | null = null;
+        let nd = 95;
+        for (const e of world.enemiesNear(fromX, fromY, 95)) {
+          if (hit.includes(e) || !e.targetable) continue;
+          const d = dist(fromX, fromY, e.x, e.y);
+          if (d < nd) {
+            nd = d;
+            next = e;
+          }
+        }
+        target = next;
+      }
+      if (pts.length === 1) pts.push({ x: p.x + Math.cos(p.aim) * 90, y: p.y - 10 + Math.sin(p.aim) * 90 });
+      world.addLightning(pts);
+      break;
+    }
+    case 'blades': {
+      audio.playSfx('blades');
+      p.blades = { t: 7, count: 3 + Math.floor((rank - 1) / 2), angle: 0, mult, hitCd: new Map() };
+      break;
+    }
+    case 'meteor': {
+      let tx = p.x + Math.cos(p.aim) * 90;
+      let ty = p.y + Math.sin(p.aim) * 90;
+      if (world.input.mouseAimActive()) {
+        tx = world.input.mouse.x + world.cam.rx;
+        ty = world.input.mouse.y + world.cam.ry;
+        const d = dist(p.x, p.y, tx, ty);
+        if (d > 170) {
+          tx = p.x + ((tx - p.x) / d) * 170;
+          ty = p.y + ((ty - p.y) / d) * 170;
+        }
+      } else {
+        let best = Infinity;
+        for (const e of world.enemiesNear(p.x, p.y, 170)) {
+          const da = Math.abs(angleDiff(p.aim, angleTo(p.x, p.y, e.x, e.y)));
+          if (da > 0.8 || !e.targetable) continue;
+          const s = dist(p.x, p.y, e.x, e.y) + da * 60;
+          if (s < best) {
+            best = s;
+            tx = e.x;
+            ty = e.y;
+          }
+        }
+      }
+      audio.playSfx('meteor_fall');
+      world.playerHazard(
+        {
+          shape: 'circle',
+          x: tx,
+          y: ty,
+          radius: 48,
+          delay: 0.75,
+          duration: 0,
+          mult,
+          status: { kind: 'burn', duration: 3, power: 0.35 },
+          color: '#f77622',
+          visual: 'meteor',
+        },
+        'mag',
+      );
+      world.meteorFall(tx, ty, 0.75);
+      break;
+    }
+  }
+}
+
+/** The Aether Surge ultimate blast (after its cut-in). */
+export function surgeBlast(world: World, p: Player): void {
+  const st = world.game.stats();
+  const shards = Math.max(1, world.shardCount());
+  const mult = 5 + shards * 1.2;
+  audio.playSfx('surge_blast');
+  world.shake(10, 0.6);
+  world.flashScreen('#ffffff', 0.35);
+  world.novaEffect(p.x, p.y - 6, 120, 'arcane');
+  for (let i = 0; i < 40; i++) {
+    const a = (i / 40) * TAU;
+    world.particles.emit(p.x, p.y - 6, {
+      count: 1,
+      angle: a,
+      spread: 0.05,
+      speed: [160, 260],
+      color: ['#2ce8f5', '#ffffff', '#feae34'],
+      life: [0.4, 0.7],
+      size: [2, 3],
+      emissive: true,
+      shape: 'line',
+      drag: 3,
+    });
+  }
+  const power = (st.atk + st.mag) / 2;
+  for (const e of world.enemiesNear(p.x, p.y, 136)) {
+    if (dist(p.x, p.y, e.x, e.y) > 120 + e.radius) continue;
+    world.playerHit(e, {
+      power: 'custom',
+      customPower: power,
+      mult,
+      knock: 260,
+      dir: angleTo(p.x, p.y, e.x, e.y),
+      isSkill: true,
+      forceCrit: true,
+    });
+  }
+  p.surgeInvuln = 2;
+}

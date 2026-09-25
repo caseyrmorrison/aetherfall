@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aetherfall — anime art preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        overflow-x: hidden;
+        margin: 0;
+        padding: 16px 20px 60px;
+        background: #0f0d18;
+        color: #c0cbdc;
+        font:
+          13px/1.4 ui-monospace,
+          Menlo,
+          monospace;
+      }
+      h1 {
+        font-size: 18px;
+        color: #fee761;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 15px;
+        color: #2ce8f5;
+        margin: 28px 0 8px;
+        border-bottom: 1px solid #3a4466;
+        padding-bottom: 4px;
+      }
+      h3 {
+        font-size: 13px;
+        color: #feae34;
+        margin: 14px 0 6px;
+      }
+      canvas {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        display: block;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      .cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+      }
+      .cell span {
+        font-size: 11px;
+        color: #8b9bb4;
+      }
+      .bg {
+        background: #3a4466;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin: 6px 0 10px;
+      }
+      button,
+      select {
+        background: #262b44;
+        color: #fff;
+        border: 1px solid #5a6988;
+        padding: 4px 10px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #3a4466;
+      }
+      .stat {
+        color: #63c74d;
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Aetherfall — anime renderer preview</h1>
+    <div class="controls">
+      <label
+        >scale
+        <select id="scale">
+          <option>1</option>
+          <option>2</option>
+          <option selected>3</option>
+          <option>4</option>
+        </select></label
+      >
+      <a href="?">all</a> · <a href="?view=portraits">portraits</a> ·
+      <a href="?view=illus">illustrations</a> · <a href="?view=cutins">cut-ins</a>
+    </div>
+
+    <section id="sec-portraits">
+      <h2 id="portraits">Portraits</h2>
+      <div class="controls">
+        <label
+          >character
+          <select id="pchar"></select
+        ></label>
+        <label
+          >size
+          <select id="psize">
+            <option value="72x80">72x80 (dialogue)</option>
+            <option value="130x170" selected>130x170 (bust)</option>
+            <option value="180x230">180x230 (large)</option>
+          </select></label
+        >
+        <label><input type="checkbox" id="pvariants" checked /> talking / blink / flip variants</label>
+        <label><input type="checkbox" id="pbg" checked /> backdrop</label>
+        <span class="stat" id="pstat"></span>
+      </div>
+      <h3>Line-up</h3>
+      <div class="controls">
+        <label
+          >expression
+          <select id="lexpr"></select
+        ></label>
+        <label><input type="checkbox" id="ltalk" /> talking</label>
+        <label><input type="checkbox" id="lblink" /> blink</label>
+      </div>
+      <div id="lineup" style="overflow-x: auto; max-width: 100%"></div>
+      <div id="pgrid" class="stack"></div>
+    </section>
+    <section id="sec-illus">
+      <h2 id="illus">Illustrations</h2>
+      <div class="controls">
+        <label
+          >shot
+          <select id="ishot"></select
+        ></label>
+        <button id="irestart">restart</button>
+        <button id="iprev">◀ prev</button>
+        <button id="inext">next ▶</button>
+        <label><input type="checkbox" id="iall" checked /> show 400 / 640 widths too</label>
+        <label><input type="checkbox" id="ipause" /> pause</label>
+        <span>t = <b id="it">0</b>s</span>
+        <span class="stat" id="istat"></span>
+      </div>
+      <div id="ihost" class="stack"></div>
+    </section>
+    <section id="sec-cutins">
+      <h2 id="cutins">Cut-ins</h2>
+      <div class="controls" id="cbuttons">
+        <span class="stat" id="cstat"></span>
+      </div>
+      <div id="chost" class="stack"></div>
+
+      <h2>Speed lines</h2>
+      <div id="shost"></div>
+    </section>
+
+    <script type="module" src="./preview-anime.ts"></script>
+  </body>
+</html>

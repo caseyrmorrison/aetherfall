@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aetherfall Audio Bench</title>
+    <script>
+      // The Vite dev server broadcasts full-page reloads for edits anywhere in the project, which would
+      // interrupt long offline analyses. This bench opts out of live reload unless opened with ?hmr.
+      // (Classic inline scripts run before the deferred /@vite/client module, so the patch is in place.)
+      if (!/[?&]hmr\b/.test(location.search)) {
+        const RealWS = window.WebSocket;
+        const FakeWS = function (url, protocols) {
+          const p = String(protocols || '');
+          if (p.indexOf('vite') === 0) {
+            return { readyState: 0, addEventListener() {}, removeEventListener() {}, send() {}, close() {} };
+          }
+          return new RealWS(url, protocols);
+        };
+        Object.assign(FakeWS, { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3, prototype: RealWS.prototype });
+        window.WebSocket = FakeWS;
+      }
+    </script>
+    <style>
+      :root {
+        --bg: #14111f;
+        --panel: #1e1a2e;
+        --line: #332c4a;
+        --text: #e8e4f4;
+        --dim: #9a91b8;
+        --accent: #2ce8f5;
+        --warn: #ffb347;
+        --bad: #ff5a6e;
+        --ok: #7be38a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.4 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          monospace;
+      }
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 4px;
+        color: var(--accent);
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin: 12px 0;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+      .group {
+        margin: 6px 0;
+      }
+      .group > span {
+        display: inline-block;
+        min-width: 90px;
+        color: var(--dim);
+      }
+      button {
+        background: #2a2440;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 5px 9px;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.on {
+        background: var(--accent);
+        color: #10101a;
+      }
+      button.primary {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      label {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        margin-right: 14px;
+      }
+      input[type='range'] {
+        width: 160px;
+      }
+      #status {
+        color: var(--dim);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12px;
+      }
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 3px 6px;
+        text-align: right;
+        white-space: nowrap;
+      }
+      th:first-child,
+      td:first-child {
+        text-align: left;
+      }
+      td.flags {
+        text-align: left;
+        white-space: normal;
+      }
+      .bad {
+        color: var(--bad);
+      }
+      .warn {
+        color: var(--warn);
+      }
+      .ok {
+        color: var(--ok);
+      }
+      #summary {
+        margin: 8px 0;
+        white-space: pre-wrap;
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Aetherfall audio bench</h1>
+      <div id="status">Audio locked — click anything to unlock.</div>
+
+      <section>
+        <h2>Mixer</h2>
+        <div class="row" id="volumes"></div>
+      </section>
+
+      <section>
+        <h2>Music</h2>
+        <div class="row" id="music"></div>
+        <div class="row" style="margin-top: 10px">
+          <label
+            >intensity <input id="intensity" type="range" min="0" max="1" step="0.01" value="0" /><b
+              id="intensityVal"
+              >0.00</b
+            ></label
+          >
+          <label
+            >fade (s) <input id="fade" type="number" min="0" max="5" step="0.1" value="1" style="width: 60px"
+          /></label>
+          <button id="stop">stop music</button>
+          <button id="duck">duck 0.7 / 1.5s</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>SFX</h2>
+        <div class="row" style="margin-bottom: 8px">
+          <label>pan <input id="pan" type="range" min="-1" max="1" step="0.1" value="0" /></label>
+          <label>pitch <input id="pitch" type="range" min="0.5" max="2" step="0.05" value="1" /></label>
+          <button id="stress">stress: 60 hits in one frame</button>
+          <button id="blips">text blips x20</button>
+        </div>
+        <div id="sfx"></div>
+      </section>
+
+      <section>
+        <h2>Offline analysis</h2>
+        <div class="row">
+          <button id="analyze" class="primary">Run offline analysis</button>
+          <button id="breakdown">Per-track mix breakdown</button>
+          <span id="progress"></span>
+        </div>
+        <div id="summary"></div>
+        <div class="scroll" id="results"></div>
+        <div class="scroll" id="breakdownOut"></div>
+      </section>
+    </main>
+    <script type="module" src="./preview-audio.ts"></script>
+  </body>
+</html>
