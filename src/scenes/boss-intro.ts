@@ -2,7 +2,7 @@
 import { drawPortrait, drawSpeedLines } from '../art/anime';
 import { getSprite, spriteInfo } from '../art/pixel';
 import type { Scene } from '../engine/app';
-import { drawText } from '../engine/font';
+import { drawText, measureText } from '../engine/font';
 import { easeOutBack, easeOutCubic } from '../engine/math';
 import type { Game } from '../game/game';
 import type { Enemy } from '../world/entities/enemy';
@@ -90,10 +90,13 @@ export class BossIntroScene implements Scene {
     const tk = easeOutBack(Math.min(1, Math.max(0, (t - 0.2) / 0.35)));
     const tx = W * 0.08 - (1 - tk) * 60 - out * 100;
     drawText(ctx, 'VS', tx, cy - 40, { color: UI.accent, outline: '#181425', scale: 2, alpha: tk });
-    drawText(ctx, this.boss.def.name.toUpperCase(), tx, cy - 16, {
+    const name = this.boss.def.name.toUpperCase();
+    // shrink long names so they never run into the boss art
+    const nameScale = measureText(name) * 3 > W * 0.42 ? 2 : 3;
+    drawText(ctx, name, tx, cy - 16 + (3 - nameScale) * 4, {
       color: '#ffffff',
       outline: '#a22633',
-      scale: 3,
+      scale: nameScale,
       alpha: tk,
     });
     drawText(ctx, this.boss.def.boss?.title ?? '', tx, cy + 14, {

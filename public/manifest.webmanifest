@@ -1,0 +1,12 @@
+{
+  "name": "Aetherfall — Echoes of the Shattered Sky",
+  "short_name": "Aetherfall",
+  "description": "A pixel-art action RPG with anime cutscenes, loot, skill trees and bosses.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#181425",
+  "theme_color": "#181425",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

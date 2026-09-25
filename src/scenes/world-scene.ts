@@ -70,6 +70,7 @@ export class WorldScene implements Scene, WorldHooks {
 
   private announce(mapId: string): void {
     const save = this.game.save;
+    this.hud.zoneCard = null;
     const zone = ZONES[mapId];
     const first = !mapId.startsWith('abyss') && !hasFlag(save, `visited_${mapId}`);
     if (!mapId.startsWith('abyss')) setFlag(save, `visited_${mapId}`);

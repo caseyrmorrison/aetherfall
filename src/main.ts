@@ -69,3 +69,11 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
 
 app.reset(new TitleScene(game));
 app.start();
+
+// Offline support for the deployed build (skipped in dev so hot reload stays reliable).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener(
+    'load',
+    () => void navigator.serviceWorker.register('sw.js').catch(() => undefined),
+  );
+}

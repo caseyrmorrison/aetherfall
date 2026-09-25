@@ -38,6 +38,8 @@ The art, music and sound effects are all generated in code; the repo contains no
   - damage numbers, enemy health bars, aim assist
   - reduced flashing and screen-shake settings, text speed and auto-advance
   - a bestiary, a stats screen, and gold you can recover from where you died
+- **Installable and offline.** It can be installed as an app (fullscreen, landscape) and plays offline after
+  the first visit.
 - **Audio.** A chiptune soundtrack of 17 original tracks. Exploration music adds layers when combat starts,
   and there are 65 synthesized sound effects.
 
