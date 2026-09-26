@@ -885,6 +885,7 @@ export const ACT2_ENEMIES: EnemyDef[] = [
     id: 'aurelian',
     name: 'Aurelian',
     sprite: 'boss_aurelian',
+    scale: 1.15,
     hp: 4200,
     atk: 44,
     def: 34,
