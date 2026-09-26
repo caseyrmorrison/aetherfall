@@ -6,8 +6,8 @@
  */
 import { PAL } from '../../palette';
 import type { Theme } from '../types';
-import { stones } from './ground';
-import { Grid, bayer, mix, rnd, rng, tileNoise, type Col } from './raster';
+import { mossOver, stones } from './ground';
+import { Grid, bayer, fbm16, mix, rnd, rng, tileNoise, type Col } from './raster';
 
 const T = 16;
 
@@ -486,7 +486,331 @@ const abyss: WallFn = (face, v) => {
   return g;
 };
 
-const WALLS: Record<Theme, WallFn> = { town, forest, cave, volcano, tundra, citadel, abyss };
+// ------------------------------------------------------------------ act II --
+
+/** Periodic (16px) wobble used to bend strata / bands without breaking the tiling. */
+function wob(x: number, k: number, amp = 0.9): number {
+  return Math.round(Math.sin(((x + k * 5) / T) * Math.PI * 2) * amp);
+}
+
+const MESA_TOP_PTS: [number, number][] = [
+  [3, 3],
+  [11, 2],
+  [7, 10],
+  [14, 11],
+  [1, 12],
+];
+/** Rose sandstone, dark → light. */
+const MESA = ['#3e2434', '#5a3446', '#784450', '#96585a', '#b06e62', '#c8866c'] as const;
+/** One step lighter on the MESA ramp. */
+const step1 = (c: Col): Col => {
+  const i = (MESA as readonly Col[]).indexOf(c);
+  return i < 0 ? c : MESA[Math.min(5, i + 1)];
+};
+
+function mesaCap(v: number): Grid {
+  // the flat top of a mesa: broad rock plates dusted with blown sand
+  const g = stones(MESA_TOP_PTS, {
+    gap: '#86505a',
+    shadow: '#985c5c',
+    base: '#a4665e',
+    hi: '#b27264',
+    gapW: 0.8,
+  });
+  g.map((c, x, y) => {
+    if (c === '#86505a') return undefined;
+    const n = fbm16(x, y, 151);
+    if (n > 0.6 || (n > 0.56 && bayer(x, y) > 0.5)) return rnd(x, y, 152) > 0.85 ? '#d4a07c' : '#bd8468';
+    return rnd(x, y, 153) > 0.94 ? '#8a5054' : undefined;
+  });
+  if (v === 1) g.set(9, 6, '#d8b8a8').set(10, 6, '#8a6a70').set(9, 7, '#6e5460');
+  if (v === 3) g.set(5, 9, '#b8905e').set(5, 8, '#e0b87a').set(6, 9, '#8a6a4e').set(4, 8, '#b8905e');
+  return g;
+}
+
+const desert: WallFn = (face, v) => {
+  if (!face) return mesaCap(v);
+  // layered sandstone cliff: wavy strata with lit ledges, a few deep joints
+  const g = new Grid(T, T);
+  const tone = [4, 3, 4, 2, 3] as const;
+  for (let x = 0; x < T; x++)
+    for (let y = 0; y < T; y++) {
+      const yy = y + wob(x, 2, 0.8);
+      const band = Math.floor(yy / 3);
+      const ly = ((yy % 3) + 3) % 3;
+      let s: number = tone[((band % 5) + 5) % 5];
+      if (ly === 0) s += 1;
+      else if (ly === 2 && bayer(x, y) > 0.4) s -= 1;
+      if (y > 11) s -= 1;
+      g.set(x, y, MESA[Math.max(0, Math.min(5, s))]);
+    }
+  for (const [jx, y0, y1] of [
+    [3, 5, 9],
+    [9, 8, 13],
+    [13, 4, 8],
+  ] as const)
+    for (let y = y0; y <= y1; y++) {
+      g.set(jx, y, MESA[0]);
+      g.set(jx + 1, y, step1(g.get(jx + 1, y)!));
+    }
+  if (v === 1) g.set(6, 10, MESA[0]).set(7, 10, MESA[0]).set(6, 11, MESA[1]).set(7, 11, MESA[1]);
+  if (v === 2) g.set(11, 6, '#e4c4a0').set(12, 6, '#c8a890').set(11, 7, '#a8887c');
+  if (v === 3) g.line(6, 5, 7, 9, MESA[1]);
+  baseShade(g, MESA[0], MESA[1]);
+  lip(g, mesaCap(0), 4, 157, MESA[1], MESA[0]);
+  return g;
+};
+
+const oasisCap = (v: number): Grid => {
+  const g = new Grid(T, T);
+  for (let y = 0; y < T; y++)
+    for (let x = 0; x < T; x++) {
+      const lx = x & 7;
+      const ly = y & 7;
+      let c: Col = rnd(x, y, 161) > 0.9 ? '#a87260' : '#b27a62';
+      if (lx === 7 || ly === 7) c = '#7a4e46';
+      else if (lx === 0 || ly === 0) c = '#c68e6e';
+      else if (lx === 6 || ly === 6) c = '#9a6656';
+      g.set(x, y, c);
+    }
+  if (v === 1) g.set(3, 3, '#7a4e46').set(4, 4, '#7a4e46').set(4, 5, '#9a6656');
+  if (v === 2) g.set(11, 3, '#2f9a9a').set(12, 3, '#5fd0c8').set(11, 4, '#1f6f78').set(12, 4, '#2f9a9a');
+  return g;
+};
+
+const oasis: WallFn = (face, v) => {
+  if (!face) return oasisCap(v);
+  // whitewashed adobe over a sandstone plinth, terracotta frieze under the coping
+  const g = new Grid(T, T);
+  for (let y = 4; y < 12; y++)
+    for (let x = 0; x < T; x++) {
+      let c: Col = rnd(x, y, 163) > 0.88 ? '#dcbc9c' : '#ecd4b2';
+      if (y === 6) c = '#c29a80';
+      else if (y === 7 && bayer(x, y) > 0.5) c = '#dcbc9c';
+      g.set(x, y, c);
+    }
+  for (let x = 0; x < T; x++) {
+    g.set(x, 4, '#c8644c');
+    g.set(x, 5, x % 4 === 0 ? '#7a3a3a' : '#a84c44');
+  }
+  bricks(
+    g,
+    12,
+    15,
+    8,
+    4,
+    { mortar: '#8e5a4c', shadow: '#b0805e', base: '#c4966e', hi: '#dcb088', alt: '#bb8d68' },
+    171,
+    v,
+  );
+  baseShade(g, '#7a4a42', '#946050');
+  lip(g, oasisCap(0), 3, 167, '#7a4e46', '#c29a80');
+  if (v === 1) g.line(10, 7, 12, 10, '#c29a80');
+  if (v === 2) g.set(7, 8, '#2f9a9a').set(8, 8, '#5fd0c8').set(7, 9, '#1f6f78').set(8, 9, '#2f9a9a');
+  if (v === 3) {
+    // small arched niche
+    g.rect(6, 8, 4, 4, '#5a3040').set(6, 8, '#ecd4b2').set(9, 8, '#ecd4b2');
+    g.hline(7, 8, 8, '#3e2731').hline(6, 9, 11, '#a86e56');
+  }
+  return g;
+};
+
+const RUIN_BLOCK: BrickPal = {
+  mortar: '#132628',
+  shadow: '#2b4745',
+  base: '#3a5c56',
+  hi: '#507769',
+  alt: '#34544f',
+};
+const RUIN_MOSS = ['#18342e', '#1d3c36', '#264e40', '#2f6246', '#437a50'] as const;
+
+function ruinCap(v: number): Grid {
+  // big dressed blocks on top of the temple walls, half swallowed by moss
+  const g = new Grid(T, T);
+  for (let y = 0; y < T; y++)
+    for (let x = 0; x < T; x++) {
+      let c: Col = rnd(x >> 3, y >> 3, 191) > 0.5 ? '#2c4644' : '#2a4240';
+      if (x % 8 === 7 || y % 8 === 7) c = '#111f21';
+      else if (x % 8 === 0 || y % 8 === 0) c = '#385854';
+      else if (x % 8 === 6 || y % 8 === 6) c = '#223836';
+      g.set(x, y, c);
+    }
+  mossOver(g, 193 + v * 3, 0.45);
+  // sink the whole top into shadow so wall masses read darker than the floor
+  g.map((c) => mix(c, '#0b1416', 0.3));
+  if (v === 2) g.set(10, 4, '#5a8a86').set(11, 4, '#2c4644');
+  if (v === 3) g.set(4, 11, PAL.pink).set(5, 12, '#c85a6a');
+  return g;
+}
+
+const ruins: WallFn = (face, v) => {
+  if (!face) return ruinCap(v);
+  // mossy temple masonry, stained dark along the old waterline
+  const g = new Grid(T, T);
+  bricks(g, 4, 15, 8, 4, RUIN_BLOCK, 181, v);
+  g.map((c, x, y) => {
+    if (y < 10 || y > 13) return undefined;
+    if (y === 10) return bayer(x, y) > 0.5 ? mix(c, '#1d3f38', 0.3) : undefined;
+    return mix(c, '#1d3f38', y === 13 ? 0.55 : 0.4);
+  });
+  for (let x = 0; x < T; x++) if (rnd(x, 11, 187) > 0.72) g.set(x, 11, RUIN_MOSS[2]);
+  baseShade(g, '#0e1c1e', '#1a3030');
+  lip(g, ruinCap(0), 4, 197, RUIN_MOSS[0], '#1d3432');
+  // moss hanging over the lip
+  for (let x = 1; x < T - 1; x++) {
+    const k = rnd(x, 3, 199 + (x > 2 && x < 13 ? v : 0));
+    if (k > 0.78) {
+      const d = lipDepth(x, 4, 197) + 1;
+      const len = 1 + Math.floor((k - 0.78) * 18);
+      for (let y = d; y < d + len; y++) g.set(x, y, y === d + len - 1 ? RUIN_MOSS[3] : RUIN_MOSS[2]);
+    }
+  }
+  if (v === 1) g.set(10, 8, '#3fd6c0').set(11, 8, '#26413e').set(10, 9, '#26413e').set(11, 9, '#3fd6c0');
+  if (v === 2) g.rect(9, 12, 5, 2, '#0e1c1e').hline(9, 13, 14, '#1a3030');
+  return g;
+};
+
+const SLATE = ['#141729', '#1f2440', '#2b3151', '#383f63', '#4a5479', '#65709a'] as const;
+const STORM_GRASS = ['#27404a', '#3c6068', '#5a8a86', '#8fbcae'] as const;
+
+function stormCap(v: number): Grid {
+  // plateau top: dark, rain-darkened slate, a few joints and wind-combed grass
+  const g = new Grid(T, T);
+  g.each((x, y) => {
+    const n = fbm16(x, y, 213);
+    return n > 0.58 || (n > 0.54 && bayer(x, y) > 0.5) ? '#2f3656' : '#2a3050';
+  });
+  const r = rng(214);
+  for (let i = 0; i < 3; i++) {
+    let x = Math.floor(r() * T);
+    let y = Math.floor(r() * T);
+    for (let k = 0; k < 4; k++) {
+      g.setw(x, y, '#171a2e').setw(x, y + 1, '#3a4264');
+      if (r() < 0.6) x++;
+      else y++;
+    }
+  }
+  const rg = rng(215 + v * 7);
+  for (let i = 0; i < 5; i++) {
+    const x = 1 + Math.floor(rg() * 12);
+    const y = 3 + Math.floor(rg() * 12);
+    for (let k = 0; k < 3; k++) g.set(x + (k > 0 ? k - 1 : 0), y - k, STORM_GRASS[k + 1]);
+    g.set(x, y + 1, STORM_GRASS[0]);
+  }
+  if (v === 2) g.set(7, 8, SLATE[5]).set(8, 8, '#8b9bb4');
+  return g;
+}
+
+const storm: WallFn = (face, v) => {
+  if (!face) return stormCap(v);
+  // dark slate cleaved into slanted slabs, streaked by rain
+  const g = new Grid(T, T);
+  const segs = [
+    [0, 5],
+    [5, 4],
+    [9, 4],
+    [13, 3],
+  ] as const;
+  for (let y = 0; y < T; y++)
+    for (let x = 0; x < T; x++) {
+      const xs = (((x - Math.floor(y / 3)) % T) + T) % T;
+      const k = segs.findIndex(([s, w]) => xs >= s && xs < s + w);
+      const [s, w] = segs[k];
+      const lx = xs - s;
+      let c: Col = SLATE[k % 2 ? 2 : 3];
+      if (lx === 0) c = SLATE[4];
+      else if (lx === 1 && k % 2 === 0) c = SLATE[4];
+      else if (lx === w - 1) c = SLATE[1];
+      if (y === 9 + (k % 2) * 2 && lx > 0 && lx < w - 1) c = SLATE[1];
+      if (y > 11 && bayer(x, y) > 0.55) c = SLATE[Math.max(0, SLATE.indexOf(c as never) - 1)];
+      g.set(x, y, c);
+    }
+  // rain streaks (inside the tile, vary per variant)
+  const r = rng(217 + v);
+  for (let i = 0; i < 2; i++) {
+    const sx = 1 + Math.floor(r() * 14);
+    const sy = 5 + Math.floor(r() * 3);
+    for (let y = sy; y < sy + 6; y++) if (y % 3 !== 2) g.set(sx, y, '#6a76a0');
+  }
+  if (v === 3) g.line(6, 6, 8, 9, SLATE[0]).line(8, 9, 7, 11, SLATE[0]).set(7, 7, '#6a76a0');
+  baseShade(g, '#0d0f1c', SLATE[0]);
+  lip(g, stormCap(0), 4, 211, SLATE[0], SLATE[1]);
+  // grass tips blown over the edge
+  for (let x = 0; x < T; x++) {
+    if (rnd(x, 5, 219) < 0.75) continue;
+    const d = lipDepth(x, 4, 211);
+    g.set(x, d, STORM_GRASS[2]).set(x + 1, d + 1, STORM_GRASS[3]);
+  }
+  return g;
+};
+
+const ONYX_BLOCK: BrickPal = {
+  mortar: '#0e0b16',
+  shadow: '#1a1527',
+  base: '#241e33',
+  hi: '#352c48',
+  alt: '#211b2f',
+};
+const GOLD_INLAY = '#c48a2c';
+
+const eclipse: WallFn = (face, v) => {
+  const g = new Grid(T, T);
+  if (!face) {
+    for (let y = 0; y < T; y++)
+      for (let x = 0; x < T; x++) {
+        let c: Col = '#18131f';
+        if (x % 8 === 7 || y % 8 === 7) c = '#0b0912';
+        else if (x % 8 === 0 || y % 8 === 0) c = '#221b2e';
+        g.set(x, y, c);
+      }
+    g.set(7, 7, GOLD_INLAY).set(15, 15, GOLD_INLAY).set(7, 15, '#6a4424').set(15, 7, '#6a4424');
+    if (v === 1) g.set(3, 4, '#6a76c0');
+    if (v === 3) g.set(11, 2, PAL.lightGray);
+    return g;
+  }
+  // black marble ashlar under a gold cornice
+  bricks(g, 4, 13, 8, 5, ONYX_BLOCK, 223, v);
+  const r = rng(227 + v);
+  for (let k = 0; k < 2; k++) {
+    let x = 1 + Math.floor(r() * 12);
+    let y = 5 + Math.floor(r() * 3);
+    for (let i = 0; i < 4; i++) {
+      if (g.get(x, y) !== ONYX_BLOCK.mortar) g.set(x, y, '#3a3150');
+      x++;
+      if (r() < 0.5) y++;
+    }
+  }
+  for (let x = 0; x < T; x++) {
+    g.set(x, 0, '#5a4d78');
+    g.set(x, 1, '#3a3150');
+    g.set(x, 2, x % 8 === 3 ? PAL.yellow : x % 8 === 2 || x % 8 === 4 ? PAL.gold : GOLD_INLAY);
+    g.set(x, 3, '#0e0b16');
+    g.set(x, 14, x % 4 === 1 ? '#8a5a2a' : '#5a3a26');
+    g.set(x, 15, '#0b0912');
+  }
+  if (v === 2)
+    g.set(8, 7, PAL.gold).set(7, 8, PAL.gold).set(9, 8, PAL.gold).set(8, 9, PAL.gold).set(8, 8, PAL.yellow);
+  if (v === 3) {
+    g.set(3, 10, GOLD_INLAY).set(4, 10, PAL.gold).set(2, 11, GOLD_INLAY).set(5, 11, GOLD_INLAY);
+    g.set(3, 12, GOLD_INLAY).set(4, 12, GOLD_INLAY).set(3, 11, PAL.black).set(4, 11, PAL.black);
+  }
+  return g;
+};
+
+const WALLS: Record<Theme, WallFn> = {
+  town,
+  forest,
+  cave,
+  volcano,
+  tundra,
+  citadel,
+  abyss,
+  desert,
+  ruins,
+  storm,
+  eclipse,
+  oasis,
+};
 
 export function buildWall(theme: Theme, face: boolean, variant: number): Grid {
   return WALLS[theme](face, ((variant % 4) + 4) % 4);
