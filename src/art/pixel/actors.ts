@@ -6,7 +6,7 @@
  * authored facing down / up / right; 'left' is always the mirrored 'right'.
  */
 import { flipX, memo, paint, type Canvas } from './core';
-import type { AnimName, Dir, SpriteId, SpriteInfo, WeaponInfo, WeaponKind } from './types';
+import type { AnimName, BossId, Dir, SpriteId, SpriteInfo, WeaponInfo, WeaponKind } from './types';
 import { Buf, INK } from './actors/buf';
 import { anims, type FaceDir, type SpriteDef } from './actors/defs';
 import { CHARACTER_DEFS } from './actors/characters';
@@ -15,6 +15,7 @@ import { CREATURE_B_DEFS } from './actors/creatures-b';
 import { CREATURE_C_DEFS } from './actors/creatures-c';
 import { CREATURE_D_DEFS } from './actors/creatures-d';
 import { BOSS_DEFS } from './actors/bosses';
+import { ACT2_BOSS_DEFS } from './actors/bosses-act2';
 import { FX_DEFS, PROJECTILE_DEFS } from './actors/fx';
 import { drawWeapon, weaponSize } from './actors/weapons';
 
@@ -30,13 +31,16 @@ const PLACEHOLDER: SpriteDef = {
   },
 };
 
+/** Every boss must have art (split across modules by act). */
+const BOSSES: Record<BossId, SpriteDef> = { ...BOSS_DEFS, ...ACT2_BOSS_DEFS };
+
 const DEFS: Partial<Record<SpriteId, SpriteDef>> = {
   ...CHARACTER_DEFS,
   ...CREATURE_A_DEFS,
   ...CREATURE_B_DEFS,
   ...CREATURE_C_DEFS,
   ...CREATURE_D_DEFS,
-  ...BOSS_DEFS,
+  ...BOSSES,
   ...PROJECTILE_DEFS,
   ...FX_DEFS,
 };
