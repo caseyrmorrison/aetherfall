@@ -46,6 +46,8 @@ export default defineConfig({
   server: {
     port: 5188,
     strictPort: true,
+    // agent worktrees and editor state live under .claude; don't reload the game for them
+    watch: { ignored: ['**/.claude/**'] },
   },
   test: {
     environment: 'node',
