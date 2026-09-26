@@ -93,13 +93,16 @@ export class TrialRun {
     tier: number,
     heroLevel: number,
     readonly firstClear: boolean,
+    /** Regions whose monsters can appear (defaults to all). */
+    zones: readonly string[] = ZONE_ORDER,
   ) {
     this.def = trialDef(tier);
     this.level = Math.max(this.def.level, heroLevel);
-    // monsters from every region, excluding bosses
-    this.pool = ZONE_ORDER.flatMap((z) => ZONES[z].enemies.map(([id]) => id)).filter(
-      (id) => !ENEMIES[id]?.boss,
-    );
+    // monsters from the regions you've reached, excluding bosses
+    this.pool = zones
+      .flatMap((z) => ZONES[z]?.enemies.map(([id]) => id) ?? [])
+      .filter((id) => !ENEMIES[id]?.boss);
+    if (!this.pool.length) this.pool = ZONES.forest.enemies.map(([id]) => id);
   }
 
   get noFlasks(): boolean {

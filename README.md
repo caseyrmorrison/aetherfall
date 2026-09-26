@@ -49,9 +49,12 @@ The art, music and sound effects are all generated in code; the repo contains no
   a beam struggle in the finale, and manga "impact frames" with zoom punches.
 - **Aether Cannon.** The ultimate is a full-screen energy beam that follows its cut-in, and bosses that
   reach a new phase freeze the fight to power up with an aura and a shockwave.
-- **Five zones and five bosses.** Each boss has multiple phases and telegraphed patterns, and there's a
-  transformation for the final boss. Zones are generated procedurally but always the same (seeded), and every run
-  checks that all key locations are reachable.
+- **Nine zones, nine bosses and two acts.** Each boss has multiple phases and telegraphed patterns. Zones are
+  generated procedurally but always the same (seeded), and every run checks that all key locations are reachable.
+- **Act II: The Dusk Shard.** After Malachar falls, a letter calls Kai and Lyra across the sea to Solenne, a desert
+  port city where the sun hasn't risen in thirty days. Four new chapters (levels 30–50) take you through the Sunscar
+  Dunes, the Sunken Temple, the Stormspire and the Eclipse Sanctum to face the Order's Grandmaster, Aurelian. Solenne
+  is a full second hub with its own shops, forge, inn, stash, bounty board, side quests and portal home.
 - **Grind as much as you like.** Enemies respawn when you rest. Loot comes in five rarities (six, counting the
   Abyss-only Abyssal tier) with random affixes, and there are 10 legendaries with unique effects. Elite monsters
   have modifiers such as Frenzied, Vampiric and Warded. There are repeatable bounties and a blacksmith who

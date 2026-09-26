@@ -2,6 +2,7 @@
 import type { Action } from '../engine/input';
 import { drawText, wrapText } from '../engine/font';
 import { TRIALS } from '../data/trials';
+import { isTown } from '../data/zones';
 import { bagSize, hasFlag, setFlag } from '../game/state';
 import type { World } from '../world/world';
 import { drawPanel, UI } from './widgets';
@@ -65,11 +66,11 @@ export class Tips {
     if (this.save.hero.level >= 2) this.show('level');
     if (this.save.hero.level >= 3) this.show('skills');
     if (this.save.stats.kills >= 15) this.show('perfect');
-    if (this.save.inventory.length >= bagSize(this.save) - 2 && w.data.id !== 'town') this.show('portal');
+    if (this.save.inventory.length >= bagSize(this.save) - 2 && !isTown(w.data.id)) this.show('portal');
     if (hasFlag(this.save, TRIALS[0].requires) && w.data.id === 'town') this.show('trial');
     if (this.save.hero.paragon.level > 0) this.show('paragon');
     if (this.save.worldBoss) this.show('worldboss');
-    if (w.data.id === 'town' && this.save.inventory.length >= bagSize(this.save) * 0.6) this.show('stash');
+    if (isTown(w.data.id) && this.save.inventory.length >= bagSize(this.save) * 0.6) this.show('stash');
 
     if (this.current) {
       this.current.t += dt;

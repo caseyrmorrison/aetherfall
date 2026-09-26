@@ -64,10 +64,10 @@ export function openService(game: Game, ws: WorldScene, kind: Service): void {
   const app = game.app;
   switch (kind) {
     case 'shop':
-      app.push(new ShopScene(game));
+      app.push(new ShopScene(game, ws.world.data.id === 'solenne' ? "Farid's Bazaar" : undefined));
       break;
     case 'smith':
-      app.push(new SmithScene(game));
+      app.push(new SmithScene(game, ws.world.data.id === 'solenne' ? "Kesh's Anvil" : undefined));
       break;
     case 'board':
       app.push(new BoardScene(game));
@@ -76,7 +76,7 @@ export function openService(game: Game, ws: WorldScene, kind: Service): void {
       app.push(
         new ConfirmScene(
           game,
-          'Rest at the Sleeping Griffin? (Restores HP, MP and flasks, and saves your game.)',
+          `Rest at ${ws.world.data.id === 'solenne' ? 'the Salted Lantern' : 'the Sleeping Griffin'}? (Restores HP, MP and flasks, and saves your game.)`,
           () => {
             void app.transition(() => {
               const st = game.stats();
@@ -85,7 +85,7 @@ export function openService(game: Game, ws: WorldScene, kind: Service): void {
               ws.world.player.clearStatuses();
               game.save.hero.flaskHp = st.flaskHpMax;
               game.save.hero.flaskMp = st.flaskMpMax;
-              game.save.respawn = { map: 'town', x: -1, y: -1 };
+              game.save.respawn = { map: ws.world.data.id, x: ws.world.player.x, y: ws.world.player.y };
               game.saveNow();
               audio.playSfx('save');
               game.toast('You feel refreshed. Game saved.', 'ui_save');
@@ -203,8 +203,9 @@ export class ShopScene extends TabbedService {
   private sell: ListView<Item>;
   private supplies: ListView<SupplyRow>;
 
-  constructor(game: Game) {
+  constructor(game: Game, title?: string) {
     super(game);
+    if (title) this.title = title;
     this.refreshStock();
     this.brew = new CraftView(game, 'alchemy');
     this.buy = new ListView(game.save.shop.stock, 12, 14, false);
@@ -545,8 +546,9 @@ export class SmithScene extends TabbedService {
   private list: ListView<Item>;
   private crafting: CraftView;
 
-  constructor(game: Game) {
+  constructor(game: Game, title?: string) {
     super(game);
+    if (title) this.title = title;
     this.crafting = new CraftView(game, 'forge');
     this.list = new ListView(this.items(), 12, 14, false);
   }

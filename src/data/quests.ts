@@ -8,7 +8,7 @@ export type Objective =
   | { type: 'collect'; material: MaterialId; count: number; text: string; zone: string }
   | { type: 'reach'; map: string; marker: string; text: string }
   | { type: 'boss'; boss: string; map: string; text: string }
-  | { type: 'flag'; flag: string; text: string; map?: string }
+  | { type: 'flag'; flag: string; text: string; map?: string; objectId?: string }
   /** A number kept in save flags reaching `count` (e.g. a best streak). */
   | { type: 'counter'; counter: string; count: number; text: string };
 
@@ -43,6 +43,12 @@ export interface QuestDef {
   requires?: string;
   /** Challenges start by themselves once `requires` is met (no giver needed). */
   challenge?: boolean;
+  /** Starts by itself once `requires` is met (Act II's opening quest). */
+  autoStart?: boolean;
+  /** Flags set when a stage is completed (e.g. to open a gate). */
+  stageFlags?: Record<number, string[]>;
+  /** A cutscene that plays instead of dialogue when a 'talk' objective at this stage is completed. */
+  talkCutscene?: Record<number, string>;
 }
 
 export const QUESTS: Record<string, QuestDef> = {
@@ -283,6 +289,191 @@ export const QUESTS: Record<string, QuestDef> = {
     ],
     complete: ['Fascinating… and terrifying. Here. This belonged to the first hero of Havenbrook.'],
   },
+  // --------------------------------------------------- Act II: main story ----
+  mq2_dusk: {
+    id: 'mq2_dusk',
+    name: 'Dusk over Solenne',
+    giver: 'lyra',
+    main: true,
+    autoStart: true,
+    requires: 'boss_malachar_true',
+    summary:
+      'A letter from the Order of Stars: the sun hasn’t risen over Solenne, the Order’s home across the sea, for thirty days.',
+    objectives: [
+      { type: 'talk', npc: 'lyra', text: 'Talk to Lyra in Havenbrook' },
+      {
+        type: 'flag',
+        flag: 'visited_solenne',
+        text: 'Take the portal in the square to Solenne',
+        map: 'town',
+        objectId: 'citadel_portal',
+      },
+      { type: 'talk', npc: 'tessaly', text: 'Meet the harbormistress in Harbor Hall' },
+    ],
+    reward: { xp: 8000, gold: 3000, skillPoints: 1 },
+    next: 'mq2_sands',
+    stageFlags: { 0: ['act2_start'], 2: ['act2_arrived'] },
+    talkCutscene: { 0: 'act2_intro' },
+    talkLines: {
+      2: [
+        'tessaly|neutral: So you’re the Shardbearer. Lyra’s letters made you sound taller.',
+        'kai|smirk: I get that a lot.',
+        'tessaly|sad: Thirty days ago the Grandmaster sealed himself in the Sanctum above the city. Then the sun went out.',
+        'lyra|sad: Aurelian… he was my teacher. He always said the sky would fall again one day.',
+        'tessaly|determined: A caravan of his was crossing the {gold}Sunscar Dunes{/} when it all began. Something in the sand swallowed it whole.',
+        'tessaly|neutral: If there are answers, they’re in that wreck. I’ll open the {gold}west gate{/} for you.',
+      ],
+    },
+  },
+  mq2_sands: {
+    id: 'mq2_sands',
+    name: 'Sands of Sunscar',
+    giver: 'tessaly',
+    main: true,
+    summary: 'Something vast lurks beneath the Sunscar Dunes. It swallowed the Grandmaster’s last caravan.',
+    objectives: [
+      { type: 'boss', boss: 'sandmaw', map: 'desert', text: 'Slay the beast beneath the Sunscar Dunes' },
+      { type: 'talk', npc: 'tessaly', text: 'Bring the journal to Tessaly' },
+    ],
+    reward: { xp: 12000, gold: 4000, skillPoints: 1, item: { rarity: 'epic', ilvl: 35 } },
+    next: 'mq2_oracle',
+    talkLines: {
+      1: [
+        'tessaly|surprised: The Grandmaster’s own journal… you pulled this out of that thing?',
+        'lyra|sad: “The Crystal fell once and it will fall again. Every hundred years, the same grief.”',
+        'lyra|hurt: “But a sky that never moves can never fall. The sixth shard can make it so.”',
+        'kai|surprised: A sixth shard? There were only five.',
+        'tessaly|determined: Our oracle, Nereth, went to the {gold}Sunken Temple{/} to scry it. She never came back. The harbor stairs are open — go.',
+      ],
+    },
+  },
+  mq2_oracle: {
+    id: 'mq2_oracle',
+    name: 'The Drowned Oracle',
+    giver: 'tessaly',
+    main: true,
+    summary: 'Nereth, the Order’s oracle, vanished in the Sunken Temple under Solenne’s harbor.',
+    objectives: [
+      { type: 'boss', boss: 'nereth', map: 'ruins', text: 'Find the oracle in the Sunken Temple' },
+      { type: 'talk', npc: 'lyra_solenne', text: 'Tell Lyra what Nereth said' },
+    ],
+    reward: { xp: 16000, gold: 5000, skillPoints: 1, item: { rarity: 'epic', ilvl: 40 } },
+    next: 'mq2_storm',
+    talkLines: {
+      1: [
+        'lyra|sad: So the Dusk Shard was real. The Order hid it for a thousand years… and Aurelian was its keeper.',
+        'kai|determined: Nereth said the Sanctum is sealed by the storm. The key is inside that thunderbird.',
+        'lyra|determined: Then we climb the {gold}Stormspire{/}. The east gate is open.',
+      ],
+    },
+  },
+  mq2_storm: {
+    id: 'mq2_storm',
+    name: 'Eye of the Storm',
+    giver: 'lyra_solenne',
+    main: true,
+    summary: 'Voltaris, the Storm Roc, carries the key to the Eclipse Sanctum in its heart of lightning.',
+    objectives: [
+      { type: 'boss', boss: 'voltaris', map: 'storm', text: 'Take the storm key from Voltaris' },
+      { type: 'talk', npc: 'tessaly', text: 'Return to Tessaly' },
+    ],
+    reward: { xp: 22000, gold: 6000, skillPoints: 1, item: { rarity: 'epic', ilvl: 45 } },
+    next: 'mq2_eclipse',
+    talkLines: {
+      1: [
+        'tessaly|happy: Look north — the sky portal is burning gold! You actually did it.',
+        'tessaly|determined: The Sanctum is up there. The Grandmaster is up there. End this, {hero}.',
+      ],
+    },
+  },
+  mq2_eclipse: {
+    id: 'mq2_eclipse',
+    name: 'The Endless Dusk',
+    giver: 'tessaly',
+    main: true,
+    summary: 'Aurelian waits in the Eclipse Sanctum with the Dusk Shard. Stop the eternal dusk.',
+    objectives: [
+      { type: 'boss', boss: 'aurelian', map: 'sanctum', text: 'Confront Aurelian in the Eclipse Sanctum' },
+    ],
+    reward: {
+      xp: 40000,
+      gold: 12000,
+      skillPoints: 2,
+      item: { rarity: 'legendary', ilvl: 50, legendary: true },
+    },
+  },
+  // -------------------------------------------------- Act II: side quests ----
+  sq2_caravan: {
+    id: 'sq2_caravan',
+    name: 'The Lost Caravan',
+    giver: 'farid',
+    main: false,
+    requires: 'act2_arrived',
+    summary: 'Farid’s spice caravan never came back from the Sunscar Dunes.',
+    objectives: [
+      { type: 'reach', map: 'desert', marker: 'desert_marker_0', text: 'Find Farid’s caravan in the dunes' },
+      { type: 'talk', npc: 'farid', text: 'Tell Farid what you found' },
+    ],
+    reward: { xp: 7000, gold: 2500, elixirs: 2, dust: 60 },
+    offer: [
+      'My best caravan went into the dunes the day the sun went out. Twelve camels, forty crates of saffron.',
+      'I don’t expect good news. But I’d like to know. Will you look?',
+    ],
+    complete: ['…Raiders. I thought as much. Thank you for telling me straight. Take these — on the house.'],
+  },
+  sq2_raiders: {
+    id: 'sq2_raiders',
+    name: 'Dune Justice',
+    giver: 'kesh',
+    main: false,
+    requires: 'act2_arrived',
+    summary: 'Dune raiders have been ambushing anyone who leaves Solenne.',
+    objectives: [
+      { type: 'kill', enemy: 'dune_raider', count: 12, text: 'Drive off the Dune Raiders', zone: 'desert' },
+      { type: 'talk', npc: 'kesh', text: 'Report to Kesh' },
+    ],
+    reward: { xp: 9000, dust: 80, item: { rarity: 'epic', slot: 'weapon', ilvl: 34 } },
+    offer: ['Raiders took my iron shipment. Again. Twelve of them ought to learn some manners.'],
+    complete: ['Ha! I forged this while you were out. Figured you’d earn it.'],
+  },
+  sq2_crystals: {
+    id: 'sq2_crystals',
+    name: 'Tidelight',
+    giver: 'sella',
+    main: false,
+    requires: 'boss_sandmaw',
+    summary: 'Sella wants crystals from the Sunken Temple to relight the Order’s observatory.',
+    objectives: [
+      { type: 'collect', material: 'crystal', count: 10, text: 'Collect Cave Crystals', zone: 'ruins' },
+      { type: 'talk', npc: 'sella', text: 'Bring the crystals to Sella' },
+    ],
+    reward: { xp: 12000, gold: 3000, item: { rarity: 'epic', slot: 'amulet', ilvl: 38 } },
+    offer: ['The temple’s crystals drink moonlight. With ten of them I could light the observatory again.'],
+    complete: ['They’re glowing already! Here — the Order’s thanks, in amulet form.'],
+  },
+  sq2_sentinels: {
+    id: 'sq2_sentinels',
+    name: 'Broken Oaths',
+    giver: 'orin',
+    main: false,
+    requires: 'boss_nereth',
+    summary: 'The Order’s stone sentinels on the Stormspire have turned on travelers.',
+    objectives: [
+      {
+        type: 'kill',
+        enemy: 'stone_sentinel',
+        count: 10,
+        text: 'Shatter the rogue Stone Sentinels',
+        zone: 'storm',
+      },
+      { type: 'talk', npc: 'orin', text: 'Report to Orin' },
+    ],
+    reward: { xp: 16000, gold: 4000, item: { rarity: 'epic', slot: 'armor', ilvl: 43 } },
+    offer: [
+      'We carved those sentinels to protect pilgrims. Now they crush them. Put them to rest — ten should do.',
+    ],
+    complete: ['It shouldn’t have come to this. Thank you. This armor was meant for a Sanctum guard.'],
+  },
   // ---------------------------------------------------------- challenges ----
   ch_untouchable: {
     id: 'ch_untouchable',
@@ -349,3 +540,5 @@ export const QUESTS: Record<string, QuestDef> = {
 export const CHALLENGES = Object.values(QUESTS).filter((q) => q.challenge);
 
 export const SIDE_QUESTS = Object.values(QUESTS).filter((q) => !q.main && !q.challenge);
+/** Quests that start by themselves once their requirement is met. */
+export const AUTO_QUESTS = Object.values(QUESTS).filter((q) => q.challenge || q.autoStart);

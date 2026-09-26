@@ -19,7 +19,17 @@ export const TOWN_PORTAL_ID = 'town_portal';
 /** Ground kinds for floor cells. */
 export const GROUND = { Floor: 0, Alt: 1, Path: 2 } as const;
 
-export type Ambient = 'leaves' | 'fireflies' | 'dust' | 'embers' | 'snow' | 'void' | 'petals' | null;
+export type Ambient =
+  | 'leaves'
+  | 'fireflies'
+  | 'dust'
+  | 'embers'
+  | 'snow'
+  | 'void'
+  | 'petals'
+  | 'sand'
+  | 'rain'
+  | null;
 
 export interface PropPlacement {
   id: PropId;
@@ -29,7 +39,7 @@ export interface PropPlacement {
   frame?: number;
 }
 
-export type BuildingKind = 'inn' | 'shop' | 'smithy' | 'elder' | 'house';
+export type BuildingKind = 'inn' | 'shop' | 'smithy' | 'elder' | 'hall' | 'house';
 
 export type MapObject =
   | { kind: 'chest'; id: string; x: number; y: number; rare: boolean; ilvl: number; questFlag?: string }

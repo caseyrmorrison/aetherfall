@@ -1,5 +1,6 @@
 /** System tab: save/load, settings, New Game+, quit — plus play statistics. */
 import { audio } from '../../audio';
+import { isTown } from '../../data/zones';
 import { drawText } from '../../engine/font';
 import type { Rect } from '../../engine/math';
 import { formatPlayTime } from '../../game/saves';
@@ -18,7 +19,7 @@ export class SystemTab implements TabView {
 
   constructor(private menu: MenuScene) {
     const opts: Opt[] = ['resume'];
-    if (menu.ws.world.data.id !== 'town') opts.push('portal');
+    if (!isTown(menu.ws.world.data.id)) opts.push('portal');
     opts.push('save', 'load', 'settings');
     if (hasFlag(menu.game.save, 'game_clear')) opts.push('ngplus');
     opts.push('title');
