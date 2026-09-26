@@ -8,8 +8,14 @@ import type { Scene } from '../engine/app';
 import { drawText, measureText } from '../engine/font';
 import { rng } from '../engine/rng';
 import {
+  BAG_STEP,
+  bagUpgradeCost,
   buyPrice,
+  CHARM_STEP,
+  charmUpgradeCost,
   flaskUpgradeCost,
+  MAX_BAG_UPGRADES,
+  MAX_CHARM_UPGRADES,
   MAX_FLASK_UPGRADES,
   MAX_UPGRADE,
   respecCost,
@@ -28,7 +34,16 @@ import {
   RARITY_INDEX,
 } from '../game/items';
 import { returnGems } from '../game/gems';
-import { addConsumable, addItem, addMaterial, inventoryFull, removeItem, type Bounty } from '../game/state';
+import {
+  addConsumable,
+  addItem,
+  addMaterial,
+  bagSize,
+  charmLimit,
+  inventoryFull,
+  removeItem,
+  type Bounty,
+} from '../game/state';
 import type { ConsumableId, Item } from '../game/types';
 import { EQUIP_SLOTS, GEAR_SLOTS } from '../game/types';
 import {
@@ -170,7 +185,12 @@ const gemNote = (it: Item): string =>
   it.sockets?.some((g) => g) ? ' (Its gems go back to your pouch.)' : '';
 
 // ------------------------------------------------------------------ shop ----
-type SupplyRow = { kind: 'consumable'; id: ConsumableId } | { kind: 'flask' } | { kind: 'charm' };
+type SupplyRow =
+  | { kind: 'consumable'; id: ConsumableId }
+  | { kind: 'flask' }
+  | { kind: 'charm' }
+  | { kind: 'bag' }
+  | { kind: 'charmslot' };
 
 /** Price of a Mystery Charm (a gamble: any size, may be cursed). */
 export const mysteryCharmPrice = (level: number): number => 120 + level * 35;
@@ -191,6 +211,8 @@ export class ShopScene extends TabbedService {
     this.sell = new ListView(this.sellable(), 12, 14, false);
     this.supplies = new ListView<SupplyRow>(
       [
+        { kind: 'bag' },
+        { kind: 'charmslot' },
         { kind: 'flask' },
         { kind: 'charm' },
         ...SHOP_CONSUMABLES.map((id) => ({ kind: 'consumable' as const, id })),
@@ -285,7 +307,25 @@ export class ShopScene extends TabbedService {
       if (r === 'cancel') return this.close();
       if (r === 'confirm' && this.supplies.selected) {
         const row = this.supplies.selected;
-        if (row.kind === 'flask') {
+        if (row.kind === 'bag') {
+          if (s.hero.bagUpgrades >= MAX_BAG_UPGRADES) return this.fail('Your bag is as big as it gets.');
+          const cost = bagUpgradeCost(s.hero.bagUpgrades);
+          if (s.hero.gold < cost) return this.fail('Not enough gold.');
+          s.hero.gold -= cost;
+          s.hero.bagUpgrades++;
+          audio.playSfx('upgrade_success');
+          this.game.toast(`Bag expanded! ${bagSize(s)} slots`, 'ui_chest');
+        } else if (row.kind === 'charmslot') {
+          if (s.hero.charmUpgrades >= MAX_CHARM_UPGRADES)
+            return this.fail('You can’t carry any more active charms.');
+          const cost = charmUpgradeCost(s.hero.charmUpgrades);
+          if (s.hero.gold < cost) return this.fail('Not enough gold.');
+          s.hero.gold -= cost;
+          s.hero.charmUpgrades++;
+          this.game.invalidateStats();
+          audio.playSfx('upgrade_success');
+          this.game.toast(`Charm Satchel! ${charmLimit(s)} active charms`, 'icon_charm_grand', 3);
+        } else if (row.kind === 'flask') {
           if (s.hero.flaskUpgrades >= MAX_FLASK_UPGRADES)
             return this.fail('Your flask belt is fully upgraded.');
           const cost = flaskUpgradeCost(s.hero.flaskUpgrades);
@@ -398,7 +438,20 @@ export class ShopScene extends TabbedService {
       );
     } else {
       this.supplies.draw(ctx, f.x + 4, f.y + 4, listW, (row, x, y) => {
-        if (row.kind === 'charm') {
+        if (row.kind === 'bag' || row.kind === 'charmslot') {
+          const bag = row.kind === 'bag';
+          const maxed = bag
+            ? s.hero.bagUpgrades >= MAX_BAG_UPGRADES
+            : s.hero.charmUpgrades >= MAX_CHARM_UPGRADES;
+          const cost = bag ? bagUpgradeCost(s.hero.bagUpgrades) : charmUpgradeCost(s.hero.charmUpgrades);
+          if (bag) drawIcon(ctx, 'ui_chest', x, y - 4);
+          else drawIcon(ctx, 'icon_charm_large', x, y - 4, 3);
+          drawText(ctx, bag ? 'Bag Expansion' : 'Charm Satchel', x + 18, y);
+          drawText(ctx, maxed ? 'MAX' : `${cost}g`, x + listW - 10, y, {
+            align: 'right',
+            color: !maxed && cost > s.hero.gold ? UI.bad : UI.accent,
+          });
+        } else if (row.kind === 'charm') {
           drawIcon(ctx, 'icon_charm_grand', x, y - 4, Math.min(5, Math.floor(s.hero.level / 6)));
           drawText(ctx, 'Mystery Charm', x + 18, y);
           const price = mysteryCharmPrice(s.hero.level);
@@ -427,29 +480,47 @@ export class ShopScene extends TabbedService {
       const row = this.supplies.selected;
       if (row) {
         const lines =
-          row.kind === 'charm'
+          row.kind === 'bag'
             ? [
-                '{gold}Mystery Charm{/}',
+                '{gold}Bag Expansion{/}',
                 '',
-                'A sealed charm of unknown power. Charms work while they sit in your bag (up to 10 at once).',
+                `Adds ${BAG_STEP} bag slots (one more row).`,
                 '',
-                '{red}30% are cursed:{/} much stronger bonuses, but with a drawback. Feeling lucky?',
+                `Bag: ${bagSize(s)} slots${s.hero.bagUpgrades >= MAX_BAG_UPGRADES ? ' (max)' : ` → ${bagSize(s) + BAG_STEP}`}`,
+                `Expansions: ${s.hero.bagUpgrades}/${MAX_BAG_UPGRADES}`,
               ]
-            : row.kind === 'flask'
+            : row.kind === 'charmslot'
               ? [
-                  '{gold}Flask Belt Expansion{/}',
+                  '{gold}Charm Satchel{/}',
                   '',
-                  `Adds a Health Flask charge (and a Mana Flask charge every other upgrade).`,
+                  `Lets ${CHARM_STEP} more charms in your bag work at once.`,
                   '',
-                  `Upgrades: ${s.hero.flaskUpgrades}/${MAX_FLASK_UPGRADES}`,
+                  `Active charms: ${charmLimit(s)}${s.hero.charmUpgrades >= MAX_CHARM_UPGRADES ? ' (max)' : ` → ${charmLimit(s) + CHARM_STEP}`}`,
+                  `Satchels: ${s.hero.charmUpgrades}/${MAX_CHARM_UPGRADES}`,
                 ]
-              : [
-                  `{gold}${CONSUMABLES[row.id].name}{/}`,
-                  '',
-                  CONSUMABLES[row.id].desc,
-                  '',
-                  'Use from the Items tab in your menu.',
-                ];
+              : row.kind === 'charm'
+                ? [
+                    '{gold}Mystery Charm{/}',
+                    '',
+                    `A sealed charm of unknown power. Charms work while they sit in your bag (up to ${charmLimit(s)} at once).`,
+                    '',
+                    '{red}30% are cursed:{/} much stronger bonuses, but with a drawback. Feeling lucky?',
+                  ]
+                : row.kind === 'flask'
+                  ? [
+                      '{gold}Flask Belt Expansion{/}',
+                      '',
+                      `Adds a Health Flask charge (and a Mana Flask charge every other upgrade).`,
+                      '',
+                      `Upgrades: ${s.hero.flaskUpgrades}/${MAX_FLASK_UPGRADES}`,
+                    ]
+                  : [
+                      `{gold}${CONSUMABLES[row.id].name}{/}`,
+                      '',
+                      CONSUMABLES[row.id].desc,
+                      '',
+                      'Use from the Items tab in your menu.',
+                    ];
         drawTooltip(ctx, lines, tipX, f.y + 4, tipW);
       }
       drawHints(

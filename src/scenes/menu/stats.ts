@@ -10,7 +10,8 @@ import { MAX_LEVEL, xpToNext } from '../../game/balance';
 import { paragonXpToNext } from '../../game/paragon';
 import { activeCharms } from '../../game/items';
 import { deriveStats, powerRating } from '../../game/stats';
-import { CHARM_LIMIT, EQUIP_SLOTS } from '../../game/types';
+import { charmLimit } from '../../game/state';
+import { EQUIP_SLOTS } from '../../game/types';
 import { drawBar, drawIcon, drawPanel, drawTooltip, ListView, UI } from '../../ui/widgets';
 import type { MenuScene, TabView } from './menu';
 
@@ -172,8 +173,8 @@ export class StatsTab implements TabView {
     const charmCount = s.inventory.filter((i) => i.slot === 'charm').length;
     r(
       'Active Charms',
-      `${activeCharms(s).length}/${CHARM_LIMIT}`,
-      `Charms work from your bag; the first ${CHARM_LIMIT} are active. You carry ${charmCount}. Sort your bag to put the best ones first.`,
+      `${activeCharms(s).length}/${charmLimit(s)}`,
+      `Charms work from your bag; the first ${charmLimit(s)} are active (Mira sells Charm Satchels for more). You carry ${charmCount}. Sort your bag to put the best ones first.`,
     );
 
     const powers: Row[] = [];

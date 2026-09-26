@@ -8,9 +8,8 @@ import {
   generateItem,
   itemScore,
 } from '../src/game/items';
-import { addItem, equipItem, migrate, newGame } from '../src/game/state';
+import { addItem, charmLimit, equipItem, migrate, newGame } from '../src/game/state';
 import { computeHeroStats, deriveStats, equipDelta } from '../src/game/stats';
-import { CHARM_LIMIT } from '../src/game/types';
 
 describe('charms', () => {
   it('roll 1/2/3 bonuses by size and never equip', () => {
@@ -37,12 +36,12 @@ describe('charms', () => {
     expect(CURSE_BONUS).toBeGreaterThan(1);
   });
 
-  it('only the first CHARM_LIMIT charms in the bag count', () => {
+  it('only the first few charms in the bag count (the charm limit)', () => {
     const rng = new RNG(3);
     const s = newGame(0, 'C', 'normal');
-    for (let i = 0; i < CHARM_LIMIT + 4; i++)
+    for (let i = 0; i < charmLimit(s) + 4; i++)
       addItem(s, generateCharm(rng, 10, { size: 'small', cursed: false }));
-    expect(activeCharms(s)).toHaveLength(CHARM_LIMIT);
+    expect(activeCharms(s)).toHaveLength(charmLimit(s));
     expect(activeCharms(s)[0]).toBe(s.inventory[0]);
   });
 

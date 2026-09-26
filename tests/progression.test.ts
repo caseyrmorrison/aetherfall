@@ -18,7 +18,7 @@ import {
   paragonXpToNext,
   totalUnspent,
 } from '../src/game/paragon';
-import { addItem, grantXp, INVENTORY_SIZE, migrate, newGame, syncUnlockedSkills } from '../src/game/state';
+import { addItem, bagSize, grantXp, migrate, newGame, syncUnlockedSkills } from '../src/game/state';
 import { computeHeroStats } from '../src/game/stats';
 import { floodFloor } from '../src/world/abyss';
 import { CELL, TILE } from '../src/world/mapdata';
@@ -117,7 +117,7 @@ describe('crafting', () => {
     expect(s.consumables.elixir).toBe(2);
     expect(craft(s, elixir, new RNG(1))).toBeNull();
     s.materials = { pelt: 5, herb: 2 };
-    for (let i = 0; i < INVENTORY_SIZE; i++) addItem(s, generateItem(new RNG(i), 5));
+    for (let i = 0; i < bagSize(s); i++) addItem(s, generateItem(new RNG(i), 5));
     expect(craftBlocker(s, recipe('forge_leather'))).toMatch(/bag/);
   });
 

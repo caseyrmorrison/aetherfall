@@ -37,6 +37,7 @@ The art, music and sound effects are all generated in code; the repo contains no
 | ![Ascendancy tree (Archmage)](docs/screenshots/ascendancy.png)          | ![A Trial of Ascension: Scorched Earth](docs/screenshots/trial.png) |
 | ![Paragon points](docs/screenshots/paragon.png)                         | ![Talent trees with two columns each](docs/screenshots/talents.png) |
 | ![Town portal back to where you left](docs/screenshots/town-portal.png) | ![Crafting at Brom's forge](docs/screenshots/crafting.png)          |
+| ![The stash in town](docs/screenshots/stash.png)                        |                                                                     |
 
 ## Features
 
@@ -69,6 +70,8 @@ The art, music and sound effects are all generated in code; the repo contains no
   level +2, never-cursed charms, Aether Dust and gem sockets, all from the materials monsters drop.
 - **Town portals.** Press T to open a portal home, sell and craft, then step back through: the area is exactly
   as you left it, loot on the ground included.
+- **Storage.** A tabbed stash chest in town (buy more tabs), Bag Expansions and Charm Satchels from Mira, and
+  manual sorting: drag and drop items (or use Move) to arrange your bag and pick which charms are active.
 - **Character sheet and paper doll.** Gear slots sit on the hero's body (head, neck, chest, hands, two rings,
   waist, feet, main hand). A Diablo / Path of Exile–style Stats tab shows DPS, toughness, damage reduction,
   attacks per second, recovery and every other stat, each with an explanation.

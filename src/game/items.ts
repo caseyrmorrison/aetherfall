@@ -11,7 +11,7 @@ import {
   slotBaseStats,
 } from '../data/items';
 import type { RNG } from '../engine/rng';
-import { upgradeMult } from './balance';
+import { charmLimitFor, upgradeMult } from './balance';
 import { gemEffect, socketGroup } from './gems';
 import type {
   Affix,
@@ -25,7 +25,7 @@ import type {
   StatKey,
   Stats,
 } from './types';
-import { CHARM_LIMIT, GEAR_SLOTS, RARITIES, STAT_INFO, equipSlotsFor } from './types';
+import { GEAR_SLOTS, RARITIES, STAT_INFO, equipSlotsFor } from './types';
 
 export const RARITY_INDEX: Record<Rarity, number> = {
   common: 0,
@@ -448,9 +448,9 @@ export function compareTarget(s: EquipView, item: Item): Item | null {
   return t ? s.equipment[t] : null;
 }
 
-/** Charms that are currently empowering the hero (the first CHARM_LIMIT in the bag). */
-export function activeCharms(s: EquipView): Item[] {
-  return s.inventory.filter((i) => i.slot === 'charm').slice(0, CHARM_LIMIT);
+/** Charms that are currently empowering the hero (the first few in the bag, see charmLimitFor). */
+export function activeCharms(s: EquipView & { hero: { charmUpgrades?: number } }): Item[] {
+  return s.inventory.filter((i) => i.slot === 'charm').slice(0, charmLimitFor(s.hero.charmUpgrades ?? 0));
 }
 
 export function isGear(slot: Slot): slot is GearSlot {

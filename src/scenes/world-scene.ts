@@ -28,6 +28,7 @@ import { showDialogue } from './dialogue';
 import { GameOverScene } from './gameover';
 import { MenuScene, type MenuTab } from './menu/menu';
 import { openService } from './services';
+import { StashScene } from './stash';
 import { TravelScene } from './travel';
 
 export class WorldScene implements Scene, WorldHooks {
@@ -312,6 +313,10 @@ export class WorldScene implements Scene, WorldHooks {
     choices.push({ label: 'Leave' });
     steps.push({ choices });
     void showDialogue(g, steps);
+  }
+
+  stash(): void {
+    this.game.app.push(new StashScene(this.game));
   }
 
   trialComplete(choose: boolean): void {

@@ -2,7 +2,7 @@
 import type { Action } from '../engine/input';
 import { drawText, wrapText } from '../engine/font';
 import { TRIALS } from '../data/trials';
-import { hasFlag, INVENTORY_SIZE, setFlag } from '../game/state';
+import { bagSize, hasFlag, setFlag } from '../game/state';
 import type { World } from '../world/world';
 import { drawPanel, UI } from './widgets';
 
@@ -25,6 +25,8 @@ const TIPS: Record<string, string> = {
   trial:
     'The statue in the square now offers Trials of Ascension. Beat them to choose a specialization and learn powerful notables.',
   paragon: 'Max level! XP now earns Paragon levels. Spend the points in the Paragon tab of the menu [menu].',
+  stash:
+    'Running out of room? Store items in the golden stash chest on the east side of the square. Mira sells Bag Expansions too.',
 };
 
 export class Tips {
@@ -61,9 +63,10 @@ export class Tips {
     if (this.save.hero.level >= 2) this.show('level');
     if (this.save.hero.level >= 3) this.show('skills');
     if (this.save.stats.kills >= 15) this.show('perfect');
-    if (this.save.inventory.length >= INVENTORY_SIZE - 2 && w.data.id !== 'town') this.show('portal');
+    if (this.save.inventory.length >= bagSize(this.save) - 2 && w.data.id !== 'town') this.show('portal');
     if (hasFlag(this.save, TRIALS[0].requires) && w.data.id === 'town') this.show('trial');
     if (this.save.hero.paragon.level > 0) this.show('paragon');
+    if (w.data.id === 'town' && this.save.inventory.length >= bagSize(this.save) * 0.6) this.show('stash');
 
     if (this.current) {
       this.current.t += dt;

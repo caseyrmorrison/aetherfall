@@ -70,6 +70,7 @@ export interface WorldHooks {
   message(text: string): void;
   portal(to: string, spawn: string): void;
   trial(): void;
+  stash(): void;
   /** `choose` = the first trial was just won, so pick an Ascendancy. */
   trialComplete(choose: boolean): void;
 }
@@ -879,6 +880,10 @@ export class World {
       case 'trial':
         audio.playSfx('ui_select');
         this.hooks.trial();
+        break;
+      case 'stash':
+        audio.playSfx('chest_open');
+        this.hooks.stash();
         break;
       case 'marker':
         audio.playSfx('pickup_rare');

@@ -4,13 +4,22 @@
  */
 import type { SkillId } from '../data/skills';
 import { SKILLS, SKILL_ORDER } from '../data/skills';
-import { MAX_LEVEL, xpToNext } from './balance';
+import {
+  BAG_STEP,
+  BASE_BAG,
+  bagSizeFor,
+  charmLimitFor,
+  FREE_STASH_TABS,
+  MAX_BAG_UPGRADES,
+  MAX_LEVEL,
+  xpToNext,
+} from './balance';
 import { equipTargetFor } from './items';
 import { newAscendancy, type AscendancyState } from './ascendancy';
 import { newParagon, paragonXpToNext, type ParagonState } from './paragon';
 import type { ConsumableId, Difficulty, EquipSlot, Item, MaterialId } from './types';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface QuestState {
   id: string;
@@ -49,6 +58,10 @@ export interface HeroState {
   flaskHp: number;
   flaskMp: number;
   flaskUpgrades: number;
+  /** Bag Expansions bought from Mira (+8 slots each). */
+  bagUpgrades: number;
+  /** Charm Satchels bought from Mira (+2 active charms each). */
+  charmUpgrades: number;
   /** Levels past the cap (Diablo 3 style). */
   paragon: ParagonState;
 }
@@ -95,9 +108,14 @@ export interface SaveData {
   townPortal: { map: string; x: number; y: number } | null;
   /** Ascendancy class, trials and notables (Path of Exile 2 style). */
   ascendancy: AscendancyState;
+  /** The stash chest in town: tabs of stored items. */
+  stash: { tabs: Item[][] };
 }
 
-export const INVENTORY_SIZE = 60;
+/** How many items the bag holds (grows with Bag Expansions). */
+export const bagSize = (s: Pick<SaveData, 'hero'>): number => bagSizeFor(s.hero.bagUpgrades ?? 0);
+/** How many charms in the bag are active at once. */
+export const charmLimit = (s: Pick<SaveData, 'hero'>): number => charmLimitFor(s.hero.charmUpgrades ?? 0);
 export const BASE_FLASK_HP = 4;
 export const BASE_FLASK_MP = 3;
 
@@ -127,6 +145,8 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
       flaskHp: BASE_FLASK_HP,
       flaskMp: BASE_FLASK_MP,
       flaskUpgrades: 0,
+      bagUpgrades: 0,
+      charmUpgrades: 0,
       paragon: newParagon(),
     },
     inventory: [],
@@ -168,6 +188,7 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
     torment: 0,
     townPortal: null,
     ascendancy: newAscendancy(),
+    stash: { tabs: Array.from({ length: FREE_STASH_TABS }, () => []) },
   };
 }
 
@@ -245,7 +266,7 @@ export function addConsumable(s: SaveData, id: ConsumableId, n = 1): void {
 }
 
 export function inventoryFull(s: SaveData): boolean {
-  return s.inventory.length >= INVENTORY_SIZE;
+  return s.inventory.length >= bagSize(s);
 }
 
 /** Add gear to the bag. Returns false if the bag is full. */
@@ -285,6 +306,21 @@ export function removeItem(s: SaveData, uid: string): Item | null {
   const idx = s.inventory.findIndex((i) => i.uid === uid);
   if (idx < 0) return null;
   return s.inventory.splice(idx, 1)[0];
+}
+
+/**
+ * Manual sorting: move the item at `from` onto slot `to` of a packed item list.
+ * Onto another item, the two swap; onto an empty slot past the end, it moves to the end.
+ */
+export function moveInList(list: Item[], from: number, to: number): boolean {
+  if (from < 0 || from >= list.length || to < 0 || from === to) return false;
+  if (to >= list.length) {
+    const [it] = list.splice(from, 1);
+    list.push(it);
+    return true;
+  }
+  [list[from], list[to]] = [list[to], list[from]];
+  return true;
 }
 
 /** Find an item anywhere (bag or equipped). */
@@ -347,6 +383,14 @@ export function migrate(raw: unknown): SaveData | null {
   // v3 -> v4: paragon (merged into hero above), Torment, town portal and ascendancy
   merged.ascendancy = { ...base.ascendancy, ...(s.ascendancy ?? {}) };
   merged.torment = s.torment ?? 0;
+  // v4 -> v5: bag and charm limits became upgrades. Older saves keep what they had
+  // (a 60-slot bag, rounded up to whole rows, and 10 active charms).
+  if ((s.version ?? 0) < 5) {
+    const need = Math.max(60, merged.inventory.length) - BASE_BAG;
+    merged.hero.bagUpgrades = Math.min(MAX_BAG_UPGRADES, Math.max(0, Math.ceil(need / BAG_STEP)));
+    merged.hero.charmUpgrades = 2;
+  }
+  merged.stash = s.stash?.tabs?.length ? s.stash : base.stash;
   syncUnlockedSkills(merged);
   return merged;
 }

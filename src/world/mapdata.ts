@@ -61,6 +61,8 @@ export type MapObject =
   | { kind: 'marker'; id: string; x: number; y: number }
   /** The Statue of the First Hero: Trials of Ascension. */
   | { kind: 'trial'; id: string; x: number; y: number }
+  /** The stash chest in town. */
+  | { kind: 'stash'; id: string; x: number; y: number }
   | { kind: 'board'; id: string; x: number; y: number };
 
 export interface EnemySpawn {

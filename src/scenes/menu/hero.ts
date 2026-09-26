@@ -9,10 +9,10 @@ import { drawText } from '../../engine/font';
 import { pointInRect, type Rect } from '../../engine/math';
 import { activeCharms, compareTarget, itemScore, RARITY_INDEX } from '../../game/items';
 import { totalGems } from '../../game/gems';
-import { equipItem, INVENTORY_SIZE, unequip } from '../../game/state';
+import { bagSize, charmLimit, equipItem, moveInList, unequip } from '../../game/state';
 import { deriveStats, equipDelta, powerRating } from '../../game/stats';
 import type { EquipSlot, Item, Slot } from '../../game/types';
-import { CHARM_LIMIT, EQUIP_SLOTS } from '../../game/types';
+import { EQUIP_SLOTS, equipSlotsFor } from '../../game/types';
 import { drawItemCell, drawTooltip, itemTooltipLines, UI } from '../../ui/widgets';
 import type { MenuScene, TabView } from './menu';
 
@@ -75,6 +75,10 @@ export class HeroTab implements TabView {
   private scroll = 0;
   private rowsVisible = 8;
   private t = 0;
+  /** Keyboard/gamepad move: the bag index of the item being carried to a new slot. */
+  private held: number | null = null;
+  /** Mouse press on a cell (becomes a drag once the mouse moves). */
+  private press: { sel: Sel; x: number; y: number; wasSelected: boolean; dragging: boolean } | null = null;
 
   constructor(private menu: MenuScene) {}
 
@@ -119,10 +123,11 @@ export class HeroTab implements TabView {
     }
     // scroll the bag when moving past the visible rows
     if (!best && this.sel.kind === 'bag') {
+      const size = bagSize(this.save);
       const row = Math.floor(this.sel.i / COLS);
-      const bagRows = Math.ceil(INVENTORY_SIZE / COLS);
+      const bagRows = Math.ceil(size / COLS);
       if (dy > 0 && row < bagRows - 1) {
-        this.sel = { kind: 'bag', i: Math.min(INVENTORY_SIZE - 1, this.sel.i + COLS) };
+        this.sel = { kind: 'bag', i: Math.min(size - 1, this.sel.i + COLS) };
         return true;
       }
       if (dy < 0 && row > 0) {
@@ -145,25 +150,38 @@ export class HeroTab implements TabView {
     if (input.repeat('up')) moved = this.navigate(0, -1) || moved;
     if (input.repeat('down')) moved = this.navigate(0, 1) || moved;
     const m = input.mouse;
-    for (const c of this.cells) {
-      if (!pointInRect(m.x, m.y, c.rect)) continue;
-      const already = same(c.sel, this.sel);
-      if (m.moved && !already) {
-        this.sel = c.sel;
-        moved = true;
-      }
-      if (m.clicked) {
-        this.sel = c.sel;
-        if (already) this.activate();
-        return;
-      }
-      if (m.rightClicked) {
-        this.sel = c.sel;
-        this.toggleLock();
-        return;
-      }
+    const hover = this.cells.find((c) => pointInRect(m.x, m.y, c.rect));
+    if (hover && m.moved && !same(hover.sel, this.sel) && !this.press?.dragging) {
+      this.sel = hover.sel;
+      moved = true;
     }
-    const bagRows = Math.ceil(INVENTORY_SIZE / COLS);
+    if (hover && m.clicked) {
+      this.press = {
+        sel: hover.sel,
+        x: m.x,
+        y: m.y,
+        wasSelected: same(hover.sel, this.sel),
+        dragging: false,
+      };
+      this.sel = hover.sel;
+    }
+    if (this.press && m.down && Math.hypot(m.x - this.press.x, m.y - this.press.y) > 3) {
+      const from = this.press.sel;
+      this.press.dragging = from.kind === 'bag' && !!this.save.inventory[from.i];
+    }
+    if (this.press && m.released) {
+      const p = this.press;
+      this.press = null;
+      if (p.dragging && hover) this.drop(p.sel, hover.sel);
+      else if (!p.dragging && p.wasSelected && hover && same(hover.sel, p.sel)) this.activate();
+      return;
+    }
+    if (hover && m.rightClicked) {
+      this.sel = hover.sel;
+      this.toggleLock();
+      return;
+    }
+    const bagRows = Math.ceil(bagSize(this.save) / COLS);
     if (m.wheel) this.scroll = Math.max(0, Math.min(bagRows - this.rowsVisible, this.scroll + m.wheel));
     if (moved) {
       audio.playSfx('ui_move');
@@ -175,10 +193,57 @@ export class HeroTab implements TabView {
       const it = this.selectedItem();
       if (it?.isNew) it.isNew = false;
     }
+    if (this.held !== null) {
+      // carrying an item: drop it with Confirm or Move, put it back with Cancel
+      if (input.pressed('confirm') || input.pressed('menuAlt3')) {
+        const from: Sel = { kind: 'bag', i: this.held };
+        this.held = null;
+        this.drop(from, this.sel);
+      } else if (input.pressed('cancel')) {
+        this.held = null;
+        audio.playSfx('ui_back');
+      }
+      return;
+    }
     if (input.pressed('confirm')) this.activate();
     if (input.pressed('menuAlt')) this.toggleLock();
     if (input.pressed('menuAlt2')) this.sortBag();
+    if (input.pressed('menuAlt3') && this.sel.kind === 'bag' && this.save.inventory[this.sel.i]) {
+      this.held = this.sel.i;
+      audio.playSfx('ui_select');
+    }
     if (input.pressed('cancel')) return 'close';
+  }
+
+  /** Carrying an item to a new slot: Escape puts it back instead of closing the menu. */
+  busy(): boolean {
+    return this.held !== null;
+  }
+
+  /** Drop a bag item onto a bag slot (reorder / swap) or onto a body slot (equip there). */
+  private drop(from: Sel, to: Sel): void {
+    if (from.kind !== 'bag') return;
+    const g = this.menu.game;
+    const s = this.save;
+    const it = s.inventory[from.i];
+    if (!it) return;
+    if (to.kind === 'doll') {
+      if (!equipSlotsFor(it.slot).includes(to.slot)) {
+        audio.playSfx('ui_error');
+        return;
+      }
+      equipItem(s, it.uid, to.slot);
+      this.sel = to;
+      audio.playSfx('equip');
+      g.invalidateStats();
+      this.menu.ws.world.player.syncFromSave(this.menu.ws.world);
+      return;
+    }
+    if (!moveInList(s.inventory, from.i, to.i)) return;
+    this.sel = { kind: 'bag', i: Math.min(to.i, s.inventory.length - 1) };
+    audio.playSfx('equip');
+    // moving charms changes which ones are active
+    g.invalidateStats();
   }
 
   private activate(): void {
@@ -242,7 +307,9 @@ export class HeroTab implements TabView {
     const h: [string, string][] = [];
     if (it && it.slot !== 'charm') h.push(['confirm', this.sel.kind === 'doll' ? 'Unequip' : 'Equip']);
     if (it) h.push(['menuAlt', it.locked ? 'Unlock' : 'Lock']);
+    if (this.held !== null) return [['menuAlt3', 'Drop here']];
     h.push(['menuAlt2', 'Sort']);
+    if (it && this.sel.kind === 'bag') h.push(['menuAlt3', 'Move']);
     return h;
   }
 
@@ -256,28 +323,24 @@ export class HeroTab implements TabView {
     const bx = r.x + dollW + 6;
     const charms = activeCharms(s);
     const charmCount = s.inventory.filter((i) => i.slot === 'charm').length;
-    drawText(ctx, `Bag ${s.inventory.length}/${INVENTORY_SIZE}`, bx, r.y + 2, {
-      color: s.inventory.length >= INVENTORY_SIZE ? UI.bad : UI.dim,
+    const size = bagSize(s);
+    const limit = charmLimit(s);
+    drawText(ctx, `Bag ${s.inventory.length}/${size}`, bx, r.y + 2, {
+      color: s.inventory.length >= size ? UI.bad : UI.dim,
     });
     if (charmCount) {
-      drawText(
-        ctx,
-        `Charms ${Math.min(charmCount, CHARM_LIMIT)}/${CHARM_LIMIT}`,
-        bx + COLS * CELL - 2,
-        r.y + 2,
-        {
-          align: 'right',
-          color: charmCount > CHARM_LIMIT ? UI.accent : UI.cyan,
-        },
-      );
+      drawText(ctx, `Charms ${Math.min(charmCount, limit)}/${limit}`, bx + COLS * CELL - 2, r.y + 2, {
+        align: 'right',
+        color: charmCount > limit ? UI.accent : UI.cyan,
+      });
     }
     this.rowsVisible = Math.max(3, Math.floor((r.h - 30) / CELL));
-    const bagRows = Math.ceil(INVENTORY_SIZE / COLS);
+    const bagRows = Math.ceil(size / COLS);
     const activeSet = new Set(charms.map((c) => c.uid));
     for (let row = this.scroll; row < Math.min(bagRows, this.scroll + this.rowsVisible); row++) {
       for (let c = 0; c < COLS; c++) {
         const idx = row * COLS + c;
-        if (idx >= INVENTORY_SIZE) break;
+        if (idx >= size) break;
         const cx = bx + c * CELL;
         const cy = r.y + 14 + (row - this.scroll) * CELL;
         const it = s.inventory[idx] ?? null;
@@ -286,6 +349,28 @@ export class HeroTab implements TabView {
         drawItemCell(ctx, it, cx, cy, this.sel.kind === 'bag' && this.sel.i === idx, undefined, better);
         if (it?.slot === 'charm') this.charmBadge(ctx, it, cx, cy, activeSet.has(it.uid));
         this.cells.push({ sel: { kind: 'bag', i: idx }, rect: { x: cx, y: cy, w: 18, h: 18 } });
+      }
+    }
+
+    // ---- an item being moved: a ghost over its old slot, a copy on the cursor
+    const carried =
+      this.held ?? (this.press?.dragging && this.press.sel.kind === 'bag' ? this.press.sel.i : null);
+    if (carried !== null && s.inventory[carried]) {
+      const src = this.cells.find((c) => c.sel.kind === 'bag' && c.sel.i === carried);
+      if (src) {
+        ctx.fillStyle = 'rgba(24,20,37,0.6)';
+        ctx.fillRect(src.rect.x, src.rect.y, 18, 18);
+      }
+      const m = this.menu.game.app.input.mouse;
+      const at = this.press?.dragging
+        ? { x: m.x - 9, y: m.y - 9 }
+        : (() => {
+            const c = this.cells.find((cc) => same(cc.sel, this.sel));
+            return c ? { x: c.rect.x - 4, y: c.rect.y - 6 } : null;
+          })();
+      if (at) {
+        const bob = Math.round(Math.sin(this.t * 6));
+        drawItemCell(ctx, s.inventory[carried], at.x, at.y + bob, true);
       }
     }
 
@@ -318,7 +403,7 @@ export class HeroTab implements TabView {
       lines.push(
         active
           ? '{cyan}Active{/} {gray}— works from your bag{/}'
-          : `{gray}Inactive — only the first ${CHARM_LIMIT} charms in your bag are active.{/}`,
+          : `{gray}Inactive — only the first ${charmLimit(this.save)} charms in your bag are active. Move a charm earlier in the bag to activate it, or buy a Charm Satchel from Mira.{/}`,
       );
       if (it.cursed) lines.push('{red}Cursed: great power, at a price.{/}');
       return lines;

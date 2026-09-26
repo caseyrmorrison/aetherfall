@@ -28,7 +28,8 @@ export type Action =
   | 'tabNext'
   | 'menuAlt'
   | 'menuAlt2'
-  | 'townPortal';
+  | 'townPortal'
+  | 'menuAlt3';
 
 export const ACTIONS: readonly Action[] = [
   'up',
@@ -55,6 +56,7 @@ export const ACTIONS: readonly Action[] = [
   'menuAlt',
   'menuAlt2',
   'townPortal',
+  'menuAlt3',
 ];
 
 /** Actions shown (and rebindable) in the controls menu. */
@@ -104,6 +106,7 @@ export const ACTION_LABELS: Record<Action, string> = {
   menuAlt: 'Menu Action',
   menuAlt2: 'Menu Action 2',
   townPortal: 'Town Portal',
+  menuAlt3: 'Menu Action 3',
 };
 
 export type KeyBindings = Record<Action, string[]>;
@@ -133,6 +136,7 @@ export const DEFAULT_KEYS: KeyBindings = {
   menuAlt: ['KeyX'],
   menuAlt2: ['KeyC'],
   townPortal: ['KeyT'],
+  menuAlt3: ['KeyV'],
 };
 
 // Standard gamepad button indices
@@ -161,6 +165,7 @@ const PAD: Record<Action, number[]> = {
   menuAlt: [2],
   menuAlt2: [3],
   townPortal: [10],
+  menuAlt3: [7],
 };
 
 export const PAD_LABELS: Record<number, string> = {
@@ -214,7 +219,19 @@ export class Input {
   private repeated = new Set<Action>();
 
   /** Mouse position in internal (low-res) canvas pixels. */
-  mouse = { x: -1, y: -1, moved: false, clicked: false, rightClicked: false, wheel: 0, lastMoveTime: -1e9 };
+  mouse = {
+    x: -1,
+    y: -1,
+    moved: false,
+    clicked: false,
+    rightClicked: false,
+    /** Left button held down (for drag and drop). */
+    down: false,
+    /** Left button released this frame. */
+    released: false,
+    wheel: 0,
+    lastMoveTime: -1e9,
+  };
 
   private captureCb: ((code: string) => void) | null = null;
   private anyPressedFlag = false;
@@ -293,7 +310,10 @@ export class Input {
     }
     this.down.add(code);
     this.justDown.add(code);
-    if (e.button === 0) this.mouse.clicked = true;
+    if (e.button === 0) {
+      this.mouse.clicked = true;
+      this.mouse.down = true;
+    }
     if (e.button === 2) this.mouse.rightClicked = true;
     this.anyPressedFlag = true;
   };
@@ -302,6 +322,10 @@ export class Input {
     const code = `Mouse${e.button}`;
     this.down.delete(code);
     this.justUp.add(code);
+    if (e.button === 0) {
+      this.mouse.down = false;
+      this.mouse.released = true;
+    }
   };
 
   private onMouseMove = (e: MouseEvent): void => {
@@ -320,6 +344,7 @@ export class Input {
   releaseAll(): void {
     for (const k of this.down) this.justUp.add(k);
     this.down.clear();
+    this.mouse.down = false;
     this.virtualDown.clear();
   }
 
@@ -373,6 +398,7 @@ export class Input {
     this.forcePressed.clear();
     this.mouse.clicked = false;
     this.mouse.rightClicked = false;
+    this.mouse.released = false;
     this.mouse.moved = false;
     this.mouse.wheel = 0;
     this.anyPressedFlag = false;

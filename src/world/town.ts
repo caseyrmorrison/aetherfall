@@ -102,6 +102,8 @@ export function buildTown(): MapData {
   P('fountain', 22.5, 19.5, 8, 0);
   P('statue', 22, 14, 8, 0);
   objects.push({ kind: 'trial', id: 'ascension_statue', x: 22 * TILE + 8, y: 14 * TILE + 6 });
+  // the stash chest, on the east side of the square
+  objects.push({ kind: 'stash', id: 'town_stash', x: 29 * TILE + 8, y: 19 * TILE + 2 });
   P('lamp_post', 17, 14, 0, 0);
   P('lamp_post', 29, 14, 0, 0);
   P('lamp_post', 17, 24, 0, 0);

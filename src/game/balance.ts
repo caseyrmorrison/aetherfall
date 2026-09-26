@@ -238,6 +238,31 @@ export const buyPrice = (ilvl: number, rarityIndex: number): number => sellPrice
 export const flaskUpgradeCost = (purchased: number): number => Math.round(150 * Math.pow(2.1, purchased));
 export const MAX_FLASK_UPGRADES = 5;
 
+// ------------------------------------------------------ storage upgrades ----
+
+/** Bag slots: 40 to start, +8 (one row) per expansion bought from Mira. */
+export const BASE_BAG = 40;
+export const BAG_STEP = 8;
+const BAG_COSTS = [500, 1500, 4000, 9000, 18000, 32000, 50000];
+export const MAX_BAG_UPGRADES = BAG_COSTS.length;
+export const bagSizeFor = (upgrades: number): number => BASE_BAG + BAG_STEP * upgrades;
+export const bagUpgradeCost = (bought: number): number => BAG_COSTS[bought] ?? Infinity;
+
+/** Active charms: 6 to start, +2 per Charm Satchel bought from Mira. */
+export const BASE_CHARMS = 6;
+export const CHARM_STEP = 2;
+const CHARM_COSTS = [1000, 4000, 12000, 30000];
+export const MAX_CHARM_UPGRADES = CHARM_COSTS.length;
+export const charmLimitFor = (upgrades: number): number => BASE_CHARMS + CHARM_STEP * (upgrades ?? 0);
+export const charmUpgradeCost = (bought: number): number => CHARM_COSTS[bought] ?? Infinity;
+
+/** Stash: tabs of 48 slots. Two are free; more can be bought at the stash. */
+export const STASH_TAB_SIZE = 48;
+export const FREE_STASH_TABS = 2;
+const STASH_TAB_COSTS = [5000, 20000, 60000, 150000];
+export const MAX_STASH_TABS = FREE_STASH_TABS + STASH_TAB_COSTS.length;
+export const stashTabCost = (owned: number): number => STASH_TAB_COSTS[owned - FREE_STASH_TABS] ?? Infinity;
+
 /** Cost to reset the passive tree. */
 export const respecCost = (level: number): number => 50 + level * 25;
 

@@ -29,6 +29,9 @@ export class WorldObject extends Entity {
       }
       case 'bossGate':
         return { id: 'boss_gate', frame: bossCleared(world.game.save, o.boss) ? 1 : 0 };
+      case 'stash':
+        // lid opens when you walk up to it
+        return { id: 'chest_rare', frame: dist(this.x, this.y, world.player.x, world.player.y) < 26 ? 1 : 0 };
       case 'portal': {
         if (!this.portalOpen(world)) return null;
         const pi = propInfo('portal');
@@ -70,6 +73,8 @@ export class WorldObject extends Entity {
         return 'Bounty Board';
       case 'trial':
         return 'Trials of Ascension';
+      case 'stash':
+        return 'Stash';
       case 'marker':
         return world.markerActive(o.id) ? 'Search' : null;
     }
