@@ -31,6 +31,19 @@ export function vol(dst: Buf, ramp: Ramp, draw: (l: Buf) => void, o: ShadeOpts =
   return l;
 }
 
+/** A fresh w×h layer with `draw` volume-shaded by `ramp` (not composited). */
+export function shaded(w: number, h: number, ramp: Ramp, draw: (l: Buf) => void, o: ShadeOpts = {}): Buf {
+  const l = new Buf(w, h);
+  draw(l);
+  return shade(l, ramp, o);
+}
+
+/** Offset a polyline progressively: point i moves by (dx, dy) · i / (n - 1). */
+export function bend(pts: readonly Pt[], dx: number, dy: number): Pt[] {
+  const n = Math.max(1, pts.length - 1);
+  return pts.map(([x, y], i) => [x + (dx * i) / n, y + (dy * i) / n] as Pt);
+}
+
 /** Like vol() but separated from what is already drawn by a dark edge. */
 export function volOver(
   dst: Buf,

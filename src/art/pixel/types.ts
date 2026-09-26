@@ -18,7 +18,12 @@ export type CharacterId =
   | 'villager_man'
   | 'villager_woman'
   | 'child'
-  | 'guard';
+  | 'guard'
+  // Act II: Solenne
+  | 'tessaly'
+  | 'desert_merchant'
+  | 'desert_smith'
+  | 'order_mage';
 
 /** Regular enemies (side-view; 'dirs' reported by spriteInfo). */
 export type CreatureId =
@@ -42,7 +47,23 @@ export type CreatureId =
   | 'shadow_knight'
   | 'void_mage'
   | 'gargoyle'
-  | 'sapling';
+  | 'sapling'
+  // Act II: Sunscar Dunes
+  | 'scorpion'
+  | 'sand_wraith'
+  | 'dune_raider'
+  | 'cactoid'
+  // Act II: Sunken Temple
+  | 'drowned'
+  | 'reef_crab'
+  | 'naga_adept'
+  // Act II: Stormspire
+  | 'harpy'
+  | 'storm_elemental'
+  | 'stone_sentinel'
+  // Act II: Eclipse Sanctum
+  | 'eclipse_knight'
+  | 'dusk_wisp';
 
 export type BossId =
   | 'boss_thornmaw'

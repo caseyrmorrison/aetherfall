@@ -12,6 +12,8 @@ import { anims, type FaceDir, type SpriteDef } from './actors/defs';
 import { CHARACTER_DEFS } from './actors/characters';
 import { CREATURE_A_DEFS } from './actors/creatures-a';
 import { CREATURE_B_DEFS } from './actors/creatures-b';
+import { CREATURE_C_DEFS } from './actors/creatures-c';
+import { CREATURE_D_DEFS } from './actors/creatures-d';
 import { BOSS_DEFS } from './actors/bosses';
 import { FX_DEFS, PROJECTILE_DEFS } from './actors/fx';
 import { drawWeapon, weaponSize } from './actors/weapons';
@@ -32,6 +34,8 @@ const DEFS: Partial<Record<SpriteId, SpriteDef>> = {
   ...CHARACTER_DEFS,
   ...CREATURE_A_DEFS,
   ...CREATURE_B_DEFS,
+  ...CREATURE_C_DEFS,
+  ...CREATURE_D_DEFS,
   ...BOSS_DEFS,
   ...PROJECTILE_DEFS,
   ...FX_DEFS,
