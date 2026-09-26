@@ -440,7 +440,12 @@ export class WorldScene implements Scene, WorldHooks {
       this.game.saveNow();
       if (firstClear) {
         void playCutscene(this.game, 'act2_ending').then(() => {
-          this.game.banner = { title: 'ACT II COMPLETE', sub: 'The sun rises over Solenne', t: 0, color: '#feae34' };
+          this.game.banner = {
+            title: 'ACT II COMPLETE',
+            sub: 'The sun rises over Solenne',
+            t: 0,
+            color: '#feae34',
+          };
           this.travelTo('solenne', 'start');
         });
         return;

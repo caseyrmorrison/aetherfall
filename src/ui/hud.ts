@@ -333,7 +333,9 @@ export class Hud {
       const target = t.map.replace(/_boss$/, '');
       if (isTown(here)) {
         // a road out of this town, or the portal toward the other town
-        return exitTo(target) ?? (hubFor(target) !== here ? exitTo(here === 'town' ? 'citadel' : 'town') : null);
+        return (
+          exitTo(target) ?? (hubFor(target) !== here ? exitTo(here === 'town' ? 'citadel' : 'town') : null)
+        );
       }
       if (!t.map.startsWith(here)) return exitTo(hubFor(here));
       return null;

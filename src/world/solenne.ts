@@ -75,7 +75,14 @@ export function buildSolenne(): MapData {
   };
   const building = (id: PropId, kind: BuildingKind, label: string, cx: number, by: number): void => {
     P(id, cx, by);
-    objects.push({ kind: 'door', id: `door_${id}_${cx}`, x: cx * TILE, y: by * TILE + 6, building: kind, label });
+    objects.push({
+      kind: 'door',
+      id: `door_${id}_${cx}`,
+      x: cx * TILE,
+      y: by * TILE + 6,
+      building: kind,
+      label,
+    });
     rectGround(Math.floor(cx) - 1, by, Math.floor(cx), by + 1, GROUND.Path);
   };
   building('adobe_hall', 'hall', 'Harbor Hall', 10, 12);
@@ -98,7 +105,13 @@ export function buildSolenne(): MapData {
   P('quest_board', 19, 15);
   objects.push({ kind: 'board', id: 'solenne_board', x: 19 * TILE, y: 15 * TILE + 6 });
   P('save_crystal', 26, 22, 8, 0);
-  objects.push({ kind: 'crystal', id: 'solenne_crystal', x: 26 * TILE + 8, y: 22 * TILE, name: 'Solenne Plaza' });
+  objects.push({
+    kind: 'crystal',
+    id: 'solenne_crystal',
+    x: 26 * TILE + 8,
+    y: 22 * TILE,
+    name: 'Solenne Plaza',
+  });
   objects.push({ kind: 'stash', id: 'solenne_stash', x: 29 * TILE + 8, y: 19 * TILE + 2 });
   P('market_awning', 18, 22);
   P('market_awning', 27, 16, 8, 0);
@@ -107,7 +120,14 @@ export function buildSolenne(): MapData {
   P('sand_crate', 31, 17, 2, 0);
 
   // Portals: home to Havenbrook (plaza) and up to the Eclipse Sanctum (north stair)
-  objects.push({ kind: 'portal', id: 'havenbrook_portal', x: 18 * TILE, y: 18 * TILE - 2, to: 'town', spawn: 'portal' });
+  objects.push({
+    kind: 'portal',
+    id: 'havenbrook_portal',
+    x: 18 * TILE,
+    y: 18 * TILE - 2,
+    to: 'town',
+    spawn: 'portal',
+  });
   objects.push({
     kind: 'portal',
     id: 'sanctum_portal',
@@ -142,7 +162,13 @@ export function buildSolenne(): MapData {
     const x = rng.int(3, W - 4);
     const y = rng.int(3, H - 4);
     if (cells[idx(x, y)] !== CELL.Floor || ground[idx(x, y)] === GROUND.Path) continue;
-    P(rng.pick<PropId>(['dry_bush', 'dry_bush', 'desert_bones', 'sand_crate']), x, y, rng.int(2, 14), rng.int(4, 14));
+    P(
+      rng.pick<PropId>(['dry_bush', 'dry_bush', 'desert_bones', 'sand_crate']),
+      x,
+      y,
+      rng.int(2, 14),
+      rng.int(4, 14),
+    );
   }
 
   // Gates and signs

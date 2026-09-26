@@ -1,7 +1,7 @@
 # Aetherfall — Echoes of the Shattered Sky
 
 A pixel-art action RPG with anime cutscenes that runs in the browser. It has Souls-style
-dodge-roll combat, Diablo-style loot, a skill tree, five boss fights and an endless post-game.
+dodge-roll combat, Diablo-style loot, a skill tree, two story acts with nine boss fights, and an endless post-game.
 The art, music and sound effects are all generated in code; the repo contains no image or audio files.
 
 **▶ Play it: https://caseyrmorrison.github.io/aetherfall/**
@@ -38,6 +38,16 @@ The art, music and sound effects are all generated in code; the repo contains no
 | ![Paragon points](docs/screenshots/paragon.png)                         | ![Talent trees with two columns each](docs/screenshots/talents.png) |
 | ![Town portal back to where you left](docs/screenshots/town-portal.png) | ![Crafting at Brom's forge](docs/screenshots/crafting.png)          |
 | ![The stash in town](docs/screenshots/stash.png)                        | ![A world boss event](docs/screenshots/world-boss.png)              |
+
+**Act II: The Dusk Shard**
+
+|                                                                                  |                                                                                |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| ![Solenne, the Act II hub](docs/screenshots/act2-solenne.png)                    | ![The Havenbrook portal now reaches Solenne](docs/screenshots/act2-portal.png) |
+| ![The Sunscar Dunes](docs/screenshots/act2-desert.png)                           | ![The Sunken Temple](docs/screenshots/act2-ruins.png)                          |
+| ![The Stormspire](docs/screenshots/act2-storm.png)                               | ![The Eclipse Sanctum](docs/screenshots/act2-sanctum.png)                      |
+| ![Aurelian, Grandmaster of the Endless Dusk](docs/screenshots/act2-aurelian.png) | ![The black sun over Solenne](docs/screenshots/act2-eclipse.png)               |
+| ![Dawn returns to Solenne](docs/screenshots/act2-ending.png)                     |                                                                                |
 
 ## Features
 

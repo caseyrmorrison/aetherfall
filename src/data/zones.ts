@@ -317,7 +317,8 @@ export const ZONES: Record<string, ZoneDef> = {
     lightProps: ['glow_coral'],
     tint: 'rgba(25,60,62,0.08)',
     unlockFlag: 'boss_sandmaw',
-    lockedMessage: 'The harbor stairs to the Sunken Temple are sealed. The journal in Sandmaw’s belly might explain why.',
+    lockedMessage:
+      'The harbor stairs to the Sunken Temple are sealed. The journal in Sandmaw’s belly might explain why.',
   },
   storm: {
     id: 'storm',
@@ -402,7 +403,9 @@ export const ZONE_ORDER = [...ACT1_ZONES, ...ACT2_ZONES] as const;
 
 /** The town a zone belongs to (where its roads and town portals lead). */
 export const hubFor = (mapId: string): 'town' | 'solenne' =>
-  mapId === 'solenne' || (ACT2_ZONES as readonly string[]).includes(mapId.replace(/_boss$/, '')) ? 'solenne' : 'town';
+  mapId === 'solenne' || (ACT2_ZONES as readonly string[]).includes(mapId.replace(/_boss$/, ''))
+    ? 'solenne'
+    : 'town';
 
 /** Towns: safe hubs with no monsters. */
 export const isTown = (mapId: string): boolean => mapId === 'town' || mapId === 'solenne';

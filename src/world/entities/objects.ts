@@ -66,7 +66,11 @@ export class WorldObject extends Entity {
         if (o.id === TOWN_PORTAL_ID) return `Return to ${areaName(o.to)}`;
         if (o.id === 'trial_home') return 'Return to Havenbrook';
         if (o.to !== 'citadel')
-          return this.portalOpen(world) ? `Portal to ${areaName(o.to)}` : o.requires?.message ? 'Examine' : null;
+          return this.portalOpen(world)
+            ? `Portal to ${areaName(o.to)}`
+            : o.requires?.message
+              ? 'Examine'
+              : null;
         return this.portalOpen(world)
           ? world.game.save.flags['game_clear']
             ? 'Enter portal'

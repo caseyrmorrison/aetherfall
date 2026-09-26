@@ -20,16 +20,7 @@ export const TOWN_PORTAL_ID = 'town_portal';
 export const GROUND = { Floor: 0, Alt: 1, Path: 2 } as const;
 
 export type Ambient =
-  | 'leaves'
-  | 'fireflies'
-  | 'dust'
-  | 'embers'
-  | 'snow'
-  | 'void'
-  | 'petals'
-  | 'sand'
-  | 'rain'
-  | null;
+  'leaves' | 'fireflies' | 'dust' | 'embers' | 'snow' | 'void' | 'petals' | 'sand' | 'rain' | null;
 
 export interface PropPlacement {
   id: PropId;

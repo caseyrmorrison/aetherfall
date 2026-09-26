@@ -196,7 +196,7 @@ export const NPCS: Record<string, NpcDef> = {
     portrait: 'lyra',
     facing: 'down',
     // in Act II she goes ahead to Solenne
-    visible: (s) => hasFlag(s, 'boss_thornmaw') && !hasFlag(s, 'act2_arrived'),
+    visible: (s) => hasFlag(s, 'boss_thornmaw') && !hasFlag(s, 'visited_solenne'),
     lines: ({ save }) => [
       {
         who: 'Lyra',
@@ -281,7 +281,7 @@ export const NPCS: Record<string, NpcDef> = {
     portrait: 'lyra',
     facing: 'down',
     home: 'solenne',
-    visible: (s) => hasFlag(s, 'act2_arrived'),
+    visible: (s) => hasFlag(s, 'visited_solenne'),
     lines: ({ save }) => [
       {
         who: 'Lyra',
