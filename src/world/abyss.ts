@@ -53,11 +53,27 @@ export function generateAbyssFloor(floor: number): MapData {
   }
   for (let i = 0; i < w * h; i++) if (rng.chance(0.3)) ground[i] = GROUND.Alt;
 
+  // Blobs and void pools can pinch off pockets of floor. Seal anything the hero
+  // can't walk to, so enemies, loot and the exit portal never end up out of reach.
+  const entry = { x: Math.floor(cx), y: h - 4 };
+  const reach = floodFloor(cells, w, h, entry.x, entry.y);
+  for (let i = 0; i < w * h; i++) if (cells[i] === CELL.Floor && !reach[i]) cells[i] = CELL.Wall;
+  const bossTile = openTileNear(cells, reach, w, h, cx, cy - 4, 2, []);
+  const portalTile = openTileNear(cells, reach, w, h, cx, cy - 1, 1, []);
+  const chestTile = openTileNear(cells, reach, w, h, portalTile.x + 3, portalTile.y + 1, 1, [
+    { ...portalTile, r: 2 },
+  ]);
+  const keepClear = [portalTile, chestTile, entry];
+
   const props: PropPlacement[] = [];
   for (let i = 0; i < 6; i++) {
     const x = rng.int(4, w - 5);
     const y = rng.int(4, h - 5);
-    if (cells[y * w + x] === CELL.Floor && Math.abs(x - cx) > 3)
+    if (
+      cells[y * w + x] === CELL.Floor &&
+      Math.abs(x - cx) > 3 &&
+      keepClear.every((k) => Math.abs(k.x - x) > 2 || Math.abs(k.y - y) > 2)
+    )
       props.push({
         id: rng.chance(0.5) ? 'void_crystal' : 'pillar_broken',
         x: x * TILE + 8,
@@ -121,10 +137,78 @@ export function generateAbyssFloor(floor: number): MapData {
     props,
     objects,
     spawns,
-    spawnPoints: { entry: { x: cx * TILE, y: (h - 4) * TILE } },
+    spawnPoints: {
+      entry: { x: cx * TILE, y: (h - 4) * TILE },
+      // where the next-floor portal and reward chest appear once the floor is cleared
+      reward: tileCenter(portalTile),
+      rewardChest: tileCenter(chestTile),
+    },
     boss: isBossFloor
-      ? { enemy: BOSS_ROTATION[(floor / 5 - 1) % BOSS_ROTATION.length], x: cx * TILE, y: (cy - 4) * TILE }
+      ? { enemy: BOSS_ROTATION[(floor / 5 - 1) % BOSS_ROTATION.length], ...tileCenter(bossTile) }
       : undefined,
     tint: 'rgba(104,56,108,0.1)',
   };
+}
+
+const tileCenter = (t: { x: number; y: number }): { x: number; y: number } => ({
+  x: t.x * TILE + TILE / 2,
+  y: t.y * TILE + TILE / 2,
+});
+
+/** Floor tiles 4-connected to (sx, sy). */
+export function floodFloor(cells: Uint8Array, w: number, h: number, sx: number, sy: number): Uint8Array {
+  const seen = new Uint8Array(w * h);
+  const start = sy * w + sx;
+  if (cells[start] !== CELL.Floor) return seen;
+  const stack = [start];
+  seen[start] = 1;
+  while (stack.length) {
+    const k = stack.pop()!;
+    const x = k % w;
+    const y = (k / w) | 0;
+    const next = [x > 0 ? k - 1 : -1, x < w - 1 ? k + 1 : -1, y > 0 ? k - w : -1, y < h - 1 ? k + w : -1];
+    for (const n of next) {
+      if (n < 0 || seen[n] || cells[n] !== CELL.Floor) continue;
+      seen[n] = 1;
+      stack.push(n);
+    }
+  }
+  return seen;
+}
+
+/**
+ * The reachable floor tile nearest to (tx, ty) whose surroundings (within `clear` tiles)
+ * are all reachable floor, keeping away from `avoid` spots.
+ */
+function openTileNear(
+  cells: Uint8Array,
+  reach: Uint8Array,
+  w: number,
+  h: number,
+  tx: number,
+  ty: number,
+  clear: number,
+  avoid: { x: number; y: number; r: number }[],
+): { x: number; y: number } {
+  let best: { x: number; y: number } | null = null;
+  let bestD = Infinity;
+  for (let c = clear; c >= 0 && !best; c--) {
+    for (let y = c; y < h - c; y++) {
+      for (let x = c; x < w - c; x++) {
+        const d = (x - tx) ** 2 + (y - ty) ** 2;
+        if (d >= bestD) continue;
+        if (avoid.some((a) => Math.abs(a.x - x) <= a.r && Math.abs(a.y - y) <= a.r)) continue;
+        let ok = true;
+        for (let oy = -c; oy <= c && ok; oy++)
+          for (let ox = -c; ox <= c && ok; ox++) {
+            const k = (y + oy) * w + x + ox;
+            ok = reach[k] === 1 && cells[k] === CELL.Floor;
+          }
+        if (!ok) continue;
+        best = { x, y };
+        bestD = d;
+      }
+    }
+  }
+  return best ?? { x: Math.floor(tx), y: Math.floor(ty) };
 }

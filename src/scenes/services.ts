@@ -27,6 +27,7 @@ import {
   itemScore,
   RARITY_INDEX,
 } from '../game/items';
+import { returnGems } from '../game/gems';
 import { addConsumable, addItem, addMaterial, inventoryFull, removeItem, type Bounty } from '../game/state';
 import type { ConsumableId, Item } from '../game/types';
 import { EQUIP_SLOTS, GEAR_SLOTS } from '../game/types';
@@ -163,6 +164,10 @@ abstract class TabbedService implements Scene {
   abstract render(ctx: CanvasRenderingContext2D): void;
 }
 
+/** Reminder in sell/salvage prompts that socketed gems are kept. */
+const gemNote = (it: Item): string =>
+  it.sockets?.some((g) => g) ? ' (Its gems go back to your pouch.)' : '';
+
 // ------------------------------------------------------------------ shop ----
 type SupplyRow = { kind: 'consumable'; id: ConsumableId } | { kind: 'flask' } | { kind: 'charm' };
 
@@ -253,7 +258,10 @@ export class ShopScene extends TabbedService {
             this.game,
             `Sell ${junk.length} common & uncommon items for ${total}g? (Locked items and charms are kept.)`,
             () => {
-              for (const i of junk) removeItem(s, i.uid);
+              for (const i of junk) {
+                returnGems(s, i);
+                removeItem(s, i.uid);
+              }
               this.game.giveGold(total, true);
               audio.playSfx('shop_sell');
               this.game.toast(`Sold ${junk.length} items for ${total}g`, 'ui_coin');
@@ -302,13 +310,14 @@ export class ShopScene extends TabbedService {
     const s = this.game.save;
     const price = sellPrice(it.ilvl, RARITY_INDEX[it.rarity], it.upgrade);
     const doSell = (): void => {
+      if (returnGems(s, it)) this.game.toast('Socketed gems returned to your pouch', 'ui_check');
       removeItem(s, it.uid);
       this.game.giveGold(price, true);
       audio.playSfx('shop_sell');
     };
     if (RARITY_INDEX[it.rarity] >= 3)
       this.game.app.push(
-        new ConfirmScene(this.game, `Sell {${it.rarity}}${it.name}{/} for ${price}g?`, doSell),
+        new ConfirmScene(this.game, `Sell {${it.rarity}}${it.name}{/} for ${price}g?${gemNote(it)}`, doSell),
       );
     else doSell();
   }
@@ -490,6 +499,7 @@ export class SmithScene extends TabbedService {
         this.game.toast(`{${it.rarity}}${displayName(it)}{/}!`, 'ui_star');
       } else if (this.tab === 1) {
         const doIt = (): void => {
+          if (returnGems(s, it)) this.game.toast('Socketed gems returned to your pouch', 'ui_check');
           removeItem(s, it.uid);
           const dust = salvageYield(it.ilvl, ri);
           addMaterial(s, 'dust', dust);
@@ -497,7 +507,9 @@ export class SmithScene extends TabbedService {
           this.game.toast(`+${dust} Aether Dust`, 'icon_dust');
         };
         if (ri >= 3)
-          this.game.app.push(new ConfirmScene(this.game, `Salvage {${it.rarity}}${it.name}{/}?`, doIt));
+          this.game.app.push(
+            new ConfirmScene(this.game, `Salvage {${it.rarity}}${it.name}{/}?${gemNote(it)}`, doIt),
+          );
         else doIt();
       } else {
         if (!it.affixes.length || it.legendary)
@@ -513,6 +525,7 @@ export class SmithScene extends TabbedService {
           it.slot === 'charm'
             ? generateCharm(rng, it.ilvl, { size: it.charmSize })
             : generateItem(rng, it.ilvl, { slot: it.slot, kind: it.kind, rarity: it.rarity });
+        // sockets (and any gems in them) are kept
         it.affixes = fresh.affixes;
         it.name = fresh.name;
         it.cursed = fresh.cursed;
@@ -530,7 +543,10 @@ export class SmithScene extends TabbedService {
           this.game,
           `Salvage ${junk.length} common & uncommon items for ${dust} Aether Dust? (Charms are kept.)`,
           () => {
-            for (const i of junk) removeItem(s, i.uid);
+            for (const i of junk) {
+              returnGems(s, i);
+              removeItem(s, i.uid);
+            }
             addMaterial(s, 'dust', dust);
             audio.playSfx('salvage');
             this.game.toast(`+${dust} Aether Dust`, 'icon_dust');

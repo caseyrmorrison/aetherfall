@@ -8,6 +8,7 @@ import type { IconId } from './types';
 import { Grid } from './env/raster';
 import { amulet, armor, boots, dagger, greatsword, helm, ring, staff, sword } from './icons/equip';
 import { belt, charm, gloves } from './icons/gear-extra';
+import { gem, type GemArtType } from './icons/gems';
 import { material } from './icons/materials';
 import { ITEM_ICONS } from './icons/items';
 import { SKILL_ICONS } from './icons/skills';
@@ -40,6 +41,10 @@ function build(id: IconId, tier: number): Grid {
   if (eq) return eq(tier);
   const other = OTHER[id];
   if (other) return other();
+  if (id.startsWith('icon_gem_')) {
+    const [, , type, q] = id.split('_');
+    return gem(type as GemArtType, Number(q));
+  }
   return new Grid(16, 16).rect(4, 4, 8, 8, '#ff00ff');
 }
 

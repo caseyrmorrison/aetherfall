@@ -152,7 +152,7 @@ export class Game {
       const icon = itemIcon(item);
       this.toast(`{${item.rarity}}${displayName(item)}{/}`, icon, item.tier);
     }
-    if (item.rarity === 'legendary') audio.playSfx('stinger_legendary');
+    if (item.rarity === 'legendary' || item.rarity === 'abyssal') audio.playSfx('stinger_legendary');
     this.events.emit('itemLooted', { item });
     return true;
   }

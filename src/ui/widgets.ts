@@ -3,11 +3,13 @@ import { RARITY_COLORS } from '../art/palette';
 import { getIcon } from '../art/pixel';
 import type { IconId } from '../art/pixel/types';
 import { audio } from '../audio';
+import { GEM_INFO } from '../data/gems';
 import { LEGENDARIES } from '../data/items';
 import { drawText, LINE_HEIGHT, measureText, wrapText } from '../engine/font';
 import type { Action, Input } from '../engine/input';
 import { pointInRect, type Rect } from '../engine/math';
 import { sellPrice } from '../game/balance';
+import { gemEffect, gemName, socketGroup } from '../game/gems';
 import {
   displayName,
   formatStat,
@@ -185,6 +187,7 @@ export function drawItemCell(
     }
     if (item.upgrade > 0)
       drawText(ctx, `+${item.upgrade}`, x + 17, y + 10, { align: 'right', color: UI.accent, outline: UI.bg });
+    drawSocketPips(ctx, item, x, y);
     if (upgrade) drawText(ctx, '\u25b2', x + 1, y + 10, { color: UI.good, outline: UI.bg });
   } else if (placeholder) {
     drawIcon(ctx, placeholder, x + 1, y + 1, 0, 0.25);
@@ -194,6 +197,28 @@ export function drawItemCell(
     ctx.lineWidth = 1;
     ctx.strokeRect(x - 0.5, y - 0.5, 19, 19);
   }
+}
+
+/**
+ * Tiny socket markers centred on the top edge of an 18px item cell (clear of the
+ * new/lock dots and the upgrade arrow): gem-colored when filled, gray when empty.
+ */
+export function drawSocketPips(
+  ctx: CanvasRenderingContext2D,
+  item: Item,
+  cellX: number,
+  cellY: number,
+): void {
+  const sockets = item.sockets ?? [];
+  if (!sockets.length) return;
+  const w = sockets.length * 3 - 1;
+  const x0 = cellX + Math.round(9 - w / 2);
+  ctx.fillStyle = UI.bg;
+  ctx.fillRect(x0 - 1, cellY + 1, w + 2, 3);
+  sockets.forEach((g, i) => {
+    ctx.fillStyle = g ? GEM_INFO[g.type].color : '#5a6988';
+    ctx.fillRect(x0 + i * 3, cellY + 1, 2, 2);
+  });
 }
 
 /** Tooltip lines for an item, with comparison against `compare`. */
@@ -231,6 +256,10 @@ export function itemTooltipLines(
       lines.push(`{red}${formatStat(k, d)}{/}`);
     }
   }
+  if (item.sockets?.length) {
+    lines.push('');
+    lines.push(...socketLines(item));
+  }
   if (item.legendary) {
     const def = LEGENDARIES.find((l) => l.id === item.legendary);
     if (def) {
@@ -243,6 +272,16 @@ export function itemTooltipLines(
     lines.push(`{gold}Sell: ${sellPrice(item.ilvl, RARITY_INDEX[item.rarity], item.upgrade)}g{/}`);
   else if (typeof opts.price === 'number') lines.push(`{gold}Price: ${opts.price}g{/}`);
   return lines;
+}
+
+/** One line per socket: the gem and what it grants here, or an empty socket. */
+export function socketLines(item: Item): string[] {
+  const group = socketGroup(item.slot);
+  return (item.sockets ?? []).map((g) => {
+    if (!g) return '{gray}◇ Empty socket{/}';
+    const e = gemEffect(g, group);
+    return `{${GEM_INFO[g.type].markup}}◆ ${gemName(g)}{/} {gray}${formatStat(e.stat, e.value)}{/}`;
+  });
 }
 
 /** Draw a tooltip panel of wrapped lines. Returns its height. */

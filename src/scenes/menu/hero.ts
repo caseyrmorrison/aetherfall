@@ -8,6 +8,7 @@ import { SLOT_ICON } from '../../data/items';
 import { drawText } from '../../engine/font';
 import { pointInRect, type Rect } from '../../engine/math';
 import { activeCharms, compareTarget, itemScore, RARITY_INDEX } from '../../game/items';
+import { totalGems } from '../../game/gems';
 import { equipItem, INVENTORY_SIZE, unequip } from '../../game/state';
 import { deriveStats, equipDelta, powerRating } from '../../game/stats';
 import type { EquipSlot, Item, Slot } from '../../game/types';
@@ -324,6 +325,8 @@ export class HeroTab implements TabView {
     }
     const compare = this.sel.kind === 'doll' ? null : compareTarget(this.save, it);
     const lines = itemTooltipLines(it, compare, { price: 'sell' });
+    if (it.sockets?.some((g) => !g) && totalGems(this.save) > 0)
+      lines.push('{gray}Socket gems from the Gems tab.{/}');
     if (this.sel.kind === 'bag') {
       const d = equipDelta(this.save, it, this.menu.game.buffs);
       if (d) {

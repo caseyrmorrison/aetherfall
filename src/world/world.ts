@@ -12,8 +12,18 @@ import { drawText } from '../engine/font';
 import type { Input } from '../engine/input';
 import { angleTo, circleHitsLine, circleInSector, clamp, dist, dist2, normalize, TAU } from '../engine/math';
 import { rng } from '../engine/rng';
-import { computeDamage, goldDrop, xpReward } from '../game/balance';
-import { generateCharm } from '../game/items';
+import {
+  ABYSS_SOCKET_CHANCE,
+  ABYSSAL_CHANCE,
+  ABYSSAL_MAX_CHANCE,
+  computeDamage,
+  GEM_DROPS,
+  goldDrop,
+  xpReward,
+  type AbyssLootSource,
+} from '../game/balance';
+import { addGem, gemIcon, gemLabel, rollGemDrop } from '../game/gems';
+import { addSocket, generateAbyssal, generateCharm, RARITY_INDEX } from '../game/items';
 import type { Game } from '../game/game';
 import type { QuestSystem } from '../game/quests';
 import {
@@ -25,7 +35,7 @@ import {
   hasFlag,
   setFlag,
 } from '../game/state';
-import type { Rarity } from '../game/types';
+import type { Item, Rarity } from '../game/types';
 import { Camera } from './camera';
 import type { Entity } from './entities/actor';
 import { Enemy } from './entities/enemy';
@@ -133,6 +143,8 @@ export class World {
   private zoomFx: { scale: number; t: number; dur: number; x: number; y: number } | null = null;
   interactTarget: WorldObject | Npc | null = null;
   private flow: Int16Array = new Int16Array(0);
+  private reachMask: Uint8Array = new Uint8Array(0);
+  private reachFrom = -1;
   private flowT = 0;
   private flowCenter = -1;
   explored!: Uint8Array;
@@ -238,6 +250,7 @@ export class World {
     );
     this.warpCooldown = 0.6;
     this.flowCenter = -1;
+    this.reachFrom = -1;
     audio.playMusic(this.data.music);
     audio.setIntensity(0);
   }
@@ -384,6 +397,67 @@ export class World {
         a.vy = 0;
       }
     }
+  }
+
+  /** Tiles the hero can walk to from where they stand (recomputed when they change tile). */
+  private reachable(): Uint8Array {
+    const w = this.data.w;
+    const h = this.data.h;
+    const tx = Math.max(0, Math.min(w - 1, Math.floor(this.player.x / TILE)));
+    const ty = Math.max(0, Math.min(h - 1, Math.floor(this.player.y / TILE)));
+    const start = ty * w + tx;
+    if (start === this.reachFrom && this.reachMask.length === w * h) return this.reachMask;
+    this.reachFrom = start;
+    const seen = new Uint8Array(w * h);
+    const stack = [start];
+    seen[start] = 1;
+    while (stack.length) {
+      const k = stack.pop()!;
+      const x = k % w;
+      const y = (k / w) | 0;
+      const next = [x > 0 ? k - 1 : -1, x < w - 1 ? k + 1 : -1, y > 0 ? k - w : -1, y < h - 1 ? k + w : -1];
+      for (const n of next) {
+        if (n < 0 || seen[n]) continue;
+        const c = this.data.cells[n];
+        if (c !== CELL.Floor && c !== CELL.Bridge) continue;
+        seen[n] = 1;
+        stack.push(n);
+      }
+    }
+    this.reachMask = seen;
+    return seen;
+  }
+
+  /**
+   * The nearest point the hero can walk to. Used to rescue loot (and place rewards) that
+   * would otherwise land in a void pool, a wall or a sealed-off pocket.
+   */
+  safeSpot(x: number, y: number): { x: number; y: number } {
+    const w = this.data.w;
+    const h = this.data.h;
+    const reach = this.reachable();
+    const tx = Math.floor(x / TILE);
+    const ty = Math.floor(y / TILE);
+    if (tx >= 0 && ty >= 0 && tx < w && ty < h && reach[ty * w + tx]) return { x, y };
+    let best = -1;
+    let bestD = Infinity;
+    const R = 24;
+    for (let yy = Math.max(0, ty - R); yy <= Math.min(h - 1, ty + R); yy++) {
+      for (let xx = Math.max(0, tx - R); xx <= Math.min(w - 1, tx + R); xx++) {
+        const k = yy * w + xx;
+        if (!reach[k]) continue;
+        let d = (xx * TILE + TILE / 2 - x) ** 2 + (yy * TILE + TILE / 2 - y) ** 2;
+        // prefer open floor above too, so loot doesn't look like it's still sitting in a pool's edge
+        if (yy > 0 && !reach[k - w]) d += (TILE * 1.5) ** 2;
+        if (d < bestD) {
+          bestD = d;
+          best = k;
+        }
+      }
+    }
+    if (best < 0) return { x: this.player.x, y: this.player.y };
+    // anchor low in the tile: pickups draw upward from their feet
+    return { x: (best % w) * TILE + TILE / 2, y: Math.floor(best / w) * TILE + TILE - 3 };
   }
 
   /** Direction toward a target, using the flow field when there is no line of sight. */
@@ -1145,6 +1219,7 @@ export class World {
       const item = this.game.rollItem(ilvl, {
         rarityRoll: { min: rarityMin, bonus: bonus + diff.lootBonus + st.magicFind },
       });
+      this.abyssTouch(item);
       this.pickups.push(new Pickup(e.x, e.y - 4, 'item', 1, item));
     };
     if (e.isBoss) {
@@ -1156,6 +1231,7 @@ export class World {
         const item = this.game.rollItem(ilvl, {
           rarity: firstKill && rng.chance(0.5) ? 'legendary' : 'epic',
         });
+        this.abyssTouch(item);
         this.pickups.push(new Pickup(e.x, e.y - 4, 'item', 1, item));
       }
     } else if (e.elite) {
@@ -1176,6 +1252,44 @@ export class World {
     if (!e.isBoss && !e.elite) {
       if (rng.chance(0.07)) this.pickups.push(new Pickup(e.x, e.y, 'orb_hp', 1));
       else if (rng.chance(0.06)) this.pickups.push(new Pickup(e.x, e.y, 'orb_mp', 1));
+    }
+    if (this.abyssFloor > 0) {
+      const tier = e.isBoss ? 'boss' : e.elite ? 'elite' : 'normal';
+      this.abyssLoot(e.x, e.y - 4, ilvl, tier);
+    }
+  }
+
+  // ------------------------------------------------------------ abyss loot ----
+
+  /** Chance-scaling for Abyss loot: deeper floors, magic find and difficulty all help. */
+  private abyssLuck(): number {
+    const st = this.game.stats();
+    return (1 + this.abyssFloor * 0.04) * (1 + st.magicFind * 0.5 + this.game.difficulty.lootBonus);
+  }
+
+  /** Gear found in the Abyss (rare or better) sometimes comes with a gem socket. */
+  private abyssTouch(item: Item): void {
+    if (this.abyssFloor > 0 && RARITY_INDEX[item.rarity] >= 2 && rng.chance(ABYSS_SOCKET_CHANCE))
+      addSocket(item);
+  }
+
+  /** Abyss-only rewards: gems and, rarely, an Abyssal item. */
+  private abyssLoot(x: number, y: number, ilvl: number, source: AbyssLootSource): void {
+    const f = this.abyssFloor;
+    if (rng.chance(Math.min(ABYSSAL_MAX_CHANCE, ABYSSAL_CHANCE[source] * this.abyssLuck()))) {
+      const item = generateAbyssal(rng, ilvl);
+      const pk = new Pickup(x, y, 'item', 1, item);
+      pk.vz = 140;
+      this.pickups.push(pk);
+      audio.playSfx('void_pulse');
+      this.shake(3, 0.3);
+      this.flashScreen('#ff0044', 0.18);
+    }
+    const [n, chance] = GEM_DROPS[source];
+    for (let i = 0; i < n; i++) {
+      if (!rng.chance(chance)) continue;
+      const g = rollGemDrop(rng, f, source !== 'normal');
+      this.pickups.push(new Pickup(x, y, 'gem', 1, undefined, undefined, g));
     }
   }
 
@@ -1787,6 +1901,14 @@ export class World {
           this.game.toast(`+1 ${pk.label}`, undefined);
         }
         break;
+      case 'gem':
+        if (pk.gem) {
+          addGem(save, pk.gem);
+          audio.playSfx(pk.gem.q >= 3 ? 'pickup_rare' : 'pickup');
+          this.game.toast(`+1 ${gemLabel(pk.gem)}`, gemIcon(pk.gem));
+          this.game.events.emit('materialsChanged', undefined);
+        }
+        break;
       case 'item':
         if (pk.item) {
           if (!this.game.giveItem(pk.item)) {
@@ -1823,6 +1945,7 @@ export class World {
       const item = this.game.rollItem(ilvl, {
         rarityRoll: { min: o.rare ? 'rare' : 'uncommon', bonus: o.rare ? 0.8 : 0.2 },
       });
+      this.abyssTouch(item);
       const pk = new Pickup(o.x, o.y - 6, 'item', 1, item);
       pk.vy = 30 + rng.range(0, 20);
       this.pickups.push(pk);
@@ -1841,6 +1964,7 @@ export class World {
           generateCharm(rng, ilvl, { size: o.rare && rng.chance(0.4) ? 'grand' : undefined }),
         ),
       );
+    if (this.abyssFloor > 0) this.abyssLoot(o.x, o.y - 6, ilvl, o.rare ? 'rareChest' : 'chest');
     this.particles.emit(o.x, o.y - 8, {
       count: 24,
       color: ['#fee761', '#feae34', '#ffffff'],
@@ -2355,13 +2479,14 @@ export class World {
       t: 0,
       color: '#b55088',
     };
-    const cx = this.data.w * 8;
-    const cy = this.data.h * 8 - 16;
+    // the generator picks open, reachable floor for the rewards; older maps fall back to a search
+    const at = this.data.spawnPoints.reward ?? this.safeSpot(this.data.w * 8, this.data.h * 8 - 16);
+    const chestAt = this.data.spawnPoints.rewardChest ?? this.safeSpot(at.x + 40, at.y + 10);
     const obj: Extract<MapObject, { kind: 'portal' }> = {
       kind: 'portal',
       id: `abyss_next_${f}`,
-      x: cx,
-      y: cy,
+      x: at.x,
+      y: at.y,
       to: `abyss_${f + 1}`,
       spawn: 'entry',
     };
@@ -2369,8 +2494,8 @@ export class World {
     const chest: Extract<MapObject, { kind: 'chest' }> = {
       kind: 'chest',
       id: `abyss_${f}_${Date.now()}`,
-      x: cx + 40,
-      y: cy + 10,
+      x: chestAt.x,
+      y: chestAt.y,
       rare: f % 5 === 0,
       ilvl: abyssLevel(f),
     };

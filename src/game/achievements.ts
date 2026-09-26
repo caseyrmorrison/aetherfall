@@ -134,6 +134,20 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     check: (g) => s(g).stats.abyssBest >= 25,
   },
   {
+    id: 'abyssal_1',
+    name: 'Forged in the Dark',
+    desc: 'Find an Abyssal item.',
+    secret: true,
+    check: (g) => s(g).stats.abyssals >= 1,
+  },
+  {
+    id: 'gem_royal',
+    name: 'Crown Jewel',
+    desc: 'Combine a Royal gem.',
+    secret: true,
+    check: (g) => hasFlag(s(g), 'gem_royal'),
+  },
+  {
     id: 'ngplus',
     name: 'Once More, With Feeling',
     desc: 'Begin New Game+.',
