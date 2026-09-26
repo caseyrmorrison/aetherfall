@@ -9,7 +9,6 @@ import {
   BASE_BAG,
   bagSizeFor,
   charmLimitFor,
-  FREE_STASH_TABS,
   MAX_BAG_UPGRADES,
   MAX_LEVEL,
   xpToNext,
@@ -19,7 +18,7 @@ import { newAscendancy, type AscendancyState } from './ascendancy';
 import { newParagon, paragonXpToNext, type ParagonState } from './paragon';
 import type { ConsumableId, Difficulty, EquipSlot, Item, MaterialId } from './types';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface QuestState {
   id: string;
@@ -108,8 +107,11 @@ export interface SaveData {
   townPortal: { map: string; x: number; y: number } | null;
   /** Ascendancy class, trials and notables (Path of Exile 2 style). */
   ascendancy: AscendancyState;
-  /** The stash chest in town: tabs of stored items. */
-  stash: { tabs: Item[][] };
+  /**
+   * Legacy (v5): a per-slot stash. The stash is now shared between save slots
+   * (see game/stash); anything left here is moved into it when the save loads.
+   */
+  stash?: { tabs: Item[][] };
 }
 
 /** How many items the bag holds (grows with Bag Expansions). */
@@ -188,7 +190,6 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
     torment: 0,
     townPortal: null,
     ascendancy: newAscendancy(),
-    stash: { tabs: Array.from({ length: FREE_STASH_TABS }, () => []) },
   };
 }
 
@@ -390,7 +391,9 @@ export function migrate(raw: unknown): SaveData | null {
     merged.hero.bagUpgrades = Math.min(MAX_BAG_UPGRADES, Math.max(0, Math.ceil(need / BAG_STEP)));
     merged.hero.charmUpgrades = 2;
   }
-  merged.stash = s.stash?.tabs?.length ? s.stash : base.stash;
+  // v5 -> v6: the stash is shared between slots; a per-slot stash is kept only until
+  // the game moves it into the shared one (Game.setSave)
+  if (!s.stash?.tabs?.some((t) => t.length)) delete merged.stash;
   syncUnlockedSkills(merged);
   return merged;
 }

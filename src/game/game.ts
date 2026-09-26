@@ -16,6 +16,7 @@ import { Achievements } from './achievements';
 import { QuestSystem } from './quests';
 import { SaveStore } from './saves';
 import { loadSettings, saveSettings, type Settings } from './settings';
+import { absorbLegacyStash, StashStore, type SharedStash } from './stash';
 import { addGold, addItem, grantXp, type SaveData } from './state';
 import { computeHeroStats, NO_BUFFS, type Buffs, type HeroStats } from './stats';
 import type { Item } from './types';
@@ -43,6 +44,9 @@ export interface GameEvents extends Record<string, unknown> {
 export class Game {
   readonly events = new Emitter<GameEvents>();
   readonly saves = new SaveStore();
+  private readonly stashStore = new StashStore();
+  /** The stash chest, shared by every save slot. */
+  readonly stash: SharedStash = this.stashStore.load();
   readonly quests: QuestSystem;
   readonly achievements: Achievements;
   settings: Settings = loadSettings();
@@ -76,6 +80,21 @@ export class Game {
     this.buffs = { ...NO_BUFFS };
     this.toasts = [];
     this.invalidateStats();
+    // saves from before the stash was shared: move their stash into the shared one
+    if (s?.stash) {
+      const moved = absorbLegacyStash(this.stash, s.stash);
+      delete s.stash;
+      if (moved) this.saveStash();
+    }
+  }
+
+  /**
+   * Persist the shared stash together with the current save, so an item can never
+   * end up in both (or neither) after a reload.
+   */
+  saveStash(): boolean {
+    const ok = this.stashStore.write(this.stash);
+    return this.saveNow() && ok;
   }
 
   /** Current difficulty modifiers, including Torment. */

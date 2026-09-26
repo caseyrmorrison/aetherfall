@@ -1,5 +1,6 @@
 /**
- * The stash chest in town: your bag on the left, a tabbed stash on the right.
+ * The stash chest in town (shared by every save slot): your bag on the left, a tabbed
+ * stash on the right.
  * Move items across with Confirm (or a click), rearrange with Move (or drag and drop),
  * deposit everything at once, and buy more tabs.
  */
@@ -45,7 +46,7 @@ export class StashScene implements Scene {
   }
 
   private list(side: Side): Item[] {
-    return side === 'bag' ? this.save.inventory : this.save.stash.tabs[this.tab];
+    return side === 'bag' ? this.save.inventory : this.game.stash.tabs[this.tab];
   }
 
   private capacity(side: Side): number {
@@ -54,7 +55,7 @@ export class StashScene implements Scene {
 
   /** The "+" tab past the last owned tab (buying a new one). */
   private get onBuyTab(): boolean {
-    return this.tab >= this.save.stash.tabs.length;
+    return this.tab >= this.game.stash.tabs.length;
   }
 
   private itemAt(slot: Slot): Item | null {
@@ -67,7 +68,7 @@ export class StashScene implements Scene {
   update(dt: number): void {
     this.t += dt;
     const input = this.game.app.input;
-    const tabs = this.save.stash.tabs.length + (this.save.stash.tabs.length < MAX_STASH_TABS ? 1 : 0);
+    const tabs = this.game.stash.tabs.length + (this.game.stash.tabs.length < MAX_STASH_TABS ? 1 : 0);
     if (input.repeat('tabPrev') || input.repeat('tabNext')) {
       this.tab = (this.tab + (input.repeat('tabNext') ? 1 : tabs - 1)) % tabs;
       if (this.sel.side === 'stash') this.sel = { side: 'stash', i: 0 };
@@ -247,11 +248,11 @@ export class StashScene implements Scene {
     if (!moving.length) return this.fail('Nothing to deposit (locked items and charms stay in your bag).');
     let n = 0;
     for (const it of moving) {
-      const tab = [this.tab, ...s.stash.tabs.keys()].find(
-        (k) => k < s.stash.tabs.length && s.stash.tabs[k].length < STASH_TAB_SIZE,
+      const tab = [this.tab, ...this.game.stash.tabs.keys()].find(
+        (k) => k < this.game.stash.tabs.length && this.game.stash.tabs[k].length < STASH_TAB_SIZE,
       );
       if (tab === undefined) break;
-      s.stash.tabs[tab].push(it);
+      this.game.stash.tabs[tab].push(it);
       s.inventory.splice(s.inventory.indexOf(it), 1);
       it.isNew = false;
       n++;
@@ -279,21 +280,27 @@ export class StashScene implements Scene {
 
   private buyTab(): void {
     const s = this.save;
-    const cost = stashTabCost(s.stash.tabs.length);
+    const cost = stashTabCost(this.game.stash.tabs.length);
     this.game.app.push(
-      new ConfirmScene(this.game, `Buy stash tab ${ROMAN[s.stash.tabs.length]} for ${cost} gold?`, () => {
-        if (s.hero.gold < cost) return this.fail('Not enough gold.');
-        s.hero.gold -= cost;
-        s.stash.tabs.push([]);
-        audio.playSfx('upgrade_success');
-        this.game.toast(`Stash tab ${ROMAN[s.stash.tabs.length - 1]} unlocked!`, 'ui_chest');
-      }),
+      new ConfirmScene(
+        this.game,
+        `Buy stash tab ${ROMAN[this.game.stash.tabs.length]} for ${cost} gold?`,
+        () => {
+          if (s.hero.gold < cost) return this.fail('Not enough gold.');
+          s.hero.gold -= cost;
+          this.game.stash.tabs.push([]);
+          this.game.saveStash();
+          audio.playSfx('upgrade_success');
+          this.game.toast(`Stash tab ${ROMAN[this.game.stash.tabs.length - 1]} unlocked!`, 'ui_chest');
+        },
+      ),
     );
   }
 
-  /** Charms moving in or out of the bag change your stats. */
+  /** Save the stash and the character together; charms moving in or out change stats. */
   private afterChange(): void {
     this.game.invalidateStats();
+    this.game.saveStash();
   }
 
   private fail(msg: string): void {
@@ -322,6 +329,7 @@ export class StashScene implements Scene {
     const x = Math.round((W - w) / 2);
     const y = 14;
     drawPanel(ctx, x, y, w, h, { title: 'Stash' });
+    drawText(ctx, '{gray}shared by all save slots{/}', x + measureText('Stash') + 16, y + 3);
     drawText(ctx, `${s.hero.gold}g`, x + w - 8, y + 3, { align: 'right', color: UI.accent });
 
     // bag
@@ -340,7 +348,7 @@ export class StashScene implements Scene {
     // stash tabs
     const sx = bx + gridW + 10;
     let tx = sx;
-    const tabs = s.stash.tabs.length;
+    const tabs = this.game.stash.tabs.length;
     for (let i = 0; i < tabs + (tabs < MAX_STASH_TABS ? 1 : 0); i++) {
       const label = i < tabs ? ROMAN[i] : '+';
       const tw = measureText(label) + 8;
