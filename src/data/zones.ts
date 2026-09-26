@@ -291,7 +291,7 @@ export const ZONES: Record<string, ZoneDef> = {
     seed: 'sunken-v1',
     entry: 'north',
     back: { map: 'solenne', spawn: 'south' },
-    blocker: 'mixed',
+    blocker: 'wall',
     treeProp: 'mangrove_tree',
     enemies: [
       ['drowned', 4],
@@ -308,6 +308,7 @@ export const ZONES: Record<string, ZoneDef> = {
       ['broken_column', 0.01],
       ['coral_rock', 0.01],
       ['glow_coral', 0.004],
+      ['mangrove_tree', 0.004],
     ],
     liquidChance: 0.7,
     altAmount: 0.35,
