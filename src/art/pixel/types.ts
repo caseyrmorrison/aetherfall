@@ -250,6 +250,15 @@ export type IconId =
   | 'passive_blade'
   | 'passive_arcane'
   | 'passive_guard'
+  | 'skill_shadowstep'
+  | 'skill_earthshatter'
+  | 'skill_blizzard'
+  | 'skill_bloodrite'
+  // ascendancy class emblems
+  | 'asc_blademaster'
+  | 'asc_warbringer'
+  | 'asc_shadowblade'
+  | 'asc_archmage'
   // ui
   | 'ui_heart'
   | 'ui_mana'
@@ -263,4 +272,8 @@ export type IconId =
   | 'ui_chest'
   | 'ui_save'
   | 'ui_sword'
-  | 'ui_shield';
+  | 'ui_shield'
+  | 'ui_portal'
+  | 'ui_paragon'
+  | 'ui_craft'
+  | 'ui_trial';

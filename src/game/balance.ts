@@ -37,6 +37,16 @@ export interface DifficultyMods {
   eliteChance: number;
   lootBonus: number;
   goldLossOnDeath: number;
+  /** Enemy attack cooldowns are multiplied by this (lower = more aggressive). */
+  aggression: number;
+  /** How many enemies may be mid-attack at the same time. */
+  tokens: number;
+  /** Elite health and damage multipliers. */
+  eliteHp: number;
+  eliteDmg: number;
+  /** XP and gold multipliers (harder difficulties pay more). */
+  xpMult: number;
+  goldMult: number;
   label: string;
   desc: string;
 }
@@ -49,40 +59,88 @@ export const DIFFICULTY: Record<Difficulty, DifficultyMods> = {
     eliteChance: 0.03,
     lootBonus: 0,
     goldLossOnDeath: 0,
+    aggression: 1.15,
+    tokens: 1,
+    eliteHp: 2.2,
+    eliteDmg: 1.15,
+    xpMult: 1,
+    goldMult: 1,
     label: 'Story',
     desc: 'Enjoy the tale. Enemies hit softly and you keep all gold on death.',
   },
   normal: {
-    enemyHp: 1,
-    enemyDmg: 1,
+    enemyHp: 1.2,
+    enemyDmg: 1.35,
     enemySpeed: 1,
-    eliteChance: 0.06,
+    eliteChance: 0.08,
     lootBonus: 0,
     goldLossOnDeath: 0.2,
+    aggression: 0.95,
+    tokens: 2,
+    eliteHp: 2.8,
+    eliteDmg: 1.35,
+    xpMult: 1,
+    goldMult: 1,
     label: 'Normal',
-    desc: 'The intended challenge. Learn patterns, dodge, and grind if stuck.',
+    desc: 'The intended challenge. Enemies hit hard: learn their patterns, dodge, and grind if stuck.',
   },
   hard: {
-    enemyHp: 1.35,
-    enemyDmg: 1.4,
-    enemySpeed: 1.08,
-    eliteChance: 0.1,
-    lootBonus: 0.25,
+    enemyHp: 1.85,
+    enemyDmg: 2.1,
+    enemySpeed: 1.1,
+    eliteChance: 0.14,
+    lootBonus: 0.3,
     goldLossOnDeath: 0.3,
+    aggression: 0.85,
+    tokens: 4,
+    eliteHp: 3.2,
+    eliteDmg: 1.5,
+    xpMult: 1.2,
+    goldMult: 1.2,
     label: 'Hard',
-    desc: 'Tougher, faster enemies and more elites. +25% rare loot.',
+    desc: 'Tough, fast, aggressive enemies and many elites. +30% rare loot, +20% XP and gold.',
   },
   nightmare: {
-    enemyHp: 1.8,
-    enemyDmg: 1.9,
-    enemySpeed: 1.15,
-    eliteChance: 0.15,
-    lootBonus: 0.6,
+    enemyHp: 2.7,
+    enemyDmg: 3.1,
+    enemySpeed: 1.18,
+    eliteChance: 0.22,
+    lootBonus: 0.7,
     goldLossOnDeath: 0.5,
+    aggression: 0.75,
+    tokens: 6,
+    eliteHp: 3.6,
+    eliteDmg: 1.6,
+    xpMult: 1.4,
+    goldMult: 1.4,
     label: 'Nightmare',
-    desc: 'For masochists. Brutal damage, many elites. +60% rare loot.',
+    desc: 'Punishing. Everything hits like a truck and swarms you. +70% rare loot, +40% XP and gold.',
   },
 };
+
+/** Torment tiers stack on top of Nightmare once the story is beaten. */
+export const MAX_TORMENT = 6;
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
+/** Difficulty modifiers including Torment (only applies on Nightmare). */
+export function effectiveDifficulty(d: Difficulty, torment = 0): DifficultyMods {
+  const base = DIFFICULTY[d];
+  const t = d === 'nightmare' ? Math.max(0, Math.min(MAX_TORMENT, Math.floor(torment))) : 0;
+  if (!t) return base;
+  return {
+    ...base,
+    enemyHp: base.enemyHp * 1.45 ** t,
+    enemyDmg: base.enemyDmg * 1.3 ** t,
+    enemySpeed: base.enemySpeed * (1 + 0.02 * t),
+    eliteChance: base.eliteChance + 0.02 * t,
+    lootBonus: base.lootBonus + 0.25 * t,
+    aggression: base.aggression * 0.97 ** t,
+    xpMult: base.xpMult * (1 + 0.35 * t),
+    goldMult: base.goldMult * (1 + 0.3 * t),
+    label: `Torment ${ROMAN[t]}`,
+    desc: `Nightmare, but ${Math.round((1.45 ** t - 1) * 100)}% more enemy health and ${Math.round((1.3 ** t - 1) * 100)}% more damage. Much better loot, XP and gold.`,
+  };
+}
 
 /** Multiplier applied to enemy base HP for its level. */
 export const enemyHpScale = (level: number): number => 1 + 0.32 * (level - 1) + 0.004 * (level - 1) ** 2;
@@ -101,17 +159,17 @@ export function xpReward(baseXp: number, enemyLevel: number, heroLevel: number):
   return Math.max(1, Math.round(raw * mod));
 }
 
-/** Level difference damage modifier: being over-leveled matters, so grinding helps. */
+/** Level difference damage modifier: being over-leveled helps (so grinding works), but only so much. */
 export function levelDiffMod(attackerLevel: number, defenderLevel: number): number {
   const d = attackerLevel - defenderLevel;
-  if (d >= 0) return 1 + Math.min(0.5, d * 0.05);
-  return Math.max(0.5, 1 + d * 0.05);
+  if (d >= 0) return 1 + Math.min(0.3, d * 0.04);
+  return Math.max(0.6, 1 + d * 0.04);
 }
 
-/** Fraction of damage blocked by defense (0..0.8). */
+/** Fraction of damage blocked by defense (0..0.75). */
 export function defenseReduction(def: number, attackerLevel: number): number {
   if (def <= 0) return 0;
-  return Math.min(0.8, def / (def + 6 * attackerLevel + 40));
+  return Math.min(0.75, def / (def + 9 * attackerLevel + 60));
 }
 
 export interface DamageInput {
@@ -179,6 +237,31 @@ export const buyPrice = (ilvl: number, rarityIndex: number): number => sellPrice
 /** Cost of the next flask expansion (charges beyond the base). */
 export const flaskUpgradeCost = (purchased: number): number => Math.round(150 * Math.pow(2.1, purchased));
 export const MAX_FLASK_UPGRADES = 5;
+
+// ------------------------------------------------------ storage upgrades ----
+
+/** Bag slots: 40 to start, +8 (one row) per expansion bought from Mira. */
+export const BASE_BAG = 40;
+export const BAG_STEP = 8;
+const BAG_COSTS = [500, 1500, 4000, 9000, 18000, 32000, 50000];
+export const MAX_BAG_UPGRADES = BAG_COSTS.length;
+export const bagSizeFor = (upgrades: number): number => BASE_BAG + BAG_STEP * upgrades;
+export const bagUpgradeCost = (bought: number): number => BAG_COSTS[bought] ?? Infinity;
+
+/** Active charms: 6 to start, +2 per Charm Satchel bought from Mira. */
+export const BASE_CHARMS = 6;
+export const CHARM_STEP = 2;
+const CHARM_COSTS = [1000, 4000, 12000, 30000];
+export const MAX_CHARM_UPGRADES = CHARM_COSTS.length;
+export const charmLimitFor = (upgrades: number): number => BASE_CHARMS + CHARM_STEP * (upgrades ?? 0);
+export const charmUpgradeCost = (bought: number): number => CHARM_COSTS[bought] ?? Infinity;
+
+/** Stash: tabs of 48 slots. Two are free; more can be bought at the stash. */
+export const STASH_TAB_SIZE = 48;
+export const FREE_STASH_TABS = 2;
+const STASH_TAB_COSTS = [5000, 20000, 60000, 150000];
+export const MAX_STASH_TABS = FREE_STASH_TABS + STASH_TAB_COSTS.length;
+export const stashTabCost = (owned: number): number => STASH_TAB_COSTS[owned - FREE_STASH_TABS] ?? Infinity;
 
 /** Cost to reset the passive tree. */
 export const respecCost = (level: number): number => 50 + level * 25;

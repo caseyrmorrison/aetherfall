@@ -80,6 +80,12 @@ export class Hud {
     drawPortrait(ctx, 'kai', expr, x - 4, y - 2, 38, 44, { blink: Math.floor(this.t * 10) % 40 === 0 });
     ctx.restore();
     drawText(ctx, `${hero.level}`, x + 28, y + 22, { align: 'right', color: UI.accent, outline: UI.bg });
+    if (hero.paragon.level > 0)
+      drawText(ctx, `P${hero.paragon.level}`, x + 28, y + 30, {
+        align: 'right',
+        color: UI.cyan,
+        outline: UI.bg,
+      });
 
     const bx = x + 34;
     const bw = 96;
@@ -141,7 +147,15 @@ export class Hud {
       drawIcon(ctx, 'icon_potion_hp', sx - 2, sy - 3);
       sx += 14;
     }
-    if (g.buffs.guard > 0) drawIcon(ctx, 'icon_potion_mp', sx - 2, sy - 3);
+    if (g.buffs.guard > 0) {
+      drawIcon(ctx, 'icon_potion_mp', sx - 2, sy - 3);
+      sx += 14;
+    }
+    if (g.buffs.fortune > 0) {
+      drawIcon(ctx, 'icon_elixir', sx - 2, sy - 3);
+      sx += 14;
+    }
+    if (g.buffs.rite > 0) drawIcon(ctx, 'skill_bloodrite', sx - 2, sy - 3, 0, 0.9);
   }
 
   private drawSkills(ctx: CanvasRenderingContext2D, world: World, W: number, H: number): void {

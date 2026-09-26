@@ -6,11 +6,13 @@ import { pointInRect, type Rect } from '../../engine/math';
 import type { Game } from '../../game/game';
 import { drawHints, drawPanel, UI } from '../../ui/widgets';
 import type { WorldScene } from '../world-scene';
+import { AscendTab } from './ascend';
 import { BestiaryTab } from './bestiary';
 import { GemsTab } from './gems';
 import { HeroTab } from './hero';
 import { ItemsTab } from './items';
 import { MapTab } from './map';
+import { ParagonTab } from './paragon';
 import { QuestsTab } from './quests';
 import { RecordsTab } from './records';
 import { SkillsTab } from './skills';
@@ -25,6 +27,8 @@ export type MenuTab =
   | 'gems'
   | 'skills'
   | 'talents'
+  | 'paragon'
+  | 'ascend'
   | 'quests'
   | 'map'
   | 'bestiary'
@@ -52,6 +56,8 @@ const ORDER: MenuTab[] = [
   'gems',
   'skills',
   'talents',
+  'paragon',
+  'ascend',
   'quests',
   'map',
   'bestiary',
@@ -78,6 +84,8 @@ export class MenuScene implements Scene {
       gems: new GemsTab(this),
       skills: new SkillsTab(this),
       talents: new TalentsTab(this),
+      paragon: new ParagonTab(this),
+      ascend: new AscendTab(this),
       quests: new QuestsTab(this),
       map: new MapTab(this),
       bestiary: new BestiaryTab(this),

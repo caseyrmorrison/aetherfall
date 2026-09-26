@@ -6,10 +6,12 @@ import { drawPortrait } from '../../art/anime';
 import { LEGENDARIES, WEAPON_LABEL } from '../../data/items';
 import { drawText } from '../../engine/font';
 import type { Rect } from '../../engine/math';
-import { xpToNext } from '../../game/balance';
+import { MAX_LEVEL, xpToNext } from '../../game/balance';
+import { paragonXpToNext } from '../../game/paragon';
 import { activeCharms } from '../../game/items';
 import { deriveStats, powerRating } from '../../game/stats';
-import { CHARM_LIMIT, EQUIP_SLOTS } from '../../game/types';
+import { charmLimit } from '../../game/state';
+import { EQUIP_SLOTS } from '../../game/types';
 import { drawBar, drawIcon, drawPanel, drawTooltip, ListView, UI } from '../../ui/widgets';
 import type { MenuScene, TabView } from './menu';
 
@@ -105,7 +107,7 @@ export class StatsTab implements TabView {
     r(
       'Damage Reduction',
       pct(d.damageReduction),
-      `Damage blocked by your Defense against an enemy of your level (Lv ${s.hero.level}). Capped at 80%.`,
+      `Damage blocked by your Defense against an enemy of your level (Lv ${s.hero.level}). Capped at 75%.`,
       UI.good,
     );
     r(
@@ -171,8 +173,8 @@ export class StatsTab implements TabView {
     const charmCount = s.inventory.filter((i) => i.slot === 'charm').length;
     r(
       'Active Charms',
-      `${activeCharms(s).length}/${CHARM_LIMIT}`,
-      `Charms work from your bag; the first ${CHARM_LIMIT} are active. You carry ${charmCount}. Sort your bag to put the best ones first.`,
+      `${activeCharms(s).length}/${charmLimit(s)}`,
+      `Charms work from your bag; the first ${charmLimit(s)} are active (Mira sells Charm Satchels for more). You carry ${charmCount}. Sort your bag to put the best ones first.`,
     );
 
     const powers: Row[] = [];
@@ -252,12 +254,18 @@ export class StatsTab implements TabView {
     drawPortrait(ctx, 'kai', 'determined', r.x, r.y, 44, 50, { blink: Math.floor(this.t * 10) % 43 === 0 });
     drawText(ctx, s.hero.name, r.x + 48, r.y + 4, { color: UI.accent });
     drawText(ctx, 'Shardbearer', r.x + 48, r.y + 14, { color: UI.dim });
-    drawText(ctx, `Level ${s.hero.level}`, r.x + 48, r.y + 24);
-    const need = xpToNext(s.hero.level);
-    drawBar(ctx, r.x + 48, r.y + 36, lw - 50, 3, Number.isFinite(need) ? s.hero.xp / need : 1, '#b55088');
-    drawText(ctx, Number.isFinite(need) ? `${s.hero.xp}/${need} XP` : 'MAX', r.x + 48, r.y + 41, {
-      color: UI.dim,
-    });
+    const para = s.hero.paragon;
+    const maxed = s.hero.level >= MAX_LEVEL;
+    drawText(
+      ctx,
+      maxed ? `Level ${s.hero.level} {cyan}P${para.level}{/}` : `Level ${s.hero.level}`,
+      r.x + 48,
+      r.y + 24,
+    );
+    const xp = maxed ? para.xp : s.hero.xp;
+    const need = maxed ? paragonXpToNext(para.level) : xpToNext(s.hero.level);
+    drawBar(ctx, r.x + 48, r.y + 36, lw - 50, 3, xp / need, maxed ? '#2ce8f5' : '#b55088');
+    drawText(ctx, `${xp}/${need} ${maxed ? 'Paragon XP' : 'XP'}`, r.x + 48, r.y + 41, { color: UI.dim });
 
     const box = (
       y: number,

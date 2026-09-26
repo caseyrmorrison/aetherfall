@@ -7,6 +7,7 @@ import { getSprite, silhouette, spriteInfo } from '../art/pixel';
 import type { FxId } from '../art/pixel/types';
 import { audio } from '../audio';
 import { ELITE_MODS, enemyDef, type AttackDef, type ProjectileSpec, type StatusSpec } from '../data/enemies';
+import type { SkillId } from '../data/skills';
 import { NPCS, type Service } from '../data/npcs';
 import { drawText } from '../engine/font';
 import type { Input } from '../engine/input';
@@ -47,10 +48,12 @@ import { Player } from './entities/player';
 import { Projectile } from './entities/projectile';
 import { abyssLevel } from './abyss';
 import { getMap } from './maps';
-import { CELL, TILE, type MapData, type MapObject } from './mapdata';
+import { CELL, TILE, TOWN_PORTAL_ID, type MapData, type MapObject } from './mapdata';
 import { Particles } from './particles';
 import { BG_COLOR, MapRenderer, type Drawable, type Light } from './render';
 import { fireCannon } from './skills';
+import { TrialRun } from './trial';
+import { ASC_POINTS_PER_TRIAL } from '../data/ascendancy';
 import { applyImpactFrame, impactStyleAt, zoomPunch } from '../ui/fx';
 import { TileMap } from './tilemap';
 
@@ -66,6 +69,24 @@ export interface WorldHooks {
   enterArena(o: Extract<MapObject, { kind: 'bossGate' }>): void;
   message(text: string): void;
   portal(to: string, spawn: string): void;
+  trial(): void;
+  stash(): void;
+  /** `choose` = the first trial was just won, so pick an Ascendancy. */
+  trialComplete(choose: boolean): void;
+}
+
+/** Seconds to channel a town portal. */
+export const TOWN_PORTAL_CAST = 1.2;
+
+/** What's kept of an area left by town portal: its monsters, loot on the ground and objects. */
+interface PortalStash {
+  mapId: string;
+  enemies: Enemy[];
+  pickups: Pickup[];
+  objects: WorldObject[];
+  boss: Enemy | null;
+  bossIntroDone: boolean;
+  abyssCleared: boolean;
 }
 
 interface Effect {
@@ -145,6 +166,16 @@ export class World {
   private flow: Int16Array = new Int16Array(0);
   private reachMask: Uint8Array = new Uint8Array(0);
   private reachFrom = -1;
+  /** Town portal being channelled (seconds elapsed), or null. */
+  portalCast: { t: number } | null = null;
+  /** The area left through a town portal, kept in memory so returning finds it as it was. */
+  private portalStash: PortalStash | null = null;
+  /** Set by the scene just before loading the map a town portal returns to. */
+  restoreFromPortal = false;
+  /** What happened during the current guardian fight (for challenges). */
+  private bossFight = { hit: false, flask: false };
+  /** The Trial of Ascension being fought on this map, if any. */
+  trial: TrialRun | null = null;
   private flowT = 0;
   private flowCenter = -1;
   explored!: Uint8Array;
@@ -189,6 +220,7 @@ export class World {
     this.cutin = null;
     this.abyssCleared = false;
     this.abyssFloor = mapId.startsWith('abyss') ? Number(mapId.split('_')[1]) : 0;
+    const trialTier = mapId.startsWith('trial_') ? Number(mapId.split('_')[1]) : 0;
     const save = this.game.save;
     this.dustColor = {
       town: '#b86f50',
@@ -199,8 +231,7 @@ export class World {
       citadel: '#8b9bb4',
       abyss: '#68386c',
     }[this.data.theme];
-    const diff = save.difficulty;
-    this.maxTokens = diff === 'story' ? 1 : diff === 'normal' ? 2 : diff === 'hard' ? 3 : 4;
+    this.maxTokens = this.game.difficulty.tokens;
     this.tokens = this.maxTokens;
 
     // spawn position
@@ -228,6 +259,33 @@ export class World {
       this.objects.push(new WorldObject(o));
     }
     this.spawnEnemies();
+    this.portalCast = null;
+    this.trial = trialTier
+      ? new TrialRun(trialTier, save.hero.level, save.ascendancy.trials < trialTier)
+      : null;
+    if (this.restoreFromPortal && this.portalStash?.mapId === mapId) {
+      // back through a town portal: everything is where you left it
+      const st = this.portalStash;
+      this.enemies = st.enemies;
+      this.pickups = st.pickups;
+      this.objects = st.objects;
+      this.boss = st.boss;
+      this.bossIntroDone = st.bossIntroDone;
+      this.abyssCleared = st.abyssCleared;
+    }
+    if (this.restoreFromPortal) this.portalStash = null;
+    this.restoreFromPortal = false;
+    const tp = save.townPortal;
+    if (mapId === 'town' && tp)
+      this.objects.push(
+        new WorldObject({
+          kind: 'portal',
+          id: TOWN_PORTAL_ID,
+          ...(this.data.spawnPoints['town_portal_gate'] ?? this.data.spawnPoints['town_crystal']),
+          to: tp.map,
+          spawn: TOWN_PORTAL_ID,
+        }),
+      );
 
     // fog of war
     this.explored = decodeBits(save.explored[mapId], this.data.w * this.data.h);
@@ -264,7 +322,7 @@ export class World {
       const def = enemyDef(s.enemy);
       const elite = s.elite || rng.chance(diff.eliteChance) ? rng.pick(ELITE_MODS) : null;
       this.enemies.push(
-        new Enemy(def, s.level + ng, s.x, s.y, diff.enemyHp, diff.enemyDmg, diff.enemySpeed, {
+        new Enemy(def, s.level + ng, s.x, s.y, diff, {
           elite,
           group: s.group,
         }),
@@ -283,7 +341,7 @@ export class World {
 
   spawnBoss(id: string, level: number, x: number, y: number): Enemy {
     const diff = this.game.difficulty;
-    const e = new Enemy(enemyDef(id), level, x, y, diff.enemyHp, diff.enemyDmg, diff.enemySpeed);
+    const e = new Enemy(enemyDef(id), level, x, y, diff);
     this.enemies.push(e);
     this.boss = e;
     this.bossIntroDone = false;
@@ -584,6 +642,8 @@ export class World {
 
     this.updateFlow(dt);
     this.player.update(dt, this);
+    if (this.portalCast) this.updateTownPortal(dt);
+    if (this.trial) this.trial.update(dt, this);
     for (const e of this.enemies) e.update(enemyDt, this);
     this.separateEnemies();
     for (const pr of this.projectiles) pr.update(enemyDt, this);
@@ -624,6 +684,7 @@ export class World {
     // boss intro trigger
     if (this.boss && !this.bossIntroDone && !this.boss.dead) {
       this.bossIntroDone = true;
+      this.bossFight = { hit: false, flask: false };
       this.hooks.bossIntro(this.boss);
     }
     // abyss floor clear
@@ -816,6 +877,14 @@ export class World {
       case 'board':
         this.hooks.service('board');
         break;
+      case 'trial':
+        audio.playSfx('ui_select');
+        this.hooks.trial();
+        break;
+      case 'stash':
+        audio.playSfx('chest_open');
+        this.hooks.stash();
+        break;
       case 'marker':
         audio.playSfx('pickup_rare');
         this.quests.onReach(this.data.id, o.id);
@@ -855,23 +924,124 @@ export class World {
     this.blockedWarpId = null;
   }
 
+  // ----------------------------------------------------------- town portal ----
+
+  /** Why a town portal can't be opened here, or null if it can. */
+  townPortalBlocked(): string | null {
+    if (this.data.id === 'town') return 'You are already in town.';
+    if (this.trial && !this.trial.done) return 'The trial seals you in. Walk out to forfeit.';
+    if (this.player.state === 'dead') return 'You are dead.';
+    if (this.boss && !this.boss.dead && this.bossIntroDone) return 'The guardian won’t let you leave!';
+    return null;
+  }
+
+  /** Start channelling a town portal (hold still; taking damage interrupts it). */
+  startTownPortal(): void {
+    if (this.portalCast) return;
+    const why = this.townPortalBlocked();
+    if (why) {
+      audio.playSfx('ui_error');
+      this.popText(this.player.x, this.player.y - 24, why, '#8b9bb4', { small: true });
+      return;
+    }
+    this.portalCast = { t: 0 };
+    audio.playSfx('charge_up', { volume: 0.7 });
+  }
+
+  cancelTownPortal(reason?: string): void {
+    if (!this.portalCast) return;
+    this.portalCast = null;
+    if (reason) this.popText(this.player.x, this.player.y - 24, reason, '#8b9bb4', { small: true });
+  }
+
+  private updateTownPortal(dt: number): void {
+    const p = this.player;
+    const cast = this.portalCast!;
+    // moving, rolling, attacking or casting breaks the channel
+    if (p.moving || p.state !== 'free' || this.townPortalBlocked()) {
+      this.cancelTownPortal(p.state === 'dead' ? undefined : 'Portal cancelled');
+      return;
+    }
+    cast.t += dt;
+    if (Math.random() < dt * 30) {
+      const a = Math.random() * TAU;
+      this.particles.emit(p.x + Math.cos(a) * 14, p.y + Math.sin(a) * 6, {
+        count: 1,
+        color: ['#2ce8f5', '#0099db', '#ffffff'],
+        speed: [2, 8],
+        vz: [20, 50],
+        gravity: -20,
+        life: [0.4, 0.8],
+        emissive: true,
+        shape: 'glow',
+      });
+    }
+    if (cast.t < TOWN_PORTAL_CAST) return;
+    this.portalCast = null;
+    const save = this.game.save;
+    save.townPortal = { map: this.data.id, x: Math.round(p.x), y: Math.round(p.y) };
+    this.stashForPortal();
+    audio.playSfx('teleport');
+    this.flashScreen('#2ce8f5', 0.2);
+    this.hooks.warp('town', 'town_portal');
+  }
+
+  /** Remember this area so returning through the portal finds it unchanged. */
+  private stashForPortal(): void {
+    for (const e of this.enemies) {
+      e.releaseToken(this);
+      e.aggro = false;
+      if (e.state === 'windup' || e.state === 'attack' || e.state === 'recover' || e.state === 'chase')
+        e.state = 'idle';
+    }
+    this.portalStash = {
+      mapId: this.data.id,
+      enemies: this.enemies.filter((e) => !e.dead && !e.removed),
+      pickups: this.pickups.filter((pk) => !pk.removed && pk.kind !== 'orb_hp' && pk.kind !== 'orb_mp'),
+      objects: this.objects,
+      boss: this.boss && !this.boss.dead ? this.boss : null,
+      bossIntroDone: this.bossIntroDone,
+      abyssCleared: this.abyssCleared,
+    };
+  }
+
   // ---------------------------------------------------------------- combat ----
   playerHit(e: Enemy, o: PlayerHitOpts): void {
     if (!e.targetable) return;
     const st = this.game.stats();
     const hero = this.game.save.hero;
+    const pv = st.passives;
+    const asc = st.asc;
+    const p = this.player;
     const power = o.power === 'atk' ? st.atk : o.power === 'mag' ? st.mag : (o.customPower ?? st.atk);
-    let bonus = st.dmgBonus + (o.isSkill ? st.skillDmg : 0);
-    if (st.passives.executioner && e.hp / e.maxHp < 0.3) bonus += 0.35;
-    const critChance = o.forceCrit ? 1 : st.crit + (o.isSkill && st.passives.overload ? 0.15 : 0);
+    let bonus = st.dmgBonus + (o.isSkill ? st.skillDmg : pv.basicDmg);
+    if (o.heavy) bonus += pv.finisher;
+    const hpFrac = e.hp / e.maxHp;
+    if (pv.executioner && hpFrac < 0.3) bonus += 0.35;
+    if (asc.has('sb_assassin') && hpFrac < 0.35) bonus += 0.5;
+    if (asc.has('am_mastery') && (hasStatus(e, 'burn') || hasStatus(e, 'freeze'))) bonus += 0.25;
+    if (pv.unyielding && p.hp < p.maxHp * 0.4) bonus += 0.2;
+    let forceCrit = !!o.forceCrit;
+    // Riposte: guaranteed crits after a perfect dodge
+    if (!o.isSkill && p.guaranteedCrits > 0) {
+      forceCrit = true;
+      p.guaranteedCrits--;
+    }
+    // Shadow Veil: the first hit after a roll
+    if (p.veilT > 0 && asc.has('sb_veil')) {
+      forceCrit = true;
+      bonus += 0.5;
+      p.veilT = 0;
+    }
+    const critChance = forceCrit ? 1 : st.crit + (o.isSkill ? (pv.overload ? 0.15 : 0) + pv.skillCrit : 0);
     const res = computeDamage({
       power,
       mult: o.mult,
       attackerLevel: hero.level,
       defenderLevel: e.level,
-      defenderDef: e.defense,
+      defenderDef: e.defense * (1 - Math.min(0.6, pv.sunder)),
       critChance,
-      critDmg: st.critDmg,
+      critDmg: st.critDmg + (o.isSkill ? pv.skillCritDmg : 0),
       bonus,
       rollCrit: rng.next(),
       rollVar: rng.next(),
@@ -902,19 +1072,54 @@ export class World {
       }
     }
     this.dealToEnemy(e, dmg, res.crit, dir, o.knock ?? 60, o.heavy || res.crit);
-    if (e.dead) return;
+    if (!o.isSkill) {
+      // Thousand Cuts: basic hits shorten every skill cooldown
+      if (asc.has('bm_thousand'))
+        for (const k of Object.keys(p.cooldowns) as SkillId[])
+          p.cooldowns[k] = Math.max(0, (p.cooldowns[k] ?? 0) - 0.25);
+      if (asc.has('am_archon')) p.mp = Math.min(p.maxMp, p.mp + 1);
+    }
+    if (e.dead) {
+      if (o.isSkill && pv.skillExplode) this.skillExplosion(e);
+      return;
+    }
     // on-hit effects
-    if (o.status) e.applyStatus(o.status, power, e.def.immune ?? []);
+    const immune = e.def.immune ?? [];
+    if (o.status) e.applyStatus(this.tuneStatus(o.status), power, immune);
     if (st.burnChance > 0 && rng.chance(st.burnChance))
-      e.applyStatus({ kind: 'burn', duration: 3 }, power * 0.3, e.def.immune ?? []);
-    if (st.legendaries.has('thornfang') && !o.isSkill)
-      e.applyStatus({ kind: 'poison', duration: 3 }, (power * 0.4 * 0.33) / 0.2, e.def.immune ?? []);
+      e.applyStatus(this.tuneStatus({ kind: 'burn', duration: 3 }), power * 0.3, immune);
+    if (!o.isSkill && (st.legendaries.has('thornfang') || asc.has('sb_venom')))
+      e.applyStatus({ kind: 'poison', duration: 3 }, (power * 0.4 * 0.33) / 0.2, immune);
     if (st.lifesteal > 0) this.healPlayer(dmg * st.lifesteal, false);
     if (!o.noSurge && hero.surgeUnlocked)
       hero.surge = Math.min(100, hero.surge + (res.crit ? 2.2 : 1.2) * (o.isSkill ? 0.7 : 1));
     if (o.isSkill && res.crit && st.passives.overload)
       this.player.mp = Math.min(this.player.maxMp, this.player.mp + 4);
     if (!o.noShake) this.shake(res.crit || o.heavy ? 2.5 : 1.2, 0.12);
+  }
+
+  /** Talents/notables that lengthen the statuses you inflict. */
+  private tuneStatus(spec: StatusSpec): StatusSpec {
+    const st = this.game.stats();
+    let k = 1;
+    if (spec.kind === 'freeze' || spec.kind === 'slow') k += st.passives.freezeDur;
+    if (spec.kind === 'burn' && st.asc.has('am_mastery')) k += 0.5;
+    return k === 1 ? spec : { ...spec, duration: spec.duration * k };
+  }
+
+  /** Elemental Overflow: an enemy slain by a skill bursts, hurting those around it. */
+  private skillExplosion(e: Enemy): void {
+    this.novaEffect(e.x, e.y - 4, 36, 'arcane');
+    for (const o of this.enemiesNear(e.x, e.y, 50)) {
+      if (o === e || dist(o.x, o.y, e.x, e.y) > 36 + o.radius) continue;
+      this.playerHit(o, {
+        power: 'mag',
+        mult: 0.5,
+        knock: 60,
+        dir: angleTo(e.x, e.y, o.x, o.y),
+        noShake: true,
+      });
+    }
   }
 
   private dealToEnemy(
@@ -1085,6 +1290,30 @@ export class World {
     if (c.t >= c.dur) this.cannon = null;
   }
 
+  /** A swirling blue ring under the hero and a fill bar while a town portal channels. */
+  private renderPortalCast(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {
+    const p = this.player;
+    const k = Math.min(1, this.portalCast!.t / TOWN_PORTAL_CAST);
+    const x = Math.round(p.x - camX);
+    const y = Math.round(p.y - camY);
+    ctx.save();
+    ctx.globalAlpha = 0.5 + k * 0.4;
+    ctx.strokeStyle = '#2ce8f5';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 2; i++) {
+      const r = 10 + i * 4 + Math.sin(this.time * 8 + i) * 1.5;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * 0.4, 0, this.time * 4 + i, this.time * 4 + i + Math.PI * 1.4);
+      ctx.stroke();
+    }
+    ctx.restore();
+    const w = 24;
+    ctx.fillStyle = '#181425';
+    ctx.fillRect(x - w / 2 - 1, y - 30, w + 2, 4);
+    ctx.fillStyle = '#2ce8f5';
+    ctx.fillRect(x - w / 2, y - 29, Math.round(w * k), 2);
+  }
+
   private renderCannon(ctx: CanvasRenderingContext2D, camX: number, camY: number): void {
     const b = this.cannonEnd();
     if (b.width < 0.5) return;
@@ -1181,9 +1410,7 @@ export class World {
           e.level,
           e.x + rng.range(-8, 8),
           e.y + rng.range(-8, 8),
-          this.game.difficulty.enemyHp,
-          this.game.difficulty.enemyDmg,
-          this.game.difficulty.enemySpeed,
+          this.game.difficulty,
           { group: e.group },
         );
         s.aggro = true;
@@ -1191,13 +1418,15 @@ export class World {
       }
     }
     if (!byPlayer) return;
+    this.onKillEffects(e);
+    this.bumpCounter('streak_nohit', 'streak_nohit_best');
     save.stats.kills++;
     save.bestiary[def.id] = (save.bestiary[def.id] ?? 0) + 1;
     if (e.elite) this.game.count('elites');
     if (e.isBoss && save.difficulty === 'nightmare') this.game.count('nightmare_boss');
     const st = this.game.stats();
     if (st.legendaries.has('vampire_kiss')) this.healPlayer(this.player.maxHp * 0.03, false);
-    const xp = xpReward(e.xp, e.level, save.hero.level) * (e.isBoss ? 1 : 1);
+    const xp = xpReward(e.xp, e.level, save.hero.level) * this.game.difficulty.xpMult;
     this.game.giveXp(xp);
     this.popText(e.x, e.y - 24 * e.scale, `+${Math.round(xp * (1 + st.xpBonus))} XP`, '#b55088', {
       small: true,
@@ -1207,10 +1436,34 @@ export class World {
     if (e.isBoss) this.onBossKilled(e);
   }
 
+  /** Talents and notables that trigger when the hero kills something. */
+  private onKillEffects(e: Enemy): void {
+    const st = this.game.stats();
+    const p = this.player;
+    const pv = st.passives;
+    if (pv.killHeal > 0) {
+      this.healPlayer(p.maxHp * pv.killHeal, false);
+      p.stamina = Math.min(100, p.stamina + pv.killHeal * 500);
+    }
+    if (st.asc.has('bm_saint')) p.cooldowns.slash = 0;
+    if (st.asc.has('bm_tempest')) this.slashGale(p, p.aim, 0.9);
+    if (st.asc.has('sb_deathmark')) {
+      p.stamina = Math.min(100, p.stamina + 20);
+      p.mp = Math.min(p.maxMp, p.mp + p.maxMp * 0.05);
+    }
+    if (st.asc.has('sb_bloom') && hasStatus(e, 'poison')) {
+      this.novaEffect(e.x, e.y - 4, 40, 'nature');
+      for (const o of this.enemiesNear(e.x, e.y, 56)) {
+        if (o === e || o.dead || dist(o.x, o.y, e.x, e.y) > 40 + o.radius) continue;
+        o.applyStatus({ kind: 'poison', duration: 4 }, (st.atk * 0.6) / 0.2 / 4, o.def.immune ?? []);
+      }
+    }
+  }
+
   private dropLoot(e: Enemy): void {
     const st = this.game.stats();
     const diff = this.game.difficulty;
-    const gold = goldDrop(e.gold, e.level, rng.next()) * (1 + st.goldFind);
+    const gold = goldDrop(e.gold, e.level, rng.next()) * (1 + st.goldFind) * diff.goldMult;
     const coins = Math.min(8, Math.max(1, Math.round(gold / 6)));
     for (let i = 0; i < coins; i++)
       this.pickups.push(new Pickup(e.x, e.y - 4, 'gold', Math.max(1, Math.round(gold / coins))));
@@ -1288,12 +1541,116 @@ export class World {
     const [n, chance] = GEM_DROPS[source];
     for (let i = 0; i < n; i++) {
       if (!rng.chance(chance)) continue;
-      const g = rollGemDrop(rng, f, source !== 'normal');
+      // Torment tiers count as extra depth for gem quality
+      const g = rollGemDrop(rng, f + this.game.save.torment * 5, source !== 'normal');
       this.pickups.push(new Pickup(x, y, 'gem', 1, undefined, undefined, g));
     }
   }
 
+  /** Increase a streak kept in save flags, remembering the best run. */
+  private bumpCounter(key: string, bestKey: string): void {
+    const f = this.game.save.flags;
+    f[key] = (f[key] ?? 0) + 1;
+    if (f[key] > (f[bestKey] ?? 0)) {
+      f[bestKey] = f[key];
+      this.quests.checkCounters();
+    }
+  }
+
+  // ------------------------------------------------------------- trials ----
+
+  /** Up to `n` random open spots the hero can reach, at least `minDist` away from them. */
+  openSpots(n: number, minDist: number): { x: number; y: number }[] {
+    const reach = this.reachable();
+    const w = this.data.w;
+    const cand: number[] = [];
+    for (let k = 0; k < reach.length; k++) {
+      if (!reach[k]) continue;
+      const x = (k % w) * TILE + TILE / 2;
+      const y = Math.floor(k / w) * TILE + TILE / 2;
+      if (dist(x, y, this.player.x, this.player.y) >= minDist) cand.push(k);
+    }
+    const out: { x: number; y: number }[] = [];
+    for (let i = 0; i < n && cand.length; i++) {
+      const k = cand.splice(rng.int(0, cand.length - 1), 1)[0];
+      out.push({ x: (k % w) * TILE + TILE / 2, y: Math.floor(k / w) * TILE + TILE - 3 });
+    }
+    return out;
+  }
+
+  randomEliteMod(champion: boolean): (typeof ELITE_MODS)[number] {
+    return champion
+      ? (ELITE_MODS.find((m) => m.id === 'giant') ?? rng.pick(ELITE_MODS))
+      : rng.pick(ELITE_MODS);
+  }
+
+  enemyDefById(id: string): ReturnType<typeof enemyDef> {
+    return enemyDef(id);
+  }
+
+  /** The purple burst used when enemies are summoned in. */
+  summonEffect(x: number, y: number): void {
+    this.particles.emit(x, y, {
+      count: 12,
+      color: ['#b55088', '#68386c', '#ffffff'],
+      speed: [10, 40],
+      vz: [10, 40],
+      gravity: 20,
+      life: [0.4, 0.8],
+      emissive: true,
+    });
+  }
+
+  /** All waves cleared: award Ascendancy points (first clear) and open the way home. */
+  onTrialComplete(run: TrialRun): void {
+    const save = this.game.save;
+    audio.playSfx('stinger_victory');
+    this.flashScreen('#feae34', 0.3);
+    this.game.banner = { title: 'TRIAL COMPLETE', sub: run.def.name, t: 0, color: '#feae34' };
+    if (run.firstClear) {
+      save.ascendancy.trials = Math.max(save.ascendancy.trials, run.def.tier);
+      this.game.toast(`+${ASC_POINTS_PER_TRIAL} Ascendancy points`, 'ui_trial');
+    }
+    this.game.giveGold(Math.round(200 + run.level * 30), true);
+    const item = this.game.rollItem(run.level, { rarityRoll: { min: 'rare', bonus: 1 } });
+    const at = this.data.spawnPoints['center'] ?? { x: this.player.x, y: this.player.y - 30 };
+    this.pickups.push(new Pickup(at.x, at.y, 'item', 1, item));
+    this.objects.push(
+      new WorldObject({
+        kind: 'portal',
+        id: 'trial_home',
+        x: at.x,
+        y: at.y + 40,
+        to: 'town',
+        spawn: 'town_crystal',
+      }),
+    );
+    this.hooks.trialComplete(run.firstClear && run.def.tier === 1);
+  }
+
+  /** A drink from a flask (breaks the no-flask challenge). */
+  noteFlask(): void {
+    this.bossFight.flask = true;
+  }
+
+  /** Guardian challenges: flawless and flask-free kills against a worthy foe. */
+  private checkBossChallenges(e: Enemy): void {
+    const save = this.game.save;
+    if (e.level < save.hero.level - 3) return;
+    const flag = (f: string): void => {
+      if (hasFlag(save, f)) return;
+      setFlag(save, f);
+      this.quests.onFlag(f);
+    };
+    if (!this.bossFight.hit) flag('ch_flawless_done');
+    if (!this.bossFight.flask && (save.difficulty === 'hard' || save.difficulty === 'nightmare'))
+      flag('ch_unbowed_done');
+  }
+
   private onBossKilled(e: Enemy): void {
+    this.checkBossChallenges(e);
+    if (this.game.save.difficulty === 'nightmare' && this.game.save.torment >= 6)
+      setFlag(this.game.save, 'torment6_boss');
     this.slowT = 1.2;
     this.shake(8, 0.8);
     this.flashScreen('#ffffff', 0.3);
@@ -1322,6 +1679,7 @@ export class World {
       if (p.inPerfectWindow) this.perfectDodge();
       return;
     }
+    if (this.evaded()) return;
     const st = this.game.stats();
     const res = computeDamage({
       power: e.atk,
@@ -1338,8 +1696,13 @@ export class World {
     this.hurtPlayer(dmg, dir, knock);
     if (status && (!status.chance || rng.chance(status.chance))) p.applyStatus(status, e.atk);
     if (e.elite?.id === 'vampiric') e.hp = Math.min(e.maxHp, e.hp + dmg * 0.5);
-    if (st.legendaries.has('mountain_heart') && dist(e.x, e.y, p.x, p.y) < 60) {
-      const refl = Math.max(1, Math.round(dmg * 0.25));
+    const reflect = (st.legendaries.has('mountain_heart') ? 0.25 : 0) + st.passives.thorns;
+    if (st.asc.has('wb_retaliate') && p.retaliateCd <= 0 && p.hp > 0) {
+      p.retaliateCd = 1.5;
+      this.shockwave(p.x, p.y, 48, 1);
+    }
+    if (reflect > 0 && !e.dead && dist(e.x, e.y, p.x, p.y) < 60) {
+      const refl = Math.max(1, Math.round(dmg * reflect));
       e.hp -= refl;
       this.popText(e.x, e.y - 18, `${refl}`, '#c0cbdc', { small: true });
       if (e.hp <= 0) this.killEnemy(e, true);
@@ -1349,6 +1712,18 @@ export class World {
   private hurtPlayer(dmg: number, dir: number, knock: number): void {
     const p = this.player;
     const hero = this.game.save.hero;
+    const st0 = this.game.stats();
+    this.cancelTownPortal('Interrupted!');
+    this.bossFight.hit = true;
+    this.game.save.flags['streak_nohit'] = 0;
+    if (st0.passives.unyielding && p.hp < p.maxHp * 0.4) dmg = Math.max(1, Math.round(dmg * 0.75));
+    // Mana Shield: a quarter of the hit is paid in MP
+    if (st0.asc.has('am_manashield') && p.mp > 0) {
+      const absorbed = Math.min(p.mp, Math.round(dmg * 0.25));
+      p.mp -= absorbed;
+      dmg -= absorbed;
+    }
+    if (st0.asc.has('wb_bulwark')) knock = 0;
     p.hp -= dmg;
     p.onHurt(dmg, dir, knock);
     audio.playSfx('hurt');
@@ -1380,6 +1755,14 @@ export class World {
         });
     }
     this.checkPlayerDeath();
+  }
+
+  /** Evasion talent: a chance to shrug off an attack entirely. */
+  private evaded(): boolean {
+    const ev = this.game.stats().passives.evade;
+    if (ev <= 0 || !rng.chance(ev)) return false;
+    this.popText(this.player.x, this.player.y - 22, 'Evaded', '#c0cbdc', { small: true });
+    return true;
   }
 
   /** Damage without source (DoTs, environmental). */
@@ -1419,6 +1802,7 @@ export class World {
     }
     p.hp = 0;
     p.state = 'dead';
+    save.flags['abyss_streak'] = 0;
     p.stateT = 0;
     p.clearStatuses();
     audio.playSfx('death');
@@ -1463,6 +1847,10 @@ export class World {
     if (hero.surgeUnlocked) hero.surge = Math.min(100, hero.surge + 15);
     p.stamina = Math.min(100, p.stamina + 20);
     this.popText(p.x, p.y - 28, 'PERFECT!', '#2ce8f5', { big: true });
+    if (this.game.stats().asc.has('bm_riposte')) {
+      p.guaranteedCrits = 3;
+      this.popText(p.x, p.y - 38, 'Riposte!', '#e43b44', { small: true });
+    }
     audio.playSfx('dash_slash', { pitch: 1.4, volume: 0.6 });
     this.flashScreen('#2ce8f5', 0.15);
     this.particles.emit(p.x, p.y - 8, {
@@ -1480,6 +1868,10 @@ export class World {
     if (p.state === 'dead') return;
     if (p.invulnerable) {
       if (p.inPerfectWindow) this.perfectDodge();
+      return;
+    }
+    if (this.evaded()) {
+      pr.expire(this);
       return;
     }
     const src = pr.owner.source instanceof Enemy ? pr.owner.source : null;
@@ -1590,6 +1982,7 @@ export class World {
       if (p.inPerfectWindow) this.perfectDodge();
       return;
     }
+    if (this.evaded()) return;
     const src = h.owner.source;
     const st = this.game.stats();
     const res = computeDamage({
@@ -1720,7 +2113,8 @@ export class World {
       { power: 0, level: this.game.save.hero.level, faction: 'player', stat: 'mag' },
       mult,
     );
-    if (this.game.stats().legendaries.has('stormcaller')) pr.chain = 2;
+    const st = this.game.stats();
+    pr.chain = (st.legendaries.has('stormcaller') ? 2 : 0) + (st.asc.has('am_archon') ? 2 : 0);
     this.projectiles.push(pr);
   }
 
@@ -1811,16 +2205,7 @@ export class World {
         const x = owner.x + Math.cos(a) * r;
         const y = owner.y + Math.sin(a) * r;
         if (!this.map.walkableAt(x, y)) continue;
-        const e = new Enemy(
-          enemyDef(id),
-          Math.max(1, owner.level - 2),
-          x,
-          y,
-          diff.enemyHp,
-          diff.enemyDmg,
-          diff.enemySpeed,
-          { summoned: true },
-        );
+        const e = new Enemy(enemyDef(id), Math.max(1, owner.level - 2), x, y, diff, { summoned: true });
         e.aggro = true;
         this.enemies.push(e);
         this.particles.emit(x, y, {
@@ -2148,6 +2533,38 @@ export class World {
     );
   }
 
+  /** A slashing gale that flies forward (Blade Storm, Blade Tempest). */
+  slashGale(p: Player, angle: number, mult: number): void {
+    this.playerHazard(
+      {
+        shape: 'line',
+        x: p.x,
+        y: p.y,
+        radius: 0,
+        angle,
+        length: 90,
+        width: 22,
+        delay: 0.08,
+        duration: 0,
+        mult,
+        color: '#ff0044',
+        visual: 'wind',
+      },
+      'atk',
+    );
+    this.addSlash(p, angle, 1.4, 40, 4, 'sword');
+  }
+
+  /** A ground shockwave hitting everything around a point (Earthshaker, Retaliation). */
+  shockwave(x: number, y: number, radius: number, mult: number): void {
+    this.novaEffect(x, y - 2, radius, 'earth');
+    this.shake(3, 0.15);
+    for (const e of this.enemiesNear(x, y, radius + 20)) {
+      if (dist(x, y, e.x, e.y) > radius + e.radius) continue;
+      this.playerHit(e, { power: 'atk', mult, knock: 120, dir: angleTo(x, y, e.x, e.y), noShake: true });
+    }
+  }
+
   novaEffect(x: number, y: number, radius: number, element?: string): void {
     const color =
       element === 'ice'
@@ -2472,6 +2889,7 @@ export class World {
     const save = this.game.save;
     const f = this.abyssFloor;
     save.stats.abyssBest = Math.max(save.stats.abyssBest, f);
+    this.bumpCounter('abyss_streak', 'abyss_streak_best');
     audio.playSfx('stinger_discovery');
     this.game.banner = {
       title: `FLOOR ${f} CLEARED`,
@@ -2582,6 +3000,8 @@ export class World {
       ctx.fillStyle = this.data.tint;
       ctx.fillRect(0, 0, vw, vh);
     }
+
+    if (this.portalCast) this.renderPortalCast(ctx, camX, camY);
 
     // overlays: hp bars, labels, texts, prompts
     this.renderEnemyBars(ctx, camX, camY);
@@ -2794,4 +3214,9 @@ export class World {
     const y = Math.round(t.y - camY - (t instanceof Npc ? 34 : 30));
     drawText(ctx, text, x, y, { align: 'center', color: '#fee761', outline: '#181425' });
   }
+}
+
+/** Is a status currently active on an actor? */
+function hasStatus(a: { statuses: Partial<Record<string, { t: number }>> }, kind: string): boolean {
+  return (a.statuses[kind]?.t ?? 0) > 0;
 }

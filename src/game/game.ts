@@ -8,14 +8,16 @@ import { SKILLS, type SkillId } from '../data/skills';
 import type { App } from '../engine/app';
 import { Emitter } from '../engine/events';
 import { rng } from '../engine/rng';
-import { DIFFICULTY, xpToNext } from './balance';
+import { effectiveDifficulty, MAX_LEVEL, type DifficultyMods, xpToNext } from './balance';
+import { categoryForLevel, paragonXpToNext } from './paragon';
+import { PARAGON_CATEGORY_INFO } from '../data/paragon';
 import { displayName, generateItem, itemIcon, type GenerateOptions } from './items';
 import { Achievements } from './achievements';
 import { QuestSystem } from './quests';
 import { SaveStore } from './saves';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { addGold, addItem, grantXp, type SaveData } from './state';
-import { computeHeroStats, type Buffs, type HeroStats } from './stats';
+import { computeHeroStats, NO_BUFFS, type Buffs, type HeroStats } from './stats';
 import type { Item } from './types';
 
 export interface Toast {
@@ -29,6 +31,7 @@ export interface Toast {
 export interface GameEvents extends Record<string, unknown> {
   enemyKilled: { id: string; map: string; elite: boolean; boss: boolean };
   levelUp: { level: number; newSkills: SkillId[] };
+  paragonUp: { level: number };
   itemLooted: { item: Item };
   questChanged: { id: string };
   flagChanged: { flag: string };
@@ -45,7 +48,8 @@ export class Game {
   settings: Settings = loadSettings();
   private _save: SaveData | null = null;
   private statsCache: HeroStats | null = null;
-  buffs: Buffs = { might: 0, guard: 0 };
+  buffs: Buffs = { ...NO_BUFFS };
+  private challengeT = 0;
   toasts: Toast[] = [];
   /** Recent dialogue for the backlog viewer. */
   backlog: { who?: string; text: string }[] = [];
@@ -69,13 +73,14 @@ export class Game {
 
   setSave(s: SaveData | null): void {
     this._save = s;
-    this.buffs = { might: 0, guard: 0 };
+    this.buffs = { ...NO_BUFFS };
     this.toasts = [];
     this.invalidateStats();
   }
 
-  get difficulty(): (typeof DIFFICULTY)[keyof typeof DIFFICULTY] {
-    return DIFFICULTY[this.save.difficulty];
+  /** Current difficulty modifiers, including Torment. */
+  get difficulty(): DifficultyMods {
+    return effectiveDifficulty(this.save.difficulty, this.save.torment);
   }
 
   // ----------------------------------------------------------- settings ----
@@ -129,10 +134,23 @@ export class Game {
       this.events.emit('levelUp', { level: s.hero.level, newSkills: res.newSkills });
       for (const sk of res.newSkills) this.toast(`New skill: {gold}${SKILLS[sk].name}{/}`, SKILLS[sk].icon);
     }
+    if (res.paragonLevels > 0) {
+      const p = s.hero.paragon;
+      const cat = PARAGON_CATEGORY_INFO[categoryForLevel(p.level)];
+      audio.playSfx('stinger_levelup');
+      this.banner = {
+        title: `PARAGON ${p.level}`,
+        sub: res.paragonLevels > 1 ? `+${res.paragonLevels} Paragon points` : `+1 ${cat.name} point`,
+        t: 0,
+        color: '#2ce8f5',
+      };
+      this.events.emit('paragonUp', { level: p.level });
+    }
   }
 
   xpProgress(): number {
     const h = this.save.hero;
+    if (h.level >= MAX_LEVEL) return h.paragon.xp / paragonXpToNext(h.paragon.level);
     const need = xpToNext(h.level);
     return Number.isFinite(need) ? h.xp / need : 1;
   }
@@ -145,7 +163,12 @@ export class Game {
   /** Put an item in the bag, or toast that the bag is full. Returns success. */
   giveItem(item: Item, silent = false): boolean {
     if (!addItem(this.save, item)) {
-      this.toast('Inventory full! Sell or salvage items.', 'ui_lock', undefined, '#e43b44');
+      this.toast(
+        `Inventory full! Press ${this.app.input.label('townPortal')} for a Town Portal to go sell.`,
+        'ui_portal',
+        undefined,
+        '#e43b44',
+      );
       return false;
     }
     if (!silent) {
@@ -188,14 +211,16 @@ export class Game {
       this.banner.t += dt;
       if (this.banner.t > 3.2) this.banner = null;
     }
-    let changed = false;
-    if (this.buffs.might > 0) {
-      this.buffs.might -= dt;
-      if (this.buffs.might <= 0) changed = true;
+    this.challengeT -= dt;
+    if (this.challengeT <= 0) {
+      this.challengeT = 2;
+      this.quests.checkChallenges();
     }
-    if (this.buffs.guard > 0) {
-      this.buffs.guard -= dt;
-      if (this.buffs.guard <= 0) changed = true;
+    let changed = false;
+    for (const k of ['might', 'guard', 'fortune', 'rite'] as const) {
+      if (this.buffs[k] <= 0) continue;
+      this.buffs[k] -= dt;
+      if (this.buffs[k] <= 0) changed = true;
     }
     if (changed) this.invalidateStats();
   }

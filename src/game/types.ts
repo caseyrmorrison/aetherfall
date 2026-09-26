@@ -52,8 +52,6 @@ export interface Gem {
 export type SocketGroup = 'weapon' | 'helm' | 'armor';
 
 export type CharmSize = 'small' | 'large' | 'grand';
-/** How many charms in the bag can be active at once. */
-export const CHARM_LIMIT = 10;
 
 export type Difficulty = 'story' | 'normal' | 'hard' | 'nightmare';
 
@@ -173,7 +171,7 @@ export interface Item {
   sockets?: (Gem | null)[];
 }
 
-export type ConsumableId = 'elixir' | 'phoenix' | 'tonic_might' | 'tonic_guard';
+export type ConsumableId = 'elixir' | 'phoenix' | 'tonic_might' | 'tonic_guard' | 'tonic_fortune';
 export type MaterialId = 'dust' | 'herb' | 'pelt' | 'crystal' | 'ember' | 'frost' | 'void';
 
 export interface ConsumableDef {

@@ -3,7 +3,8 @@ import { getProp, propInfo } from '../../art/pixel';
 import type { PropId } from '../../art/pixel/types';
 import { dist } from '../../engine/math';
 import { bossCleared, hasFlag } from '../../game/state';
-import type { MapObject } from '../mapdata';
+import { areaName } from '../maps';
+import { TOWN_PORTAL_ID, type MapObject } from '../mapdata';
 import type { World } from '../world';
 import { Entity } from './actor';
 
@@ -28,6 +29,9 @@ export class WorldObject extends Entity {
       }
       case 'bossGate':
         return { id: 'boss_gate', frame: bossCleared(world.game.save, o.boss) ? 1 : 0 };
+      case 'stash':
+        // lid opens when you walk up to it
+        return { id: 'chest_rare', frame: dist(this.x, this.y, world.player.x, world.player.y) < 26 ? 1 : 0 };
       case 'portal': {
         if (!this.portalOpen(world)) return null;
         const pi = propInfo('portal');
@@ -58,6 +62,8 @@ export class WorldObject extends Entity {
       case 'bossGate':
         return bossCleared(world.game.save, o.boss) ? 'Enter (cleared)' : 'Challenge';
       case 'portal':
+        if (o.id === TOWN_PORTAL_ID) return `Return to ${areaName(o.to)}`;
+        if (o.id === 'trial_home') return 'Return to Havenbrook';
         return this.portalOpen(world)
           ? world.game.save.flags['game_clear']
             ? 'Enter portal'
@@ -65,13 +71,21 @@ export class WorldObject extends Entity {
           : null;
       case 'board':
         return 'Bounty Board';
+      case 'trial':
+        return 'Trials of Ascension';
+      case 'stash':
+        return 'Stash';
       case 'marker':
         return world.markerActive(o.id) ? 'Search' : null;
     }
   }
 
   get reach(): number {
-    return this.obj.kind === 'door' ? 14 : this.obj.kind === 'bossGate' ? 22 : 18;
+    return this.obj.kind === 'door'
+      ? 14
+      : this.obj.kind === 'bossGate' || this.obj.kind === 'trial'
+        ? 22
+        : 18;
   }
 
   update(dt: number, world: World): void {

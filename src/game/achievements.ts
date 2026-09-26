@@ -148,6 +148,43 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     check: (g) => hasFlag(s(g), 'gem_royal'),
   },
   {
+    id: 'ascended',
+    name: 'Ascended',
+    desc: 'Complete a Trial of Ascension and choose an Ascendancy.',
+    check: (g) => !!s(g).ascendancy.cls,
+  },
+  {
+    id: 'trials_all',
+    name: 'Trial Master',
+    desc: 'Complete all four Trials of Ascension.',
+    secret: true,
+    check: (g) => s(g).ascendancy.trials >= 4,
+  },
+  {
+    id: 'paragon_50',
+    name: 'Paragon of Havenbrook',
+    desc: 'Reach Paragon level 50.',
+    secret: true,
+    check: (g) => s(g).hero.paragon.level >= 50,
+  },
+  {
+    id: 'challenges_all',
+    name: 'Challenger',
+    desc: 'Complete all four challenges and learn their skills.',
+    secret: true,
+    check: (g) =>
+      ['shadowstep', 'earthshatter', 'blizzard', 'bloodrite'].every(
+        (k) => (s(g).hero.skills as Record<string, number>)[k],
+      ),
+  },
+  {
+    id: 'torment_6',
+    name: 'Into Torment',
+    desc: 'Defeat a guardian on Torment VI.',
+    secret: true,
+    check: (g) => hasFlag(s(g), 'torment6_boss'),
+  },
+  {
     id: 'ngplus',
     name: 'Once More, With Feeling',
     desc: 'Begin New Game+.',

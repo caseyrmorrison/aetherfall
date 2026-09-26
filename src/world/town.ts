@@ -101,6 +101,9 @@ export function buildTown(): MapData {
   // Plaza furniture
   P('fountain', 22.5, 19.5, 8, 0);
   P('statue', 22, 14, 8, 0);
+  objects.push({ kind: 'trial', id: 'ascension_statue', x: 22 * TILE + 8, y: 14 * TILE + 6 });
+  // the stash chest, on the east side of the square
+  objects.push({ kind: 'stash', id: 'town_stash', x: 29 * TILE + 8, y: 19 * TILE + 2 });
   P('lamp_post', 17, 14, 0, 0);
   P('lamp_post', 29, 14, 0, 0);
   P('lamp_post', 17, 24, 0, 0);
@@ -265,6 +268,9 @@ export function buildTown(): MapData {
       west: { x: 3 * TILE, y: 19 * TILE },
       portal: { x: 22 * TILE + 8, y: 12.2 * TILE },
       town_crystal: { x: 26 * TILE + 8, y: 23 * TILE },
+      // where the return portal of a town portal stands (you arrive just below it)
+      town_portal_gate: { x: 20 * TILE + 8, y: 23 * TILE },
+      town_portal: { x: 20 * TILE + 8, y: 24 * TILE },
     },
   };
 }

@@ -1,10 +1,19 @@
 /** Skills tab: rank up active skills and assign them to the 4 hotbar slots. */
 import { audio } from '../../audio';
+import { QUESTS } from '../../data/quests';
 import { SKILLS, SKILL_ORDER, skillCooldown, type SkillId } from '../../data/skills';
 import { drawText } from '../../engine/font';
 import { pointInRect, type Rect } from '../../engine/math';
 import { drawIcon, drawTooltip, ListView, UI } from '../../ui/widgets';
 import type { MenuScene, TabView } from './menu';
+
+/** How a locked skill is unlocked. */
+function unlockText(id: SkillId): string {
+  const def = SKILLS[id];
+  if (!def.challenge) return `Unlocks at level ${def.unlockLevel}.`;
+  const q = QUESTS[def.challenge];
+  return `Unlock: ${q.name.replace('Challenge: ', 'the ')} challenge (${q.objectives[0].text.toLowerCase()}).`;
+}
 
 export class SkillsTab implements TabView {
   readonly label = 'Skills';
@@ -28,7 +37,7 @@ export class SkillsTab implements TabView {
     if (r === 'confirm') {
       if (rank <= 0) {
         audio.playSfx('ui_error');
-        g.toast(`Unlocks at level ${SKILLS[id].unlockLevel}.`, 'ui_lock', 0, UI.bad);
+        g.toast(unlockText(id), 'ui_lock', 0, UI.bad);
       } else if (rank >= SKILLS[id].maxRank) {
         audio.playSfx('ui_error');
       } else if (hero.skillPoints <= 0) {
@@ -103,7 +112,11 @@ export class SkillsTab implements TabView {
         }
         const slot = hero.slots.indexOf(id);
         if (slot >= 0) drawText(ctx, `[${slot + 1}]`, x + listW - 10, y, { align: 'right', color: UI.good });
-      } else drawText(ctx, `Lv ${def.unlockLevel}`, x + listW - 10, y, { align: 'right', color: UI.dim });
+      } else
+        drawText(ctx, def.challenge ? 'Challenge' : `Lv ${def.unlockLevel}`, x + listW - 10, y, {
+          align: 'right',
+          color: def.challenge ? UI.cyan : UI.dim,
+        });
     });
     const id = this.list.selected;
     if (id) {
@@ -113,8 +126,8 @@ export class SkillsTab implements TabView {
       const st = g.stats();
       const lines = [
         `{gold}${def.name}{/}`,
-        unlocked ? `Rank ${rank}/${def.maxRank}` : `{red}Unlocks at level ${def.unlockLevel}{/}`,
-        `{blue}${def.mp} MP{/}  •  ${(skillCooldown(def, rank) * (1 - st.cdr)).toFixed(1)}s cooldown`,
+        unlocked ? `Rank ${rank}/${def.maxRank}` : `{red}${unlockText(id)}{/}`,
+        `{blue}${def.hpCost ? `${Math.round(def.hpCost * 100)}% HP` : `${def.mp} MP`}{/}  •  ${(skillCooldown(def, rank) * (1 - st.cdr)).toFixed(1)}s cooldown`,
         '',
         def.desc(rank),
       ];

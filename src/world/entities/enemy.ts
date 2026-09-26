@@ -8,13 +8,19 @@ import { getSprite, silhouette, spriteInfo } from '../../art/pixel';
 import type { AnimName, Dir } from '../../art/pixel/types';
 import { audio } from '../../audio';
 import type { AttackDef, EliteMod, EnemyDef } from '../../data/enemies';
-import { enemyAtkScale, enemyDefScale, enemyHpScale } from '../../game/balance';
+import { enemyAtkScale, enemyDefScale, enemyHpScale, type DifficultyMods } from '../../game/balance';
 import { angleTo, clamp, dist, TAU } from '../../engine/math';
 import { rng } from '../../engine/rng';
 import type { World } from '../world';
 import { Actor } from './actor';
 
 type EState = 'idle' | 'chase' | 'windup' | 'attack' | 'recover' | 'return' | 'dying' | 'spawn';
+
+/** The difficulty modifiers an enemy is built with. */
+export type EnemyScaling = Pick<
+  DifficultyMods,
+  'enemyHp' | 'enemyDmg' | 'enemySpeed' | 'aggression' | 'eliteHp' | 'eliteDmg'
+>;
 
 export interface EnemyOptions {
   elite?: EliteMod | null;
@@ -74,15 +80,15 @@ export class Enemy extends Actor {
   /** Recently dealt a damaging hit (for vampiric etc.). */
   deathT = 0;
   killedByPlayer = false;
+  /** Difficulty-driven attack cooldown multiplier (lower = attacks more often). */
+  aggression = 1;
 
   constructor(
     def: EnemyDef,
     level: number,
     x: number,
     y: number,
-    diffHp: number,
-    diffDmg: number,
-    diffSpeed: number,
+    diff: EnemyScaling,
     opts: EnemyOptions = {},
   ) {
     super();
@@ -95,16 +101,17 @@ export class Enemy extends Actor {
     this.summoned = opts.summoned ?? false;
     this.scale = def.scale ?? 1;
     this.radius = def.radius * this.scale;
-    this.maxHp = Math.round(def.hp * enemyHpScale(level) * diffHp);
-    this.atk = def.atk * enemyAtkScale(level) * diffDmg;
+    this.maxHp = Math.round(def.hp * enemyHpScale(level) * diff.enemyHp);
+    this.atk = def.atk * enemyAtkScale(level) * diff.enemyDmg;
     this.defense = def.def * enemyDefScale(level);
-    this.speed = def.speed * diffSpeed;
+    this.speed = def.speed * diff.enemySpeed;
+    this.aggression = diff.aggression;
     this.xp = def.xp;
     this.gold = def.gold;
     this.cooldowns = def.attacks.map(() => rng.range(0.3, 1.2));
     if (this.elite) {
-      this.maxHp = Math.round(this.maxHp * 2.6);
-      this.atk *= 1.3;
+      this.maxHp = Math.round(this.maxHp * diff.eliteHp);
+      this.atk *= diff.eliteDmg;
       this.xp *= 4;
       this.gold *= 3;
       switch (this.elite.id) {
@@ -147,7 +154,7 @@ export class Enemy extends Actor {
   }
 
   get cooldownMult(): number {
-    let m = this.elite?.id === 'frenzied' ? 0.7 : 1;
+    let m = (this.elite?.id === 'frenzied' ? 0.7 : 1) * this.aggression;
     if (this.def.boss) m *= this.def.boss.phases[this.phase]?.cooldownMult ?? 1;
     return m;
   }

@@ -4,11 +4,11 @@ import { generateItem } from '../src/game/items';
 import { SaveStore } from '../src/game/saves';
 import {
   addItem,
+  bagSize,
   decodeBits,
   encodeBits,
   equipItem,
   grantXp,
-  INVENTORY_SIZE,
   migrate,
   newGame,
   unequip,
@@ -61,7 +61,7 @@ describe('inventory & equipment', () => {
   it('refuses items when the bag is full', () => {
     const s = newGame(0, 'Test', 'normal');
     const rng = new RNG(2);
-    for (let i = 0; i < INVENTORY_SIZE; i++) expect(addItem(s, generateItem(rng, 3))).toBe(true);
+    for (let i = 0; i < bagSize(s); i++) expect(addItem(s, generateItem(rng, 3))).toBe(true);
     expect(addItem(s, generateItem(rng, 3))).toBe(false);
   });
 

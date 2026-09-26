@@ -3,20 +3,38 @@ import { EMPTY_PASSIVES, PASSIVE_BY_ID, type PassiveEffects } from '../data/skil
 import type { WeaponKind } from '../art/pixel/types';
 import { WEAPON_FEEL } from '../data/items';
 import { defenseReduction, heroBaseStats } from './balance';
+import { ASC_NODE_BY_ID } from '../data/ascendancy';
 import { itemStats } from './items';
+import { paragonBonuses } from './paragon';
 import type { SaveData } from './state';
 import { BASE_FLASK_HP, BASE_FLASK_MP } from './state';
 import type { Item, LegendaryId, StatKey, Stats } from './types';
 import { activeCharms, equipTargetFor } from './items';
 import { EQUIP_SLOTS } from './types';
 
+/** Timed buffs (seconds remaining). */
 export interface Buffs {
-  might: number; // seconds remaining
+  might: number;
   guard: number;
+  fortune: number;
+  /** Blood Rite skill. */
+  rite: number;
+  /** Blood Rite's damage bonus while active. */
+  riteBonus: number;
 }
+
+export const NO_BUFFS: Readonly<Buffs> = Object.freeze({
+  might: 0,
+  guard: 0,
+  fortune: 0,
+  rite: 0,
+  riteBonus: 0,
+});
 
 export interface HeroStats extends Stats {
   legendaries: Set<LegendaryId>;
+  /** Ascendancy notables taken (special effects are checked in combat). */
+  asc: Set<string>;
   passives: PassiveEffects;
   flaskHpMax: number;
   flaskMpMax: number;
@@ -46,8 +64,21 @@ export function computeHeroStats(s: SaveData, buffs?: Buffs): HeroStats {
     if (it.legendary) legendaries.add(it.legendary);
   }
   const p = passiveEffects(s);
+  const para = paragonBonuses(s.hero.paragon);
+  for (const [k, v] of Object.entries(para.passives) as [keyof PassiveEffects, number][]) p[k] += v;
   const st: Stats = { ...base };
   for (const [k, v] of Object.entries(gear) as [StatKey, number][]) st[k] += v;
+  for (const [k, v] of Object.entries(para.stats) as [StatKey, number][]) st[k] += v;
+  const asc = new Set<string>();
+  let ascTaken = 1;
+  for (const id of s.ascendancy?.nodes ?? []) {
+    const node = ASC_NODE_BY_ID[id];
+    if (!node || node.cls !== s.ascendancy.cls) continue;
+    asc.add(id);
+    for (const [k, v] of Object.entries(node.stats ?? {}) as [StatKey, number][]) st[k] += v;
+    for (const [k, v] of Object.entries(node.passives ?? {}) as [keyof PassiveEffects, number][]) p[k] += v;
+    ascTaken *= node.damageTaken ?? 1;
+  }
 
   st.atk *= 1 + p.atkPct;
   st.mag *= 1 + p.magPct;
@@ -61,6 +92,8 @@ export function computeHeroStats(s: SaveData, buffs?: Buffs): HeroStats {
   st.skillDmg += p.skillDmg;
   st.mpRegen *= 1 + p.mpRegenPct;
   st.dodgeCost += p.dodgeCost;
+  st.moveSpeed += p.moveSpeed;
+  st.burnChance += p.burnChance;
 
   let hpMult = 1 + p.hpPct;
   if (legendaries.has('mountain_heart')) hpMult += 0.25;
@@ -69,9 +102,17 @@ export function computeHeroStats(s: SaveData, buffs?: Buffs): HeroStats {
   st.hpRegen += st.maxHp * p.hpRegenPctMax;
   if (legendaries.has('windwalkers')) st.dodgeCost += 0.5;
 
-  let damageTaken = 1;
+  let damageTaken = para.damageTaken * ascTaken * (1 - p.damageReduction);
   if (buffs && buffs.might > 0) st.dmgBonus += 0.2;
   if (buffs && buffs.guard > 0) damageTaken *= 0.8;
+  if (buffs && buffs.fortune > 0) {
+    st.magicFind += 0.5;
+    st.goldFind += 0.5;
+  }
+  if (buffs && buffs.rite > 0) {
+    st.dmgBonus += buffs.riteBonus;
+    st.lifesteal += 0.05;
+  }
 
   // caps
   st.crit = Math.max(0, Math.min(0.75, st.crit));
@@ -90,6 +131,7 @@ export function computeHeroStats(s: SaveData, buffs?: Buffs): HeroStats {
   return {
     ...st,
     legendaries,
+    asc,
     passives: p,
     flaskHpMax: BASE_FLASK_HP + s.hero.flaskUpgrades + flaskBonus,
     flaskMpMax: BASE_FLASK_MP + Math.floor(s.hero.flaskUpgrades / 2) + flaskBonus,

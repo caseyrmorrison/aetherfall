@@ -5,15 +5,20 @@ import { BOSS_INTRO, BOSS_OUTRO } from '../data/cutscenes';
 import { NPCS, type NpcContext, type Service } from '../data/npcs';
 import { ZONES } from '../data/zones';
 import type { Scene } from '../engine/app';
-import { DIFFICULTY } from '../game/balance';
-import { parseLine, type Step } from '../game/dialogue';
+import { parseLine, type Choice, type Step } from '../game/dialogue';
 import type { Game } from '../game/game';
 import { bossCleared, hasFlag, setFlag } from '../game/state';
 import { Hud } from '../ui/hud';
+import { UI } from '../ui/widgets';
 import { Tips } from '../ui/tips';
 import type { Enemy } from '../world/entities/enemy';
 import type { Npc } from '../world/entities/npc';
 import type { MapObject } from '../world/mapdata';
+import { ASC_POINTS_PER_TRIAL } from '../data/ascendancy';
+import { TRIALS, trialMapId } from '../data/trials';
+import { ascRespecCost, resetAscendancy } from '../game/ascendancy';
+import { TOWN_PORTAL_ID } from '../world/mapdata';
+import { trialDef } from '../world/trial';
 import { World, type WorldHooks } from '../world/world';
 import { BossIntroScene } from './boss-intro';
 import { ConfirmScene } from './confirm';
@@ -23,6 +28,7 @@ import { showDialogue } from './dialogue';
 import { GameOverScene } from './gameover';
 import { MenuScene, type MenuTab } from './menu/menu';
 import { openService } from './services';
+import { StashScene } from './stash';
 import { TravelScene } from './travel';
 
 export class WorldScene implements Scene, WorldHooks {
@@ -163,7 +169,7 @@ export class WorldScene implements Scene, WorldHooks {
   respawn(): void {
     const save = this.game.save;
     const p = this.world.player;
-    const loss = Math.floor(save.hero.gold * DIFFICULTY[save.difficulty].goldLossOnDeath);
+    const loss = Math.floor(save.hero.gold * this.game.difficulty.goldLossOnDeath);
     if (loss > 0) {
       save.hero.gold -= loss;
       save.droppedGold = { map: this.world.data.id, x: p.x, y: p.y, amount: loss };
@@ -214,6 +220,10 @@ export class WorldScene implements Scene, WorldHooks {
   /** The town portal: after the story it can also lead down into the Abyss. */
   portal(to: string, spawn: string): void {
     const save = this.game.save;
+    if (spawn === TOWN_PORTAL_ID) {
+      this.returnThroughPortal();
+      return;
+    }
     if (!hasFlag(save, 'game_clear') || to !== 'citadel') {
       this.warp(to, spawn);
       return;
@@ -234,6 +244,95 @@ export class WorldScene implements Scene, WorldHooks {
       { text: `The portal hums with two destinations. {gray}(Deepest Abyss floor: ${best}){/}` },
       { choices },
     ]);
+  }
+
+  /** The Statue of the First Hero: start Trials of Ascension or reshape your Ascendancy. */
+  trial(): void {
+    const g = this.game;
+    const save = g.save;
+    const a = save.ascendancy;
+    const next = TRIALS.find((t) => t.tier === a.trials + 1);
+    const steps: Step[] = [
+      {
+        text:
+          a.trials === 0
+            ? 'The Statue of the First Hero hums with old power. Those who survive its trials may {gold}ascend{/} and master a path of their own.'
+            : `The statue remembers you. Trials completed: {gold}${a.trials}/${TRIALS.length}{/}.`,
+      },
+    ];
+    const choices: Choice[] = [];
+    const enter = (tier: number): void => this.warp(trialMapId(tier), 'entry');
+    const level = (tier: number): number => Math.max(trialDef(tier).level, save.hero.level);
+    if (next && hasFlag(save, next.requires)) {
+      const aff = next.affliction ? ` {gray}(${next.affliction.name}){/}` : '';
+      choices.push({
+        label: `${next.name} {gray}Lv ${level(next.tier)}{/}${aff}`,
+        then: [
+          {
+            text: `${next.name}: survive ${next.waves} waves. ${next.affliction ? `{red}${next.affliction.name}:{/} ${next.affliction.desc}` : ''} First clear: {gold}+${ASC_POINTS_PER_TRIAL} Ascendancy points{/}.`,
+          },
+          {
+            choices: [{ label: 'Begin the trial', action: () => enter(next.tier) }, { label: 'Not yet' }],
+          },
+        ],
+      });
+    } else if (next) steps.push({ text: `{gray}Next: ${next.name}. ${next.requiresText}{/}` });
+    if (a.trials > 0)
+      choices.push({
+        label: 'Replay a trial',
+        then: [
+          {
+            choices: [
+              ...TRIALS.filter((t) => t.tier <= a.trials).map((t) => ({
+                label: `${t.name} {gray}Lv ${level(t.tier)}{/}`,
+                action: () => enter(t.tier),
+              })),
+              { label: 'Back' },
+            ],
+          },
+        ],
+      });
+    if (a.cls) {
+      const cost = ascRespecCost(save.hero.level);
+      const respec = (keepClass: boolean): void => {
+        if (save.hero.gold < cost) {
+          audio.playSfx('ui_error');
+          g.toast('Not enough gold.', 'ui_coin', 0, UI.bad);
+          return;
+        }
+        save.hero.gold -= cost;
+        resetAscendancy(a, keepClass);
+        g.invalidateStats();
+        audio.playSfx('upgrade_success');
+        g.toast(keepClass ? 'Notables reset.' : 'Ascendancy released. Choose again in the menu.', 'ui_trial');
+        if (!keepClass) this.openMenu('ascend');
+      };
+      choices.push({ label: `Reset notables {gray}(${cost}g){/}`, action: () => respec(true) });
+      choices.push({ label: `Change Ascendancy {gray}(${cost}g){/}`, action: () => respec(false) });
+    }
+    choices.push({ label: 'Leave' });
+    steps.push({ choices });
+    void showDialogue(g, steps);
+  }
+
+  stash(): void {
+    this.game.app.push(new StashScene(this.game));
+  }
+
+  trialComplete(choose: boolean): void {
+    if (!choose) return;
+    setTimeout(() => {
+      if (!this.busy) this.openMenu('ascend');
+    }, 2200);
+  }
+
+  /** Step back through the town portal to exactly where it was opened. */
+  returnThroughPortal(): void {
+    const tp = this.game.save.townPortal;
+    if (!tp || this.busy) return;
+    this.game.save.townPortal = null;
+    this.world.restoreFromPortal = true;
+    this.travelTo(tp.map, { x: tp.x, y: tp.y });
   }
 
   sign(text: string): void {
