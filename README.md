@@ -37,7 +37,7 @@ The art, music and sound effects are all generated in code; the repo contains no
 | ![Ascendancy tree (Archmage)](docs/screenshots/ascendancy.png)          | ![A Trial of Ascension: Scorched Earth](docs/screenshots/trial.png) |
 | ![Paragon points](docs/screenshots/paragon.png)                         | ![Talent trees with two columns each](docs/screenshots/talents.png) |
 | ![Town portal back to where you left](docs/screenshots/town-portal.png) | ![Crafting at Brom's forge](docs/screenshots/crafting.png)          |
-| ![The stash in town](docs/screenshots/stash.png)                        |                                                                     |
+| ![The stash in town](docs/screenshots/stash.png)                        | ![A world boss event](docs/screenshots/world-boss.png)              |
 
 ## Features
 
@@ -68,6 +68,10 @@ The art, music and sound effects are all generated in code; the repo contains no
   Defense and Utility. Main stats are uncapped; points can be moved around for free.
 - **Crafting.** Mira brews Elixirs, tonics and Phoenix Feathers, and Brom forges rare-or-better gear at your
   level +2, never-cursed charms, Aether Dust and gem sockets, all from the materials monsters drop.
+- **World bosses.** Every 12–18 minutes of play, a world boss appears somewhere in a zone you've unlocked:
+  Blightroot, the Prismatic Colossus, Pyrrhus the Cinderwyrm, Old Grimfrost or the Hollow Warlord. It's announced
+  wherever you are, marked on the HUD, minimap and map, scales to your level, keeps its wounds if you leave, stays
+  about 8 minutes (never leaving mid-fight) and drops a hoard of epics, a likely legendary and crafting materials.
 - **Town portals.** Press T to open a portal home, sell and craft, then step back through: the area is exactly
   as you left it, loot on the ground included.
 - **Storage.** A tabbed stash chest in town, shared by all three save slots (buy more tabs), Bag Expansions and

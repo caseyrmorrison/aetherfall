@@ -18,7 +18,7 @@ import { newAscendancy, type AscendancyState } from './ascendancy';
 import { newParagon, paragonXpToNext, type ParagonState } from './paragon';
 import type { ConsumableId, Difficulty, EquipSlot, Item, MaterialId } from './types';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export interface QuestState {
   id: string;
@@ -96,6 +96,7 @@ export interface SaveData {
     itemsFound: number;
     legendaries: number;
     abyssals: number;
+    worldBosses: number;
     abyssBest: number;
     damageDealt: number;
   };
@@ -112,6 +113,24 @@ export interface SaveData {
    * (see game/stash); anything left here is moved into it when the save loads.
    */
   stash?: { tabs: Item[][] };
+  /** The world boss event in progress, if any. */
+  worldBoss: WorldBossEvent | null;
+  /** Play time when the next world boss event begins (-1 = not scheduled yet). */
+  worldBossNext: number;
+}
+
+export interface WorldBossEvent {
+  /** Enemy id of the world boss. */
+  boss: string;
+  zone: string;
+  level: number;
+  /** Where it stands in the zone (pixels). */
+  x: number;
+  y: number;
+  /** Play time when it leaves if nobody is fighting it. */
+  endsAt: number;
+  /** Health left, so leaving the zone doesn't heal it. */
+  hpFrac: number;
 }
 
 /** How many items the bag holds (grows with Bag Expansions). */
@@ -182,6 +201,7 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
       itemsFound: 0,
       legendaries: 0,
       abyssals: 0,
+      worldBosses: 0,
       abyssBest: 0,
       damageDealt: 0,
     },
@@ -190,6 +210,8 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
     torment: 0,
     townPortal: null,
     ascendancy: newAscendancy(),
+    worldBoss: null,
+    worldBossNext: -1,
   };
 }
 

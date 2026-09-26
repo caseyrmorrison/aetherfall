@@ -2,8 +2,10 @@
 import { drawPortrait } from '../art/anime';
 import { getIcon } from '../art/pixel';
 import { SKILLS } from '../data/skills';
+import { enemyDef } from '../data/enemies';
 import { QUESTS } from '../data/quests';
 import { ZONES } from '../data/zones';
+import { areaName } from '../world/maps';
 import { drawText, measureText } from '../engine/font';
 import { angleTo, clamp, TAU } from '../engine/math';
 import { STAMINA_MAX } from '../world/entities/player';
@@ -294,6 +296,8 @@ export class Hud {
     }
     for (const n of world.npcs) dot(n.x, n.y, '#fee761');
     for (const e of world.enemies) if (!e.dead && e.aggro) dot(e.x, e.y, '#e43b44');
+    const wb = world.worldBosses.enemy;
+    if (wb && !wb.dead && Math.floor(this.t * 3) % 2 === 0) dot(wb.x, wb.y, '#ff0044', 3);
     const tgt = this.questTargetPos(world);
     if (tgt && Math.floor(this.t * 3) % 2 === 0) dot(tgt.x, tgt.y, '#fee761', 3);
     if (Math.floor(this.t * 4) % 4 !== 0) dot(p.x, p.y, '#ffffff', 2);
@@ -347,8 +351,22 @@ export class Hud {
   }
 
   private drawQuestArrow(ctx: CanvasRenderingContext2D, world: World, W: number, H: number): void {
+    // a world boss in this zone gets its own red arrow until the fight starts
+    const wb = world.worldBosses;
+    if (wb.enemy && !wb.enemy.dead && !wb.engaged)
+      this.drawArrowTo(ctx, world, { x: wb.enemy.x, y: wb.enemy.y - 30 }, '#ff0044', W, H);
     const tgt = this.questTargetPos(world);
-    if (!tgt) return;
+    if (tgt) this.drawArrowTo(ctx, world, tgt, '#fee761', W, H);
+  }
+
+  private drawArrowTo(
+    ctx: CanvasRenderingContext2D,
+    world: World,
+    tgt: { x: number; y: number },
+    color: string,
+    W: number,
+    H: number,
+  ): void {
     const sx = tgt.x - world.cam.rx;
     const sy = tgt.y - world.cam.ry;
     const margin = 14;
@@ -356,7 +374,7 @@ export class Hud {
     const bob = Math.sin(this.t * 5) * 2;
     if (on) {
       if (world.interactTarget) return;
-      drawText(ctx, '▼', sx, sy - 8 + bob, { align: 'center', color: '#fee761', outline: UI.bg });
+      drawText(ctx, '▼', sx, sy - 8 + bob, { align: 'center', color, outline: UI.bg });
       return;
     }
     const cx = W / 2;
@@ -374,7 +392,7 @@ export class Hud {
     ctx.lineTo(-4, 6);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#fee761';
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.moveTo(6 + bob, 0);
     ctx.lineTo(-3, -4);
@@ -414,6 +432,26 @@ export class Hud {
         outline: UI.bg,
       });
       y += 10;
+    }
+    const ev = world.game.save.worldBoss;
+    if (ev) {
+      y += 2;
+      drawText(ctx, ellipsize(`World Boss: ${enemyDef(ev.boss).name}`, 160), x, y, {
+        align: 'right',
+        color: '#ff0044',
+        outline: UI.bg,
+      });
+      y += 10;
+      const left = Math.ceil(world.worldBosses.timeLeft());
+      const here = world.data.id === ev.zone;
+      const when = world.worldBosses.engaged
+        ? 'fighting!'
+        : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+      drawText(ctx, ellipsize(`${here ? 'Here' : areaName(ev.zone)} • ${when}`, 160), x, y, {
+        align: 'right',
+        color: '#c0cbdc',
+        outline: UI.bg,
+      });
     }
   }
 

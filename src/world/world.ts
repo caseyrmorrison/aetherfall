@@ -36,7 +36,7 @@ import {
   hasFlag,
   setFlag,
 } from '../game/state';
-import type { Item, Rarity } from '../game/types';
+import type { Item, MaterialId, Rarity } from '../game/types';
 import { Camera } from './camera';
 import type { Entity } from './entities/actor';
 import { Enemy } from './entities/enemy';
@@ -52,7 +52,9 @@ import { CELL, TILE, TOWN_PORTAL_ID, type MapData, type MapObject } from './mapd
 import { Particles } from './particles';
 import { BG_COLOR, MapRenderer, type Drawable, type Light } from './render';
 import { fireCannon } from './skills';
+import { ZONES } from '../data/zones';
 import { TrialRun } from './trial';
+import { WorldBossDirector } from './worldboss';
 import { ASC_POINTS_PER_TRIAL } from '../data/ascendancy';
 import { applyImpactFrame, impactStyleAt, zoomPunch } from '../ui/fx';
 import { TileMap } from './tilemap';
@@ -176,6 +178,8 @@ export class World {
   private bossFight = { hit: false, flask: false };
   /** The Trial of Ascension being fought on this map, if any. */
   trial: TrialRun | null = null;
+  /** World boss events (scheduling, spawning, the fight). */
+  readonly worldBosses = new WorldBossDirector(this);
   private flowT = 0;
   private flowCenter = -1;
   explored!: Uint8Array;
@@ -185,7 +189,7 @@ export class World {
   private deathT = -1;
   /** The game-over screen has been requested for the current death. */
   private deathHandled = false;
-  private bossIntroDone = false;
+  bossIntroDone = false;
   private shoutText: { text: string; t: number } | null = null;
   dustColor = '#8b9bb4';
   hooks!: WorldHooks;
@@ -275,6 +279,7 @@ export class World {
     }
     if (this.restoreFromPortal) this.portalStash = null;
     this.restoreFromPortal = false;
+    this.worldBosses.onLoad(mapId);
     const tp = save.townPortal;
     if (mapId === 'town' && tp)
       this.objects.push(
@@ -644,6 +649,7 @@ export class World {
     this.player.update(dt, this);
     if (this.portalCast) this.updateTownPortal(dt);
     if (this.trial) this.trial.update(dt, this);
+    this.worldBosses.update();
     for (const e of this.enemies) e.update(enemyDt, this);
     this.separateEnemies();
     for (const pr of this.projectiles) pr.update(enemyDt, this);
@@ -684,7 +690,7 @@ export class World {
     // boss intro trigger
     if (this.boss && !this.bossIntroDone && !this.boss.dead) {
       this.bossIntroDone = true;
-      this.bossFight = { hit: false, flask: false };
+      this.startBossFight();
       this.hooks.bossIntro(this.boss);
     }
     // abyss floor clear
@@ -1475,7 +1481,8 @@ export class World {
       this.abyssTouch(item);
       this.pickups.push(new Pickup(e.x, e.y - 4, 'item', 1, item));
     };
-    if (e.isBoss) {
+    if (e.worldBoss) this.worldBossLoot(e);
+    else if (e.isBoss) {
       const firstKill = !hasFlag(this.game.save, `boss_${e.def.id}`);
       drop('epic', 1);
       drop('rare', 0.8);
@@ -1510,6 +1517,34 @@ export class World {
       const tier = e.isBoss ? 'boss' : e.elite ? 'elite' : 'normal';
       this.abyssLoot(e.x, e.y - 4, ilvl, tier);
     }
+  }
+
+  /** A world boss's hoard: epics, a likely legendary, a grand charm and crafting materials. */
+  private worldBossLoot(e: Enemy): void {
+    const st = this.game.stats();
+    const bonus = this.game.difficulty.lootBonus + st.magicFind;
+    const drop = (item: Item): void => {
+      const pk = new Pickup(e.x, e.y - 4, 'item', 1, item);
+      pk.vz = 120;
+      this.pickups.push(pk);
+    };
+    for (let i = 0; i < 2; i++)
+      drop(this.game.rollItem(e.level, { rarityRoll: { min: 'epic', bonus: 1.5 + bonus } }));
+    for (let i = 0; i < 2; i++)
+      drop(this.game.rollItem(e.level, { rarityRoll: { min: 'rare', bonus: 1 + bonus } }));
+    if (rng.chance(Math.min(0.8, 0.4 + st.magicFind * 0.1)))
+      drop(this.game.rollItem(e.level, { rarity: 'legendary' }));
+    if (rng.chance(0.5)) drop(generateCharm(rng, e.level, { size: 'grand' }));
+    const zone = ZONES[this.data.id];
+    const mats: MaterialId[] = [
+      ...new Set((zone?.enemies ?? []).flatMap(([id]) => enemyDef(id).drops?.map((d) => d.material) ?? [])),
+    ];
+    for (let i = 0; i < 8; i++) {
+      const m = mats.length ? rng.pick(mats) : 'dust';
+      this.pickups.push(new Pickup(e.x, e.y - 4, 'material', 1, undefined, m));
+    }
+    addMaterial(this.game.save, 'dust', 25);
+    this.game.toast('+25 Aether Dust', 'icon_dust');
   }
 
   // ------------------------------------------------------------ abyss loot ----
@@ -1628,6 +1663,11 @@ export class World {
     this.hooks.trialComplete(run.firstClear && run.def.tier === 1);
   }
 
+  /** A guardian fight begins: start tracking hits and flasks for the challenges. */
+  startBossFight(): void {
+    this.bossFight = { hit: false, flask: false };
+  }
+
   /** A drink from a flask (breaks the no-flask challenge). */
   noteFlask(): void {
     this.bossFight.flask = true;
@@ -1665,6 +1705,11 @@ export class World {
     this.enemies.filter((o) => o.summoned && !o.dead).forEach((o) => this.killEnemy(o, false));
     this.boss = null;
     audio.stopMusic(0.8);
+    // world bosses aren't part of the story
+    if (e.worldBoss) {
+      this.worldBosses.onDefeated();
+      return;
+    }
     setTimeout(() => {
       audio.playSfx('stinger_victory');
       this.hooks.bossDefeated(e);

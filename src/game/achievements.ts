@@ -185,6 +185,19 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     check: (g) => hasFlag(s(g), 'torment6_boss'),
   },
   {
+    id: 'world_boss_1',
+    name: 'Giant Slayer',
+    desc: 'Defeat a world boss.',
+    check: (g) => s(g).stats.worldBosses >= 1,
+  },
+  {
+    id: 'world_boss_10',
+    name: 'World Ender',
+    desc: 'Defeat 10 world bosses.',
+    secret: true,
+    check: (g) => s(g).stats.worldBosses >= 10,
+  },
+  {
     id: 'ngplus',
     name: 'Once More, With Feeling',
     desc: 'Begin New Game+.',

@@ -25,6 +25,8 @@ const TIPS: Record<string, string> = {
   trial:
     'The statue in the square now offers Trials of Ascension. Beat them to choose a specialization and learn powerful notables.',
   paragon: 'Max level! XP now earns Paragon levels. Spend the points in the Paragon tab of the menu [menu].',
+  worldboss:
+    'A World Boss has appeared! Find it using the red marker (the zone is shown under your quest). It won’t wait forever, but it drops a hoard.',
   stash:
     'Running out of room? Store items in the golden stash chest on the east side of the square. Mira sells Bag Expansions too.',
 };
@@ -66,6 +68,7 @@ export class Tips {
     if (this.save.inventory.length >= bagSize(this.save) - 2 && w.data.id !== 'town') this.show('portal');
     if (hasFlag(this.save, TRIALS[0].requires) && w.data.id === 'town') this.show('trial');
     if (this.save.hero.paragon.level > 0) this.show('paragon');
+    if (this.save.worldBoss) this.show('worldboss');
     if (w.data.id === 'town' && this.save.inventory.length >= bagSize(this.save) * 0.6) this.show('stash');
 
     if (this.current) {

@@ -82,6 +82,8 @@ export class Enemy extends Actor {
   killedByPlayer = false;
   /** Difficulty-driven attack cooldown multiplier (lower = attacks more often). */
   aggression = 1;
+  /** A roaming world boss (event), not a story guardian. */
+  worldBoss = false;
 
   constructor(
     def: EnemyDef,

@@ -1,8 +1,10 @@
 /** Map tab: explored layout of the current area with markers and a legend. */
+import { enemyDef } from '../../data/enemies';
 import { drawText } from '../../engine/font';
 import type { Rect } from '../../engine/math';
 import { CELL, TILE } from '../../world/mapdata';
-import { UI } from '../../ui/widgets';
+import { areaName } from '../../world/maps';
+import { ellipsize, UI } from '../../ui/widgets';
 import type { MenuScene, TabView } from './menu';
 
 export class MapTab implements TabView {
@@ -87,6 +89,8 @@ export class MapTab implements TabView {
     for (const o of d.objects) if (o.kind === 'warp') mark(o.x + o.w / 2, o.y + o.h / 2, '#63c74d', 4);
     const qt = this.menu.ws.hud.questTargetPos(world);
     if (qt && Math.floor(this.t * 2) % 2 === 0) mark(qt.x, qt.y + 12, '#fee761', 5);
+    const wb = world.worldBosses.enemy;
+    if (wb && !wb.dead) mark(wb.x, wb.y, '#ff0044', 7);
     if (Math.floor(this.t * 3) % 2 === 0) mark(world.player.x, world.player.y, '#ffffff', 4);
     // legend
     const lx = r.x + r.w - 104;
@@ -99,6 +103,7 @@ export class MapTab implements TabView {
       ['#ff0044', 'Boss Gate'],
       [UI.accent, 'Chest'],
       ['#63c74d', 'Exit'],
+      ['#ff0044', 'World Boss'],
       ['#fee761', 'Person / Quest'],
     ];
     for (const [c, label] of legend) {
@@ -111,5 +116,19 @@ export class MapTab implements TabView {
     let seen = 0;
     for (let i = 0; i < total; i++) if (world.explored[i]) seen++;
     drawText(ctx, `Explored ${Math.round((seen / total) * 100)}%`, lx, ly + 6, { color: UI.dim });
+    const ev = world.game.save.worldBoss;
+    if (ev) {
+      ly += 22;
+      const left = Math.ceil(world.worldBosses.timeLeft());
+      for (const line of [
+        '{red}World Boss{/}',
+        enemyDef(ev.boss).name,
+        `{gray}${areaName(ev.zone)}{/}`,
+        `{gray}Leaves in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}{/}`,
+      ]) {
+        drawText(ctx, ellipsize(line, 100), lx, ly);
+        ly += 10;
+      }
+    }
   }
 }

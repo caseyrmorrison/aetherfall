@@ -47,6 +47,7 @@ export class RecordsTab implements TabView {
     row('Items found', `${s.stats.itemsFound}`);
     row('Legendaries', `${s.stats.legendaries}`);
     if (s.stats.abyssals) row('Abyssal items', `${s.stats.abyssals}`);
+    row('World bosses slain', `${s.stats.worldBosses}`);
     row('Damage dealt', `${Math.round(s.stats.damageDealt)}`);
     row('Deepest Abyss floor', `${s.stats.abyssBest}`);
     // achievements
