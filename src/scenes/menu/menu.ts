@@ -1,4 +1,4 @@
-/** Tabbed pause/game menu (Hero, Stats, Items, Skills, Talents, Quests, Map, Bestiary, Records, System). */
+/** Tabbed pause/game menu (Hero, Stats, Items, Gems, Skills, Talents, Quests, Map, Bestiary, Records, System). */
 import { audio } from '../../audio';
 import type { Scene } from '../../engine/app';
 import { drawText, measureText } from '../../engine/font';
@@ -7,6 +7,7 @@ import type { Game } from '../../game/game';
 import { drawHints, drawPanel, UI } from '../../ui/widgets';
 import type { WorldScene } from '../world-scene';
 import { BestiaryTab } from './bestiary';
+import { GemsTab } from './gems';
 import { HeroTab } from './hero';
 import { ItemsTab } from './items';
 import { MapTab } from './map';
@@ -18,7 +19,17 @@ import { SystemTab } from './system';
 import { TalentsTab } from './talents';
 
 export type MenuTab =
-  'hero' | 'stats' | 'items' | 'skills' | 'talents' | 'quests' | 'map' | 'bestiary' | 'records' | 'system';
+  | 'hero'
+  | 'stats'
+  | 'items'
+  | 'gems'
+  | 'skills'
+  | 'talents'
+  | 'quests'
+  | 'map'
+  | 'bestiary'
+  | 'records'
+  | 'system';
 
 export interface TabView {
   readonly label: string;
@@ -28,12 +39,17 @@ export interface TabView {
   hints(): [string, string][];
   /** Badge (e.g. unspent points). */
   badge?(): boolean;
+  /** Tabs can stay hidden until they become relevant (default: always shown). */
+  visible?(): boolean;
+  /** While true (e.g. mid-way through a multi-step action), Escape goes back instead of closing the menu. */
+  busy?(): boolean;
 }
 
 const ORDER: MenuTab[] = [
   'hero',
   'stats',
   'items',
+  'gems',
   'skills',
   'talents',
   'quests',
@@ -46,7 +62,7 @@ const ORDER: MenuTab[] = [
 export class MenuScene implements Scene {
   readonly opaque = false;
   private tabs: Record<MenuTab, TabView>;
-  private cur: number;
+  private curId: MenuTab;
   private tabRects: { r: Rect; i: number }[] = [];
   private t = 0;
 
@@ -59,6 +75,7 @@ export class MenuScene implements Scene {
       hero: new HeroTab(this),
       stats: new StatsTab(this),
       items: new ItemsTab(this),
+      gems: new GemsTab(this),
       skills: new SkillsTab(this),
       talents: new TalentsTab(this),
       quests: new QuestsTab(this),
@@ -67,7 +84,20 @@ export class MenuScene implements Scene {
       records: new RecordsTab(this),
       system: new SystemTab(this),
     };
-    this.cur = ORDER.indexOf(tab);
+    this.curId = this.order().includes(tab) ? tab : 'hero';
+  }
+
+  /** Tabs currently shown, in order. */
+  private order(): MenuTab[] {
+    return ORDER.filter((id) => this.tabs[id].visible?.() ?? true);
+  }
+
+  private get cur(): number {
+    return Math.max(0, this.order().indexOf(this.curId));
+  }
+
+  private set cur(i: number) {
+    this.curId = this.order()[i] ?? 'hero';
   }
 
   close(): void {
@@ -78,6 +108,12 @@ export class MenuScene implements Scene {
   update(dt: number): void {
     this.t += dt;
     const input = this.game.app.input;
+    const tab = this.tabs[this.curId];
+    // mid-way through a multi-step action: the tab gets every key (Escape steps back)
+    if (tab.busy?.()) {
+      if (tab.update(dt) === 'close') this.close();
+      return;
+    }
     const m = input.mouse;
     for (const tr of this.tabRects) {
       if (m.clicked && pointInRect(m.x, m.y, tr.r) && tr.i !== this.cur) {
@@ -86,26 +122,26 @@ export class MenuScene implements Scene {
         return;
       }
     }
+    const order = this.order();
     if (input.repeat('tabPrev')) {
-      this.cur = (this.cur - 1 + ORDER.length) % ORDER.length;
+      this.cur = (this.cur - 1 + order.length) % order.length;
       audio.playSfx('ui_tab');
       return;
     }
     if (input.repeat('tabNext')) {
-      this.cur = (this.cur + 1) % ORDER.length;
+      this.cur = (this.cur + 1) % order.length;
       audio.playSfx('ui_tab');
       return;
     }
     // quick-close with the key that opened menus
     if (
       this.t > 0.1 &&
-      (input.pressed('menu') || input.pressed('pause') || (input.pressed('map') && ORDER[this.cur] === 'map'))
+      (input.pressed('menu') || input.pressed('pause') || (input.pressed('map') && this.curId === 'map'))
     ) {
       this.close();
       return;
     }
-    const r = this.tabs[ORDER[this.cur]].update(dt);
-    if (r === 'close') this.close();
+    if (tab.update(dt) === 'close') this.close();
   }
 
   render(ctx: CanvasRenderingContext2D): void {
@@ -124,9 +160,10 @@ export class MenuScene implements Scene {
     const keyW = drawHintsKey(ctx, input.label('tabPrev'), tx, 4);
     tx += keyW + 3;
     // abbreviate tab labels when the screen is narrow
-    const full = ORDER.reduce((n, id) => n + measureText(this.tabs[id].label) + 12, 30);
+    const order = this.order();
+    const full = order.reduce((n, id) => n + measureText(this.tabs[id].label) + 12, 30);
     const short = full > W - 8;
-    ORDER.forEach((id, i) => {
+    order.forEach((id, i) => {
       const tab = this.tabs[id];
       const label = short && i !== this.cur ? tab.label.slice(0, 3) : tab.label;
       const tw = measureText(label) + (short ? 6 : 10);
@@ -145,7 +182,7 @@ export class MenuScene implements Scene {
     });
     drawHintsKey(ctx, input.label('tabNext'), tx + 1, 4);
     drawPanel(ctx, x, y, w, h);
-    const tab = this.tabs[ORDER[this.cur]];
+    const tab = this.tabs[this.curId];
     const content: Rect = { x: x + 6, y: y + 6, w: w - 12, h: h - 22 };
     tab.render(ctx, content);
     drawHints(ctx, input, [...tab.hints(), ['cancel', 'Back']], x + w - 6, y + h - 13);

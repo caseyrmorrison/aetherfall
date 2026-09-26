@@ -12,6 +12,7 @@ import {
 } from '../data/items';
 import type { RNG } from '../engine/rng';
 import { upgradeMult } from './balance';
+import { gemEffect, socketGroup } from './gems';
 import type {
   Affix,
   CharmSize,
@@ -32,10 +33,12 @@ export const RARITY_INDEX: Record<Rarity, number> = {
   rare: 2,
   epic: 3,
   legendary: 4,
+  abyssal: 5,
 };
-const RARITY_MULT = [1, 1.1, 1.22, 1.38, 1.55];
-const AFFIX_COUNT = [0, 1, 2, 3, 3];
-const RARITY_WEIGHTS = [600, 280, 90, 25, 5];
+const RARITY_MULT = [1, 1.1, 1.22, 1.38, 1.55, 1.9];
+const AFFIX_COUNT = [0, 1, 2, 3, 3, 4];
+/** Abyssal items never roll by chance (weight 0); they come from `generateAbyssal`. */
+const RARITY_WEIGHTS = [600, 280, 90, 25, 5, 0];
 
 export const tierForLevel = (ilvl: number): number => Math.max(0, Math.min(5, Math.floor((ilvl - 1) / 6)));
 
@@ -75,7 +78,21 @@ const round = (stat: StatKey, v: number): number =>
         ? Math.min(-1, Math.round(v))
         : Math.max(1, Math.round(v));
 
-function rollAffixes(rng: RNG, slot: Slot, ilvl: number, count: number, exclude: StatKey[] = []): Affix[] {
+/** Where affixes roll: `floor` is the lowest fraction of the min–max range, `mult` scales the result. */
+interface AffixRoll {
+  floor: number;
+  mult: number;
+}
+const NORMAL_ROLL: AffixRoll = { floor: 0, mult: 1 };
+
+function rollAffixes(
+  rng: RNG,
+  slot: Slot,
+  ilvl: number,
+  count: number,
+  exclude: StatKey[] = [],
+  roll: AffixRoll = NORMAL_ROLL,
+): Affix[] {
   const pool = AFFIXES.filter((a) => a.slots.includes(slot) && !exclude.includes(a.stat));
   const out: Affix[] = [];
   for (let i = 0; i < count && pool.length; i++) {
@@ -83,7 +100,8 @@ function rollAffixes(rng: RNG, slot: Slot, ilvl: number, count: number, exclude:
     pool.splice(pool.indexOf(def), 1);
     const lo = def.min(ilvl);
     const hi = def.max(ilvl);
-    out.push({ stat: def.stat, value: round(def.stat, lo + (hi - lo) * rng.next()) });
+    const t = roll.floor + (1 - roll.floor) * rng.next();
+    out.push({ stat: def.stat, value: round(def.stat, (lo + (hi - lo) * t) * roll.mult) });
   }
   return out;
 }
@@ -179,6 +197,7 @@ export interface GenerateOptions {
 export function generateItem(rng: RNG, ilvl: number, opts: GenerateOptions = {}): Item {
   ilvl = Math.max(1, Math.round(ilvl));
   if (opts.slot === 'charm') return generateCharm(rng, ilvl);
+  if (opts.rarity === 'abyssal') return generateAbyssal(rng, ilvl, opts);
   let rarity = opts.rarity ?? rollRarity(rng, opts.rarityRoll);
   let legendary = opts.legendary;
   if (legendary) rarity = 'legendary';
@@ -232,7 +251,90 @@ export function generateItem(rng: RNG, ilvl: number, opts: GenerateOptions = {})
   };
 }
 
-/** Total stats an item grants (base scaled by upgrade + affixes). */
+// ---------------------------------------------------------------- abyssal ----
+
+/** Most sockets each gear type can roll (Diablo-style: chest pieces hold the most). */
+export const MAX_SOCKETS: Record<GearSlot, number> = {
+  weapon: 2,
+  armor: 3,
+  helm: 1,
+  gloves: 1,
+  belt: 1,
+  boots: 1,
+  ring: 1,
+  amulet: 1,
+};
+
+/** Abyssal affixes roll in the top 40% of their range, then 25% stronger. */
+const ABYSSAL_ROLL: AffixRoll = { floor: 0.6, mult: 1.25 };
+
+/** Every Abyssal item also carries one of these big offensive bonuses. */
+const ABYSSAL_BONUS: readonly { stat: StatKey; lo: number; hi: number }[] = [
+  { stat: 'dmgBonus', lo: 0.08, hi: 0.15 },
+  { stat: 'skillDmg', lo: 0.1, hi: 0.2 },
+  { stat: 'critDmg', lo: 0.25, hi: 0.45 },
+  { stat: 'atkSpeed', lo: 0.06, hi: 0.12 },
+  { stat: 'cdr', lo: 0.05, hi: 0.1 },
+];
+
+/** Roll 1..max sockets, favouring fewer. */
+export function rollSockets(rng: RNG, slot: GearSlot): number {
+  const max = MAX_SOCKETS[slot];
+  const weights = [6, 3, 1.2];
+  return rng.weighted(weights.slice(0, max).map((w, i) => [i + 1, w] as const));
+}
+
+/**
+ * Abyssal items: the rarest gear, found only in the Abyss. Much stronger base stats,
+ * four high-rolled affixes, a big bonus and gem sockets.
+ */
+export function generateAbyssal(rng: RNG, ilvl: number, opts: GenerateOptions = {}): Item {
+  ilvl = Math.max(1, Math.round(ilvl));
+  const slot: GearSlot =
+    opts.slot && isGear(opts.slot)
+      ? opts.slot
+      : rng.weighted(GEAR_SLOTS.map((s) => [s, s === 'weapon' ? 3 : 2] as const));
+  const kind =
+    slot === 'weapon'
+      ? (opts.kind ?? rng.weighted(WEAPON_KINDS.map((k) => [k, k === 'sword' ? 3 : 2] as const)))
+      : undefined;
+  const ri = RARITY_INDEX.abyssal;
+  const tier = tierForLevel(ilvl);
+  const base: Partial<Stats> = {};
+  for (const [k, v] of Object.entries(slotBaseStats(slot, kind, ilvl)) as [StatKey, number][])
+    base[k] = round(k, STAT_INFO[k].pct ? v : v * RARITY_MULT[ri]);
+  const affixes = rollAffixes(rng, slot, ilvl, AFFIX_COUNT[ri], [], ABYSSAL_ROLL);
+  // one Abyssal bonus, plus more if the slot's own affix pool ran short (e.g. chest armor)
+  const bonuses = ABYSSAL_BONUS.filter((b) => !affixes.some((a) => a.stat === b.stat));
+  const want = AFFIX_COUNT[ri] + 1;
+  do {
+    const b = bonuses.splice(rng.int(0, bonuses.length - 1), 1)[0];
+    affixes.push({ stat: b.stat, value: round(b.stat, b.lo + (b.hi - b.lo) * rng.next()) });
+  } while (affixes.length < want && bonuses.length);
+  const suffix = AFFIXES.find((a) => a.stat === affixes[0].stat)?.suffix ?? '';
+  return {
+    uid: newUid(rng),
+    slot,
+    kind,
+    tier,
+    ilvl,
+    rarity: 'abyssal',
+    name: `Abyssal ${TIER_NAMES[kind ?? slot][tier]} ${suffix}`.trim(),
+    base,
+    affixes,
+    upgrade: 0,
+    sockets: new Array<null>(rollSockets(rng, slot)).fill(null),
+    isNew: true,
+  };
+}
+
+/** Give gear an empty socket (Abyss-touched drops). Charms and already-socketed items are skipped. */
+export function addSocket(item: Item): void {
+  if (!isGear(item.slot) || item.sockets?.length) return;
+  item.sockets = [null];
+}
+
+/** Total stats an item grants (base scaled by upgrade + affixes + socketed gems). */
 export function itemStats(item: Item): Partial<Stats> {
   const out: Partial<Stats> = {};
   const m = upgradeMult(item.upgrade);
@@ -240,6 +342,14 @@ export function itemStats(item: Item): Partial<Stats> {
     out[k] = (out[k] ?? 0) + (STAT_INFO[k].pct ? v : v * m);
   }
   for (const a of item.affixes) out[a.stat] = (out[a.stat] ?? 0) + a.value;
+  if (item.sockets) {
+    const group = socketGroup(item.slot);
+    for (const g of item.sockets) {
+      if (!g) continue;
+      const e = gemEffect(g, group);
+      out[e.stat] = (out[e.stat] ?? 0) + e.value;
+    }
+  }
   return out;
 }
 
@@ -271,13 +381,19 @@ export function itemScore(item: Item): number {
   let s = 0;
   for (const [k, v] of Object.entries(itemStats(item)) as [StatKey, number][]) s += v * SCORE_WEIGHTS[k];
   if (item.legendary) s *= 1.25;
+  // an empty socket is worth something: it can hold a gem later
+  s += (item.sockets?.filter((g) => !g).length ?? 0) * 12;
   return Math.round(s);
 }
 
 export function formatStat(stat: StatKey, value: number, signed = true): string {
   const info = STAT_INFO[stat];
   const sign = signed && value > 0 ? '+' : '';
-  if (info.pct) return `${sign}${Math.round(value * 100)}% ${info.label}`;
+  if (info.pct) {
+    // one decimal for small fractional percentages (e.g. 0.5% from a Chipped Emerald)
+    const p = Math.round(value * 1000) / 10;
+    return `${sign}${Number.isInteger(p) ? p : p.toFixed(1)}% ${info.label}`;
+  }
   const v =
     Math.abs(value) < 10 && !Number.isInteger(value) ? value.toFixed(1) : Math.round(value).toString();
   return `${sign}${v} ${info.label}`;

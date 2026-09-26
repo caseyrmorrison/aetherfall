@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMIES } from '../src/data/enemies';
 import { ZONES } from '../src/data/zones';
-import { generateAbyssFloor } from '../src/world/abyss';
+import { floodFloor, generateAbyssFloor } from '../src/world/abyss';
 import { CELL, TILE, type MapData } from '../src/world/mapdata';
 import { generateArena, generateZone } from '../src/world/mapgen';
 import { buildTown } from '../src/world/town';
@@ -87,5 +87,28 @@ describe('town & abyss', () => {
     expect(f1.spawns.length).toBeGreaterThan(0);
     expect(f5.boss).toBeDefined();
     expect(generateAbyssFloor(9).levels[0]).toBeGreaterThan(f1.levels[0]);
+  });
+});
+
+describe('abyss floors', () => {
+  it('keep every floor tile, enemy, boss and reward reachable from the entry', () => {
+    for (let f = 1; f <= 120; f++) {
+      const m = generateAbyssFloor(f);
+      const e = m.spawnPoints.entry;
+      const reach = floodFloor(m.cells, m.w, m.h, Math.floor(e.x / TILE), Math.floor(e.y / TILE));
+      const ok = (p: { x: number; y: number }): boolean =>
+        reach[Math.floor(p.y / TILE) * m.w + Math.floor(p.x / TILE)] === 1;
+      for (let i = 0; i < m.w * m.h; i++) if (m.cells[i] === CELL.Floor) expect(reach[i]).toBe(1);
+      for (const s of m.spawns) expect(ok(s)).toBe(true);
+      expect(ok(m.spawnPoints.reward)).toBe(true);
+      expect(ok(m.spawnPoints.rewardChest)).toBe(true);
+      if (m.boss) expect(ok(m.boss)).toBe(true);
+    }
+  });
+
+  it('puts the floor 4 portal on solid ground (it used to land in a void pool)', () => {
+    const m = generateAbyssFloor(4);
+    const p = m.spawnPoints.reward;
+    expect(m.cells[Math.floor(p.y / TILE) * m.w + Math.floor(p.x / TILE)]).toBe(CELL.Floor);
   });
 });

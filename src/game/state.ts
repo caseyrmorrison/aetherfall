@@ -8,7 +8,7 @@ import { MAX_LEVEL, xpToNext } from './balance';
 import { equipTargetFor } from './items';
 import type { ConsumableId, Difficulty, EquipSlot, Item, MaterialId } from './types';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface QuestState {
   id: string;
@@ -62,6 +62,8 @@ export interface SaveData {
   equipment: Record<EquipSlot, Item | null>;
   consumables: Partial<Record<ConsumableId, number>>;
   materials: Partial<Record<MaterialId, number>>;
+  /** Gem pouch: stack counts keyed by `${type}_${quality}` (see game/gems). */
+  gems: Record<string, number>;
   flags: Record<string, number>;
   quests: Record<string, QuestState>;
   bounties: Bounty[];
@@ -77,6 +79,7 @@ export interface SaveData {
     goldEarned: number;
     itemsFound: number;
     legendaries: number;
+    abyssals: number;
     abyssBest: number;
     damageDealt: number;
   };
@@ -129,6 +132,7 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
     },
     consumables: { elixir: 1 },
     materials: {},
+    gems: {},
     flags: {},
     quests: {},
     bounties: [],
@@ -144,6 +148,7 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
       goldEarned: 0,
       itemsFound: 0,
       legendaries: 0,
+      abyssals: 0,
       abyssBest: 0,
       damageDealt: 0,
     },
@@ -223,6 +228,7 @@ export function addItem(s: SaveData, item: Item): boolean {
   s.inventory.push(item);
   s.stats.itemsFound++;
   if (item.rarity === 'legendary') s.stats.legendaries++;
+  if (item.rarity === 'abyssal') s.stats.abyssals++;
   return true;
 }
 
@@ -310,6 +316,8 @@ export function migrate(raw: unknown): SaveData | null {
     delete eq.ring;
   }
   merged.equipment = { ...base.equipment, ...eq } as Record<EquipSlot, Item | null>;
+  // v2 -> v3: the gem pouch (added by the base merge above when missing)
+  merged.gems = { ...(s.gems ?? {}) };
   syncUnlockedSkills(merged);
   return merged;
 }

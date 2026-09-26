@@ -111,6 +111,8 @@ const GLYPHS: Record<string, string> = {
   '▶': '#...|##..|###.|####|###.|##..|#...', // ▶
   '•': '..|..|##|##|..|..|..', // •
   '×': '...|...|#.#|.#.|#.#|...|...', // ×
+  '◆': '.....|..#..|.###.|#####|.###.|..#..|.....', // ◆ filled socket
+  '◇': '.....|..#..|.#.#.|#...#|.#.#.|..#..|.....', // ◇ empty socket
 };
 
 const ALIASES: Record<string, string> = {
@@ -198,6 +200,7 @@ export const TEXT_COLORS: Record<string, string> = {
   rare: PAL.sky,
   epic: PAL.magenta,
   legendary: PAL.orange,
+  abyssal: PAL.hotPink,
 };
 
 export interface TextRun {

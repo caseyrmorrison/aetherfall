@@ -1,8 +1,9 @@
 /** Core gameplay types shared between systems, UI and save data. */
 import type { IconId, WeaponKind } from '../art/pixel/types';
 
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-export const RARITIES: readonly Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+/** `abyssal` is the top tier: it never rolls by chance and only drops in the Abyss. */
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'abyssal';
+export const RARITIES: readonly Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'abyssal'];
 
 /** Item types. Charms are never equipped: they work from the bag. */
 export type Slot = 'weapon' | 'helm' | 'armor' | 'gloves' | 'belt' | 'boots' | 'ring' | 'amulet' | 'charm';
@@ -40,6 +41,15 @@ export function equipSlotsFor(slot: Slot): EquipSlot[] {
   if (slot === 'ring') return ['ring1', 'ring2'];
   return [slot];
 }
+
+export type GemType = 'ruby' | 'emerald' | 'topaz' | 'amethyst' | 'diamond';
+/** A gem: quality 0 (Chipped) up to MAX_GEM_QUALITY (Royal). Three of a kind combine into one better gem. */
+export interface Gem {
+  type: GemType;
+  q: number;
+}
+/** Gems give a different stat depending on what kind of gear they sit in. */
+export type SocketGroup = 'weapon' | 'helm' | 'armor';
 
 export type CharmSize = 'small' | 'large' | 'grand';
 /** How many charms in the bag can be active at once. */
@@ -159,6 +169,8 @@ export interface Item {
   charmSize?: CharmSize;
   /** Cursed charms: stronger bonuses plus a drawback (a negative affix). */
   cursed?: boolean;
+  /** Gem sockets (null = empty). Only gear from the Abyss has them. */
+  sockets?: (Gem | null)[];
 }
 
 export type ConsumableId = 'elixir' | 'phoenix' | 'tonic_might' | 'tonic_guard';

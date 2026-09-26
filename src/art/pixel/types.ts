@@ -200,7 +200,12 @@ export interface PropInfo {
 
 // ----------------------------------------------------------------- icons ----
 
+/** Gem icons: `icon_gem_<type>_<quality 0-7>`. */
+export type GemIconId =
+  `icon_gem_${'ruby' | 'emerald' | 'topaz' | 'amethyst' | 'diamond'}_${0 | 1 | 2 | 3 | 4 | 5 | 6 | 7}`;
+
 export type IconId =
+  | GemIconId
   // equipment (tinted by tier 0-5)
   | 'icon_sword'
   | 'icon_greatsword'

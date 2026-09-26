@@ -3,7 +3,11 @@
  * tab is hidden and requestAnimationFrame is paused. Never included in production.
  */
 import type { App } from '../engine/app';
+import { GEM_TYPES } from '../data/gems';
+import { rng } from '../engine/rng';
 import type { Game } from '../game/game';
+import { addGem } from '../game/gems';
+import { generateAbyssal } from '../game/items';
 import { EQUIP_SLOTS } from '../game/types';
 import { playCutscene } from '../scenes/cutscene';
 import type { WorldScene } from '../scenes/world-scene';
@@ -113,6 +117,14 @@ export function installDriver(app: App, game: Game): void {
       s.hero.flaskHp = st.flaskHpMax;
       s.hero.flaskMp = st.flaskMpMax;
       this.w?.player.syncFromSave(this.w);
+    },
+    /** Fill the bag with Abyssal gear and the pouch with gems (for testing sockets). */
+    abyssKit(gems = 6): void {
+      const s = game.save;
+      for (const slot of ['weapon', 'armor', 'helm', 'ring'] as const)
+        game.giveItem(generateAbyssal(rng, s.hero.level + 4, { slot }), true);
+      for (const type of GEM_TYPES) for (let q = 0; q < 4; q++) addGem(s, { type, q }, gems);
+      s.hero.gold += 20000;
     },
     /** Simple heuristic player: approach, attack, dodge telegraphs, drink flasks. */
     async bot(maxT = 150): Promise<Record<string, unknown>> {

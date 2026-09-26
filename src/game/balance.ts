@@ -167,11 +167,11 @@ export const upgradeMult = (upgrade: number): number => 1 + 0.1 * upgrade;
 
 /** Aether dust yielded by salvaging an item. */
 export const salvageYield = (ilvl: number, rarityIndex: number): number =>
-  Math.round([1, 3, 8, 20, 50][rarityIndex] * (1 + ilvl / 12));
+  Math.round([1, 3, 8, 20, 50, 120][rarityIndex] * (1 + ilvl / 12));
 
 /** Gold for selling an item. */
 export const sellPrice = (ilvl: number, rarityIndex: number, upgrade: number): number =>
-  Math.round((5 + ilvl * 3) * [1, 2, 4, 8, 16][rarityIndex] * (1 + upgrade * 0.2));
+  Math.round((5 + ilvl * 3) * [1, 2, 4, 8, 16, 40][rarityIndex] * (1 + upgrade * 0.2));
 
 /** Shop price for buying an item. */
 export const buyPrice = (ilvl: number, rarityIndex: number): number => sellPrice(ilvl, rarityIndex, 0) * 4;
@@ -182,3 +182,31 @@ export const MAX_FLASK_UPGRADES = 5;
 
 /** Cost to reset the passive tree. */
 export const respecCost = (level: number): number => 50 + level * 25;
+
+// ----------------------------------------------------------- abyss loot ----
+
+export type AbyssLootSource = 'normal' | 'elite' | 'boss' | 'chest' | 'rareChest';
+
+/** Base chance of an Abyssal item per source (scaled up by depth, magic find and difficulty). */
+export const ABYSSAL_CHANCE: Record<AbyssLootSource, number> = {
+  normal: 0.0015,
+  elite: 0.012,
+  boss: 0.3,
+  chest: 0.02,
+  rareChest: 0.2,
+};
+
+/** Abyssal drop chances never go above this, however deep or lucky. */
+export const ABYSSAL_MAX_CHANCE = 0.75;
+
+/** Gem drops per source: [rolls, chance per roll]. Gems only drop in the Abyss. */
+export const GEM_DROPS: Record<AbyssLootSource, readonly [number, number]> = {
+  normal: [1, 0.05],
+  elite: [2, 0.35],
+  boss: [3, 1],
+  chest: [2, 0.6],
+  rareChest: [3, 1],
+};
+
+/** Chance that rare-or-better gear found in the Abyss has a gem socket. */
+export const ABYSS_SOCKET_CHANCE = 0.15;

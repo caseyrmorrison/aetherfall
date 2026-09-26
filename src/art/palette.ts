@@ -47,4 +47,5 @@ export const RARITY_COLORS = {
   rare: PAL.sky,
   epic: PAL.magenta,
   legendary: PAL.orange,
+  abyssal: PAL.hotPink,
 } as const;
