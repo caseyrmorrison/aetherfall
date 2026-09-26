@@ -3,8 +3,10 @@
  * gallery (with timing), cut-ins over a dummy gameplay frame, speed lines.
  * Open http://localhost:5188/tools/preview-anime.html
  */
+import { getSprite, spriteInfo } from '../src/art/pixel';
 import {
   CUTIN_IDS,
+  drawAura,
   EXPRESSIONS,
   ILLUSTRATION_IDS,
   PORTRAIT_IDS,
@@ -110,6 +112,7 @@ function renderPortraits(): void {
         ['angry talk', { talking: true }],
         ['smirk talk', { talking: true }],
         ['sad talk', { talking: true }],
+        ['shout talk', { talking: true }],
       ] as const) {
         const { c, ctx } = lowres(w, h);
         if (bg) {
@@ -275,6 +278,59 @@ function dummyGameplay(ctx: CanvasRenderingContext2D, w: number, h: number, t: n
   ctx.fillText('HP ██████', 6, 12);
 }
 
+/* ------------------------------------------------------------------- auras */
+
+const aview = lowres(480, 170);
+$('ahost').appendChild(
+  cell('480x170 — back layer, sprite, front layer; aura-only columns at heights 24/40/56/72/90', aview.c),
+);
+const auraTimes: number[] = [];
+
+function drawAuraDemo(t: number): void {
+  const ctx = aview.ctx;
+  const k = Number(($('aint') as HTMLSelectElement).value);
+  ctx.fillStyle = '#193c3e';
+  ctx.fillRect(0, 0, 480, 170);
+  ctx.fillStyle = '#265c42';
+  ctx.fillRect(0, 120, 480, 50);
+  let calls = 0;
+  const t0 = performance.now();
+  // real sprites
+  const demo: [string, 'aether' | 'void' | 'ice' | 'fire', number][] = [
+    ['hero', 'aether', 40],
+    ['boss_malachar', 'void', 110],
+  ];
+  for (const [id, pal, x] of demo) {
+    try {
+      const info = spriteInfo(id as never);
+      const spr = getSprite(id as never, 'idle', Math.floor(t * 3) % 2, 'down');
+      drawAura(ctx, x, 128, info.h, t, pal, 'back', k);
+      ctx.drawImage(spr, Math.round(x - info.anchorX), Math.round(128 - info.anchorY));
+      drawAura(ctx, x, 128, info.h, t, pal, 'front', k);
+      calls += 2;
+    } catch {
+      /* sprite missing */
+    }
+  }
+  // aura-only columns
+  const pals = ['aether', 'void', 'ice', 'fire', 'aether'] as const;
+  let x = 172;
+  for (const [idx, hgt] of [24, 40, 56, 72, 90].entries()) {
+    const pal = pals[idx];
+    drawAura(ctx, x, 150, hgt, t, pal, 'back', k);
+    ctx.fillStyle = '#181425';
+    ctx.fillRect(x - 3, 150 - hgt, 6, hgt);
+    drawAura(ctx, x, 150, hgt, t, pal, 'front', k);
+    calls += 2;
+    x += hgt * 0.62 + 30;
+  }
+  const dt = performance.now() - t0;
+  auraTimes.push(dt / calls);
+  if (auraTimes.length > 60) auraTimes.shift();
+  $('astat').textContent =
+    `per call: avg ${(auraTimes.reduce((a, b) => a + b, 0) / auraTimes.length).toFixed(3)}ms`;
+}
+
 /* ------------------------------------------------------------- speed lines */
 
 const sview = lowres(320, 180);
@@ -316,6 +372,8 @@ function frame(now: number): void {
       $('cstat').textContent = `${cut.id} t=${ct.toFixed(2)} (${(performance.now() - t0).toFixed(2)}ms)`;
     }
   }
+
+  drawAuraDemo(tt);
 
   // speed lines
   sview.ctx.fillStyle = '#124e89';

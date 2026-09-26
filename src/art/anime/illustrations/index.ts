@@ -8,6 +8,10 @@ import { drawMalacharReveal } from './malacharReveal';
 import { drawSeraphineMemory } from './seraphineMemory';
 import { drawFinalClash } from './finalClash';
 import { drawEndingDawn } from './endingDawn';
+import { drawKaiPowerup, drawMalacharPowerup } from './powerup';
+import { drawBeamClash } from './beamClash';
+import { drawRushExchange } from './rushExchange';
+import { drawKaiKneeling } from './kaiKneeling';
 
 export type IllusFn = (ctx: CanvasRenderingContext2D, t: number, w: number, h: number) => void;
 
@@ -21,4 +25,9 @@ export const ILLUS: Record<string, IllusFn> = {
   seraphine_memory: drawSeraphineMemory,
   final_clash: drawFinalClash,
   ending_dawn: drawEndingDawn,
+  kai_powerup: drawKaiPowerup,
+  malachar_powerup: drawMalacharPowerup,
+  beam_clash: drawBeamClash,
+  rush_exchange: drawRushExchange,
+  kai_kneeling: drawKaiKneeling,
 };

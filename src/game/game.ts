@@ -9,7 +9,7 @@ import type { App } from '../engine/app';
 import { Emitter } from '../engine/events';
 import { rng } from '../engine/rng';
 import { DIFFICULTY, xpToNext } from './balance';
-import { displayName, generateItem, type GenerateOptions } from './items';
+import { displayName, generateItem, itemIcon, type GenerateOptions } from './items';
 import { Achievements } from './achievements';
 import { QuestSystem } from './quests';
 import { SaveStore } from './saves';
@@ -149,7 +149,7 @@ export class Game {
       return false;
     }
     if (!silent) {
-      const icon = (item.slot === 'weapon' ? `icon_${item.kind ?? 'sword'}` : `icon_${item.slot}`) as IconId;
+      const icon = itemIcon(item);
       this.toast(`{${item.rarity}}${displayName(item)}{/}`, icon, item.tier);
     }
     if (item.rarity === 'legendary') audio.playSfx('stinger_legendary');

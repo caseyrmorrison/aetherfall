@@ -4,6 +4,7 @@
  */
 import type { App } from '../engine/app';
 import type { Game } from '../game/game';
+import { EQUIP_SLOTS } from '../game/types';
 import { playCutscene } from '../scenes/cutscene';
 import type { WorldScene } from '../scenes/world-scene';
 import type { World } from '../world/world';
@@ -97,8 +98,9 @@ export function installDriver(app: App, game: Game): void {
       const s = game.save;
       s.hero.level = level;
       s.hero.xp = 0;
-      for (const slot of ['weapon', 'armor', 'helm', 'boots', 'ring', 'amulet'] as const) {
-        s.equipment[slot] = game.rollItem(level, {
+      for (const eq of EQUIP_SLOTS) {
+        const slot = eq === 'ring1' || eq === 'ring2' ? 'ring' : eq;
+        s.equipment[eq] = game.rollItem(level, {
           slot,
           kind: slot === 'weapon' ? 'sword' : undefined,
           rarity: 'rare',

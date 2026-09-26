@@ -211,6 +211,11 @@ export type IconId =
   | 'icon_boots'
   | 'icon_ring'
   | 'icon_amulet'
+  | 'icon_gloves'
+  | 'icon_belt'
+  | 'icon_charm_small'
+  | 'icon_charm_large'
+  | 'icon_charm_grand'
   // consumables & materials
   | 'icon_potion_hp'
   | 'icon_potion_mp'

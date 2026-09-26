@@ -12,7 +12,10 @@ import { clamp, rng } from '../geom';
 /* ------------------------------------------------------------ caching */
 
 const layerCache = new Map<string, HTMLCanvasElement>();
-const MAX_LAYERS = 220;
+const MAX_LAYERS = 400;
+/** Pixel budget for all cached layers (~64 MB of RGBA). */
+const MAX_PIXELS = 16_000_000;
+let cachedPixels = 0;
 
 /** LRU lookup: move a hit to the most-recent end. */
 function touch(key: string): HTMLCanvasElement | undefined {
@@ -25,8 +28,15 @@ function touch(key: string): HTMLCanvasElement | undefined {
 }
 
 function remember(key: string, c: HTMLCanvasElement): HTMLCanvasElement {
-  if (layerCache.size >= MAX_LAYERS) layerCache.delete(layerCache.keys().next().value as string);
+  const px = c.width * c.height;
+  while (layerCache.size > 0 && (layerCache.size >= MAX_LAYERS || cachedPixels + px > MAX_PIXELS)) {
+    const oldKey = layerCache.keys().next().value as string;
+    const old = layerCache.get(oldKey)!;
+    cachedPixels -= old.width * old.height;
+    layerCache.delete(oldKey);
+  }
   layerCache.set(key, c);
+  cachedPixels += px;
   return c;
 }
 
@@ -460,6 +470,7 @@ export function crystal(r: Raster, cx: number, cy: number, H: number, W: number,
 /** Drop every cached layer / frame (e.g. after a resolution change). */
 export function clearLayerCache(): void {
   layerCache.clear();
+  cachedPixels = 0;
 }
 
 /** Palette LUT helper: map indices via a table built from `f`. */

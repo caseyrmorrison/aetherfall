@@ -52,6 +52,8 @@ export const malachar: Spec = {
         return { ...p, tears: false, blush: 0 };
       case 'surprised':
         return { ...p, sweat: false };
+      case 'shout':
+        return { ...p, sweat: false };
       case 'hurt':
         return { ...p, blush: 0 };
       default:

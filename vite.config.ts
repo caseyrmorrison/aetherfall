@@ -17,7 +17,7 @@ function screenshotSaver(): Plugin {
       try {
         const { name, data } = JSON.parse(body) as { name: string; data: string };
         if (!/^[a-z0-9-]{1,40}$/.test(name)) throw new Error('bad name');
-        const dir = resolve(__dirname, 'docs/screenshots');
+        const dir = resolve(import.meta.dirname, 'docs/screenshots');
         mkdirSync(dir, { recursive: true });
         writeFileSync(resolve(dir, `${name}.png`), Buffer.from(data, 'base64'));
         res.statusCode = 204;

@@ -4,6 +4,7 @@ import type { IconId } from '../../art/pixel/types';
 import { RARITY_COLORS } from '../../art/palette';
 import { MATERIALS } from '../../data/items';
 import { dist } from '../../engine/math';
+import { itemIcon } from '../../game/items';
 import type { Item, MaterialId } from '../../game/types';
 import type { World } from '../world';
 import { Entity } from './actor';
@@ -119,9 +120,7 @@ export class Pickup extends Entity {
           this.kind === 'material' && this.material
             ? MATERIALS[this.material].icon
             : this.item
-              ? ((this.item.slot === 'weapon'
-                  ? `icon_${this.item.kind ?? 'sword'}`
-                  : `icon_${this.item.slot}`) as IconId)
+              ? itemIcon(this.item)
               : 'icon_dust';
         const img = getIcon(icon, this.item?.tier ?? 0);
         if (this.item && this.item.rarity !== 'common') {

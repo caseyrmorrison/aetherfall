@@ -18,10 +18,18 @@ import {
   upgradeCost,
 } from '../game/balance';
 import type { Game } from '../game/game';
-import { displayName, generateItem, itemScore, RARITY_INDEX } from '../game/items';
+import {
+  compareTarget,
+  displayName,
+  generateCharm,
+  generateItem,
+  itemIcon,
+  itemScore,
+  RARITY_INDEX,
+} from '../game/items';
 import { addConsumable, addItem, addMaterial, inventoryFull, removeItem, type Bounty } from '../game/state';
 import type { ConsumableId, Item } from '../game/types';
-import { SLOTS } from '../game/types';
+import { EQUIP_SLOTS, GEAR_SLOTS } from '../game/types';
 import {
   drawHints,
   drawIcon,
@@ -156,7 +164,10 @@ abstract class TabbedService implements Scene {
 }
 
 // ------------------------------------------------------------------ shop ----
-type SupplyRow = { kind: 'consumable'; id: ConsumableId } | { kind: 'flask' };
+type SupplyRow = { kind: 'consumable'; id: ConsumableId } | { kind: 'flask' } | { kind: 'charm' };
+
+/** Price of a Mystery Charm (a gamble: any size, may be cursed). */
+export const mysteryCharmPrice = (level: number): number => 120 + level * 35;
 
 export class ShopScene extends TabbedService {
   tabs = ['Buy', 'Sell', 'Supplies'];
@@ -173,6 +184,7 @@ export class ShopScene extends TabbedService {
     this.supplies = new ListView<SupplyRow>(
       [
         { kind: 'flask' },
+        { kind: 'charm' },
         ...(Object.keys(CONSUMABLES) as ConsumableId[]).map((id) => ({ kind: 'consumable' as const, id })),
       ],
       14,
@@ -194,7 +206,10 @@ export class ShopScene extends TabbedService {
         ['epic', 0.5],
       ] as const);
       stock.push({
-        ...generateItem(rng, Math.max(1, lvl + rng.int(-1, 1)), { rarity, slot: SLOTS[i % SLOTS.length] }),
+        ...generateItem(rng, Math.max(1, lvl + rng.int(-1, 1)), {
+          rarity,
+          slot: GEAR_SLOTS[i % GEAR_SLOTS.length],
+        }),
         isNew: false,
       });
     }
@@ -230,13 +245,13 @@ export class ShopScene extends TabbedService {
       if (r === 'cancel') return this.close();
       if (r === 'confirm' && this.sell.selected) this.sellItem(this.sell.selected);
       if (input.pressed('menuAlt')) {
-        const junk = this.sellable().filter((i) => RARITY_INDEX[i.rarity] <= 1);
+        const junk = this.sellable().filter((i) => RARITY_INDEX[i.rarity] <= 1 && i.slot !== 'charm');
         if (!junk.length) return this.fail('No common or uncommon items to sell.');
         const total = junk.reduce((n, i) => n + sellPrice(i.ilvl, RARITY_INDEX[i.rarity], i.upgrade), 0);
         this.game.app.push(
           new ConfirmScene(
             this.game,
-            `Sell ${junk.length} common & uncommon items for ${total}g? (Locked items are kept.)`,
+            `Sell ${junk.length} common & uncommon items for ${total}g? (Locked items and charms are kept.)`,
             () => {
               for (const i of junk) removeItem(s, i.uid);
               this.game.giveGold(total, true);
@@ -261,6 +276,16 @@ export class ShopScene extends TabbedService {
           this.game.invalidateStats();
           audio.playSfx('upgrade_success');
           this.game.toast('Flask belt upgraded! +1 charge', 'icon_potion_hp');
+        } else if (row.kind === 'charm') {
+          const price = mysteryCharmPrice(s.hero.level);
+          if (s.hero.gold < price) return this.fail('Not enough gold.');
+          if (inventoryFull(s)) return this.fail('Your bag is full.');
+          s.hero.gold -= price;
+          const c = generateCharm(rng, s.hero.level);
+          addItem(s, c);
+          this.game.invalidateStats();
+          audio.playSfx(c.cursed ? 'void_pulse' : 'pickup_rare');
+          this.game.toast(`${c.cursed ? 'Uh oh! ' : ''}{${c.rarity}}${c.name}{/}`, itemIcon(c), c.tier);
         } else {
           const def = CONSUMABLES[row.id];
           if (s.hero.gold < def.price) return this.fail('Not enough gold.');
@@ -312,7 +337,7 @@ export class ShopScene extends TabbedService {
           { color: UI.dim },
         );
       list.draw(ctx, f.x + 4, f.y + 4, listW, (it, x, y, sel) => {
-        drawIcon(ctx, iconFor(it), x, y - 4, it.tier);
+        drawIcon(ctx, itemIcon(it), x, y - 4, it.tier);
         drawText(ctx, `{${it.rarity}}${ellipsize(displayName(it), listW - 70)}{/}`, x + 18, y);
         const price =
           this.tab === 0
@@ -325,7 +350,7 @@ export class ShopScene extends TabbedService {
         void sel;
       });
       const it = list.selected;
-      if (it) drawTooltip(ctx, itemTooltipLines(it, s.equipment[it.slot]), tipX, f.y + 4, tipW, f.h - 30);
+      if (it) drawTooltip(ctx, itemTooltipLines(it, compareTarget(s, it)), tipX, f.y + 4, tipW, f.h - 30);
       const hints: [string, string][] =
         this.tab === 0
           ? [['confirm', 'Buy']]
@@ -342,7 +367,15 @@ export class ShopScene extends TabbedService {
       );
     } else {
       this.supplies.draw(ctx, f.x + 4, f.y + 4, listW, (row, x, y) => {
-        if (row.kind === 'flask') {
+        if (row.kind === 'charm') {
+          drawIcon(ctx, 'icon_charm_grand', x, y - 4, Math.min(5, Math.floor(s.hero.level / 6)));
+          drawText(ctx, 'Mystery Charm', x + 18, y);
+          const price = mysteryCharmPrice(s.hero.level);
+          drawText(ctx, `${price}g`, x + listW - 10, y, {
+            align: 'right',
+            color: price > s.hero.gold ? UI.bad : UI.accent,
+          });
+        } else if (row.kind === 'flask') {
           drawIcon(ctx, 'icon_potion_hp', x, y - 4);
           const maxed = s.hero.flaskUpgrades >= MAX_FLASK_UPGRADES;
           drawText(ctx, 'Flask Belt Expansion', x + 18, y);
@@ -363,21 +396,29 @@ export class ShopScene extends TabbedService {
       const row = this.supplies.selected;
       if (row) {
         const lines =
-          row.kind === 'flask'
+          row.kind === 'charm'
             ? [
-                '{gold}Flask Belt Expansion{/}',
+                '{gold}Mystery Charm{/}',
                 '',
-                `Adds a Health Flask charge (and a Mana Flask charge every other upgrade).`,
+                'A sealed charm of unknown power. Charms work while they sit in your bag (up to 10 at once).',
                 '',
-                `Upgrades: ${s.hero.flaskUpgrades}/${MAX_FLASK_UPGRADES}`,
+                '{red}30% are cursed:{/} much stronger bonuses, but with a drawback. Feeling lucky?',
               ]
-            : [
-                `{gold}${CONSUMABLES[row.id].name}{/}`,
-                '',
-                CONSUMABLES[row.id].desc,
-                '',
-                'Use from the Items tab in your menu.',
-              ];
+            : row.kind === 'flask'
+              ? [
+                  '{gold}Flask Belt Expansion{/}',
+                  '',
+                  `Adds a Health Flask charge (and a Mana Flask charge every other upgrade).`,
+                  '',
+                  `Upgrades: ${s.hero.flaskUpgrades}/${MAX_FLASK_UPGRADES}`,
+                ]
+              : [
+                  `{gold}${CONSUMABLES[row.id].name}{/}`,
+                  '',
+                  CONSUMABLES[row.id].desc,
+                  '',
+                  'Use from the Items tab in your menu.',
+                ];
         drawTooltip(ctx, lines, tipX, f.y + 4, tipW);
       }
       drawHints(
@@ -395,12 +436,6 @@ export class ShopScene extends TabbedService {
   }
 }
 
-function iconFor(it: Item): import('../art/pixel/types').IconId {
-  return (
-    it.slot === 'weapon' ? `icon_${it.kind ?? 'sword'}` : `icon_${it.slot}`
-  ) as import('../art/pixel/types').IconId;
-}
-
 // ----------------------------------------------------------------- smith ----
 export class SmithScene extends TabbedService {
   tabs = ['Upgrade', 'Salvage', 'Reforge'];
@@ -414,9 +449,10 @@ export class SmithScene extends TabbedService {
 
   private items(): Item[] {
     const s = this.game.save;
-    const equipped = SLOTS.map((sl) => s.equipment[sl]).filter((i): i is Item => !!i);
+    const equipped = EQUIP_SLOTS.map((sl) => s.equipment[sl]).filter((i): i is Item => !!i);
     if (this.tab === 1) return s.inventory.filter((i) => !i.locked);
-    return [...equipped, ...s.inventory];
+    const bag = this.tab === 0 ? s.inventory.filter((i) => i.slot !== 'charm') : s.inventory;
+    return [...equipped, ...bag];
   }
 
   protected override onTab(): void {
@@ -439,6 +475,8 @@ export class SmithScene extends TabbedService {
     if (r === 'confirm' && it) {
       const ri = RARITY_INDEX[it.rarity];
       if (this.tab === 0) {
+        if (it.slot === 'charm')
+          return this.fail('Charms cannot be upgraded \u2014 try reforging them instead.');
         if (it.upgrade >= MAX_UPGRADE) return this.fail('This item is fully upgraded.');
         const c = upgradeCost(it.ilvl, it.upgrade, ri);
         if (s.hero.gold < c.gold) return this.fail('Not enough gold.');
@@ -471,22 +509,26 @@ export class SmithScene extends TabbedService {
         if ((s.materials.dust ?? 0) < cost.dust) return this.fail('Not enough Aether Dust.');
         s.hero.gold -= cost.gold;
         addMaterial(s, 'dust', -cost.dust);
-        const fresh = generateItem(rng, it.ilvl, { slot: it.slot, kind: it.kind, rarity: it.rarity });
+        const fresh =
+          it.slot === 'charm'
+            ? generateCharm(rng, it.ilvl, { size: it.charmSize })
+            : generateItem(rng, it.ilvl, { slot: it.slot, kind: it.kind, rarity: it.rarity });
         it.affixes = fresh.affixes;
         it.name = fresh.name;
+        it.cursed = fresh.cursed;
         this.game.invalidateStats();
         audio.playSfx('upgrade_success');
         this.game.toast('Affixes reforged!', 'ui_star');
       }
     }
     if (this.tab === 1 && input.pressed('menuAlt')) {
-      const junk = s.inventory.filter((i) => !i.locked && RARITY_INDEX[i.rarity] <= 1);
+      const junk = s.inventory.filter((i) => !i.locked && RARITY_INDEX[i.rarity] <= 1 && i.slot !== 'charm');
       if (!junk.length) return this.fail('No common or uncommon items to salvage.');
       const dust = junk.reduce((n, i) => n + salvageYield(i.ilvl, RARITY_INDEX[i.rarity]), 0);
       this.game.app.push(
         new ConfirmScene(
           this.game,
-          `Salvage ${junk.length} common & uncommon items for ${dust} Aether Dust?`,
+          `Salvage ${junk.length} common & uncommon items for ${dust} Aether Dust? (Charms are kept.)`,
           () => {
             for (const i of junk) removeItem(s, i.uid);
             addMaterial(s, 'dust', dust);
@@ -509,11 +551,11 @@ export class SmithScene extends TabbedService {
     const input = this.game.app.input;
     const listW = Math.min(220, f.w - 150);
     this.list.visibleRows = Math.floor((f.h - 44) / 12);
-    const equipped = new Set(SLOTS.map((sl) => s.equipment[sl]?.uid));
+    const equipped = new Set(EQUIP_SLOTS.map((sl) => s.equipment[sl]?.uid));
     drawText(ctx, `Aether Dust: {cyan}${s.materials.dust ?? 0}{/}`, f.x + 8, f.y + f.h - 28);
     if (!this.list.items.length) drawText(ctx, 'Nothing here.', f.x + 10, f.y + 8, { color: UI.dim });
     this.list.draw(ctx, f.x + 4, f.y + 4, listW, (it, x, y) => {
-      drawIcon(ctx, iconFor(it), x, y - 4, it.tier);
+      drawIcon(ctx, itemIcon(it), x, y - 4, it.tier);
       drawText(ctx, `{${it.rarity}}${ellipsize(displayName(it), listW - 50)}{/}`, x + 18, y);
       if (equipped.has(it.uid)) drawText(ctx, 'E', x + listW - 10, y, { align: 'right', color: UI.good });
     });
@@ -525,7 +567,8 @@ export class SmithScene extends TabbedService {
       const ri = RARITY_INDEX[it.rarity];
       lines.push('');
       if (this.tab === 0) {
-        if (it.upgrade >= MAX_UPGRADE) lines.push('{gold}Fully upgraded!{/}');
+        if (it.slot === 'charm') lines.push('{gray}Charms cannot be upgraded.{/}');
+        else if (it.upgrade >= MAX_UPGRADE) lines.push('{gold}Fully upgraded!{/}');
         else {
           const c = upgradeCost(it.ilvl, it.upgrade, ri);
           lines.push(`{gold}Upgrade to +${it.upgrade + 1}{/} (base stats +10%)`);
@@ -535,7 +578,11 @@ export class SmithScene extends TabbedService {
       } else if (this.tab === 1) lines.push(`{cyan}Salvage for ${salvageYield(it.ilvl, ri)} Aether Dust{/}`);
       else {
         const c = this.reforgeCost(it);
-        lines.push('{gold}Reforge{/}: reroll all random affixes.');
+        lines.push(
+          it.slot === 'charm'
+            ? '{gold}Reforge{/}: reroll this charm (the curse may come or go!).'
+            : '{gold}Reforge{/}: reroll all random affixes.',
+        );
         lines.push(`Cost: ${c.gold}g, ${c.dust} dust`);
       }
       drawTooltip(ctx, lines, tipX, f.y + 4, tipW, f.h - 30);

@@ -4,8 +4,46 @@ import type { IconId, WeaponKind } from '../art/pixel/types';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 export const RARITIES: readonly Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 
-export type Slot = 'weapon' | 'helm' | 'armor' | 'boots' | 'ring' | 'amulet';
-export const SLOTS: readonly Slot[] = ['weapon', 'helm', 'armor', 'boots', 'ring', 'amulet'];
+/** Item types. Charms are never equipped: they work from the bag. */
+export type Slot = 'weapon' | 'helm' | 'armor' | 'gloves' | 'belt' | 'boots' | 'ring' | 'amulet' | 'charm';
+/** Equippable item types (everything except charms). */
+export type GearSlot = Exclude<Slot, 'charm'>;
+export const GEAR_SLOTS: readonly GearSlot[] = [
+  'weapon',
+  'helm',
+  'armor',
+  'gloves',
+  'belt',
+  'boots',
+  'ring',
+  'amulet',
+];
+
+/** Places on the hero's body where gear is worn (two ring fingers). */
+export type EquipSlot =
+  'weapon' | 'helm' | 'amulet' | 'armor' | 'gloves' | 'belt' | 'ring1' | 'ring2' | 'boots';
+export const EQUIP_SLOTS: readonly EquipSlot[] = [
+  'helm',
+  'amulet',
+  'armor',
+  'weapon',
+  'gloves',
+  'ring1',
+  'ring2',
+  'belt',
+  'boots',
+];
+
+/** Which body slots an item type can go into. */
+export function equipSlotsFor(slot: Slot): EquipSlot[] {
+  if (slot === 'charm') return [];
+  if (slot === 'ring') return ['ring1', 'ring2'];
+  return [slot];
+}
+
+export type CharmSize = 'small' | 'large' | 'grand';
+/** How many charms in the bag can be active at once. */
+export const CHARM_LIMIT = 10;
 
 export type Difficulty = 'story' | 'normal' | 'hard' | 'nightmare';
 
@@ -117,6 +155,10 @@ export interface Item {
   legendary?: LegendaryId;
   locked?: boolean;
   isNew?: boolean;
+  /** Charms only. */
+  charmSize?: CharmSize;
+  /** Cursed charms: stronger bonuses plus a drawback (a negative affix). */
+  cursed?: boolean;
 }
 
 export type ConsumableId = 'elixir' | 'phoenix' | 'tonic_might' | 'tonic_guard';

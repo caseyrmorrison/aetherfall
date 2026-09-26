@@ -2,7 +2,7 @@
 import { audio } from '../audio';
 import type { ProjectileSpec } from '../data/enemies';
 import { SKILLS, skillMult, type SkillId } from '../data/skills';
-import { angleDiff, angleTo, dist, TAU } from '../engine/math';
+import { angleDiff, angleTo, dist } from '../engine/math';
 import type { Enemy } from './entities/enemy';
 import type { Player } from './entities/player';
 import type { World } from './world';
@@ -181,42 +181,53 @@ export function castSkill(world: World, p: Player, id: SkillId, rank: number): v
   }
 }
 
-/** The Aether Surge ultimate blast (after its cut-in). */
-export function surgeBlast(world: World, p: Player): void {
-  const st = world.game.stats();
+/** Aether Cannon: the ultimate — a Dragon Ball–style beam fired after its cut-in. */
+export function fireCannon(world: World, p: Player): void {
   const shards = Math.max(1, world.shardCount());
-  const mult = 5 + shards * 1.2;
-  audio.playSfx('surge_blast');
-  world.shake(10, 0.6);
-  world.flashScreen('#ffffff', 0.35);
-  world.novaEffect(p.x, p.y - 6, 120, 'arcane');
-  for (let i = 0; i < 40; i++) {
-    const a = (i / 40) * TAU;
-    world.particles.emit(p.x, p.y - 6, {
-      count: 1,
-      angle: a,
-      spread: 0.05,
-      speed: [160, 260],
-      color: ['#2ce8f5', '#ffffff', '#feae34'],
-      life: [0.4, 0.7],
-      size: [2, 3],
-      emissive: true,
-      shape: 'line',
-      drag: 3,
-    });
+  const total = 5 + shards * 1.2;
+  const dur = 1.2;
+  // aim assist: favour the boss or the nearest enemy roughly in front
+  let angle = p.aim;
+  const boss = world.boss && world.boss.targetable ? world.boss : null;
+  const pick = boss && Math.abs(angleDiff(p.aim, angleTo(p.x, p.y, boss.x, boss.y))) < 1 ? boss : null;
+  if (pick) angle = angleTo(p.x, p.y - 8, pick.x, pick.y - 8);
+  else {
+    let best = Infinity;
+    for (const e of world.enemiesNear(p.x, p.y, 260)) {
+      const a = angleTo(p.x, p.y, e.x, e.y);
+      const da = Math.abs(angleDiff(p.aim, a));
+      if (da > 0.7) continue;
+      const score = da * 100 + dist(p.x, p.y, e.x, e.y);
+      if (score < best) {
+        best = score;
+        angle = angleTo(p.x, p.y - 8, e.x, e.y - 8);
+      }
+    }
   }
-  const power = (st.atk + st.mag) / 2;
-  for (const e of world.enemiesNear(p.x, p.y, 136)) {
-    if (dist(p.x, p.y, e.x, e.y) > 120 + e.radius) continue;
+  p.aim = angle;
+  world.cannon = { t: 0, dur, angle, tick: 0, mult: (total * 1.3) / Math.round(dur / 0.1), hits: 0 };
+  p.state = 'cast';
+  p.stateT = 0;
+  p.castT = dur;
+  p.surgeInvuln = dur + 1;
+  audio.playSfx('surge_blast');
+  world.shake(7, dur);
+  world.flashScreen('#ffffff', 0.25);
+  world.impact(0.12);
+  world.zoomAt(p.x, p.y - 8, 1.35, 0.3);
+  // a close-range shockwave so the ultimate is never wasted
+  world.novaEffect(p.x, p.y - 6, 56, 'arcane');
+  const st = world.game.stats();
+  for (const e of world.enemiesNear(p.x, p.y, 70)) {
+    if (dist(p.x, p.y, e.x, e.y) > 56 + e.radius) continue;
     world.playerHit(e, {
       power: 'custom',
-      customPower: power,
-      mult,
-      knock: 260,
+      customPower: (st.atk + st.mag) / 2,
+      mult: 1.5,
+      knock: 200,
       dir: angleTo(p.x, p.y, e.x, e.y),
       isSkill: true,
-      forceCrit: true,
+      noSurge: true,
     });
   }
-  p.surgeInvuln = 2;
 }

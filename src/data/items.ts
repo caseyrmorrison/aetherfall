@@ -28,6 +28,16 @@ export const TIER_NAMES: Record<Slot | WeaponKind, readonly string[]> = {
   armor: ['Padded Vest', 'Chainmail', 'Steel Plate', 'Crystal Mail', 'Ember Plate', 'Aether Raiment'],
   boots: ['Sandals', 'Iron Boots', 'Steel Greaves', 'Crystal Treads', 'Ember Striders', 'Aether Walkers'],
   ring: ['Copper Ring', 'Iron Band', 'Silver Ring', 'Crystal Ring', 'Ember Signet', 'Aether Loop'],
+  gloves: [
+    'Leather Gloves',
+    'Iron Gauntlets',
+    'Steel Gauntlets',
+    'Crystal Grips',
+    'Ember Fists',
+    'Aether Gauntlets',
+  ],
+  belt: ['Rope Belt', 'Leather Belt', 'Iron Girdle', 'Crystal Sash', 'Ember Cinch', 'Aether Girdle'],
+  charm: ['Charm', 'Charm', 'Charm', 'Charm', 'Charm', 'Charm'],
   amulet: [
     'Wooden Charm',
     'Iron Pendant',
@@ -49,6 +59,9 @@ export const SLOT_ICON: Record<Slot | WeaponKind, IconId> = {
   boots: 'icon_boots',
   ring: 'icon_ring',
   amulet: 'icon_amulet',
+  gloves: 'icon_gloves',
+  belt: 'icon_belt',
+  charm: 'icon_charm_small',
 };
 
 export const SLOT_LABEL: Record<Slot, string> = {
@@ -58,6 +71,9 @@ export const SLOT_LABEL: Record<Slot, string> = {
   boots: 'Boots',
   ring: 'Ring',
   amulet: 'Amulet',
+  gloves: 'Gloves',
+  belt: 'Belt',
+  charm: 'Charm',
 };
 
 export const WEAPON_LABEL: Record<WeaponKind, string> = {
@@ -160,6 +176,12 @@ export function slotBaseStats(slot: Slot, kind: WeaponKind | undefined, ilvl: nu
       return { atk: 1 + 0.6 * ilvl };
     case 'amulet':
       return { maxMp: 5 + 1.5 * ilvl, mag: 1 + 0.6 * ilvl };
+    case 'gloves':
+      return { def: 1 + 0.5 * ilvl, atk: 0.5 + 0.4 * ilvl };
+    case 'belt':
+      return { def: 1 + 0.5 * ilvl, maxHp: 6 + 3 * ilvl };
+    case 'charm':
+      return {};
   }
   return {};
 }
@@ -183,7 +205,7 @@ const fixed = (v: number) => (): number => v;
 export const AFFIXES: readonly AffixDef[] = [
   {
     stat: 'atk',
-    slots: ['weapon', 'ring', 'amulet', 'helm'],
+    slots: ['weapon', 'ring', 'amulet', 'helm', 'gloves'],
     weight: 10,
     min: flat(1, 0.5),
     max: flat(2, 1),
@@ -201,7 +223,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'def',
-    slots: ['armor', 'helm', 'boots', 'ring'],
+    slots: ['armor', 'helm', 'boots', 'ring', 'gloves', 'belt'],
     weight: 10,
     min: flat(1, 0.4),
     max: flat(2, 0.8),
@@ -210,7 +232,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'maxHp',
-    slots: ['weapon', 'helm', 'armor', 'boots', 'ring', 'amulet'],
+    slots: ['weapon', 'helm', 'armor', 'boots', 'ring', 'amulet', 'gloves', 'belt'],
     weight: 12,
     min: flat(5, 3),
     max: flat(10, 6),
@@ -219,7 +241,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'maxMp',
-    slots: ['helm', 'amulet', 'ring', 'weapon'],
+    slots: ['helm', 'amulet', 'ring', 'weapon', 'belt'],
     weight: 7,
     min: flat(3, 1),
     max: flat(6, 2),
@@ -228,7 +250,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'crit',
-    slots: ['weapon', 'ring', 'amulet', 'helm'],
+    slots: ['weapon', 'ring', 'amulet', 'helm', 'gloves'],
     weight: 7,
     min: fixed(0.02),
     max: fixed(0.06),
@@ -237,7 +259,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'critDmg',
-    slots: ['weapon', 'amulet', 'ring'],
+    slots: ['weapon', 'amulet', 'ring', 'gloves'],
     weight: 6,
     min: fixed(0.08),
     max: fixed(0.3),
@@ -246,7 +268,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'atkSpeed',
-    slots: ['weapon', 'ring', 'boots'],
+    slots: ['weapon', 'ring', 'boots', 'gloves'],
     weight: 6,
     min: fixed(0.04),
     max: fixed(0.12),
@@ -264,7 +286,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'lifesteal',
-    slots: ['weapon', 'ring', 'amulet'],
+    slots: ['weapon', 'ring', 'amulet', 'gloves'],
     weight: 4,
     min: fixed(0.01),
     max: fixed(0.03),
@@ -282,7 +304,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'goldFind',
-    slots: ['ring', 'amulet', 'helm', 'boots'],
+    slots: ['ring', 'amulet', 'helm', 'boots', 'belt', 'gloves'],
     weight: 5,
     min: fixed(0.08),
     max: fixed(0.25),
@@ -300,7 +322,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'xpBonus',
-    slots: ['amulet', 'helm'],
+    slots: ['amulet', 'helm', 'belt'],
     weight: 4,
     min: fixed(0.03),
     max: fixed(0.1),
@@ -309,7 +331,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'hpRegen',
-    slots: ['armor', 'amulet', 'ring'],
+    slots: ['armor', 'amulet', 'ring', 'belt'],
     weight: 6,
     min: flat(0.3, 0.1),
     max: flat(0.6, 0.25),
@@ -318,7 +340,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'mpRegen',
-    slots: ['amulet', 'weapon', 'helm'],
+    slots: ['amulet', 'weapon', 'helm', 'belt'],
     weight: 5,
     min: flat(0.2, 0.05),
     max: flat(0.5, 0.1),
@@ -327,7 +349,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'burnChance',
-    slots: ['weapon'],
+    slots: ['weapon', 'gloves'],
     weight: 3,
     min: fixed(0.04),
     max: fixed(0.12),
@@ -336,7 +358,7 @@ export const AFFIXES: readonly AffixDef[] = [
   },
   {
     stat: 'skillDmg',
-    slots: ['amulet', 'helm', 'weapon'],
+    slots: ['amulet', 'helm', 'weapon', 'gloves'],
     weight: 5,
     min: fixed(0.05),
     max: fixed(0.15),
