@@ -6,13 +6,14 @@
  * authored facing down / up / right; 'left' is always the mirrored 'right'.
  */
 import { flipX, memo, paint, type Canvas } from './core';
-import type { AnimName, Dir, SpriteId, SpriteInfo, WeaponInfo, WeaponKind } from './types';
+import type { AnimName, BossId, Dir, SpriteId, SpriteInfo, WeaponInfo, WeaponKind } from './types';
 import { Buf, INK } from './actors/buf';
 import { anims, type FaceDir, type SpriteDef } from './actors/defs';
 import { CHARACTER_DEFS } from './actors/characters';
 import { CREATURE_A_DEFS } from './actors/creatures-a';
 import { CREATURE_B_DEFS } from './actors/creatures-b';
 import { BOSS_DEFS } from './actors/bosses';
+import { ACT2_BOSS_DEFS } from './actors/bosses-act2';
 import { FX_DEFS, PROJECTILE_DEFS } from './actors/fx';
 import { drawWeapon, weaponSize } from './actors/weapons';
 
@@ -28,11 +29,14 @@ const PLACEHOLDER: SpriteDef = {
   },
 };
 
+/** Every boss must have art (split across modules by act). */
+const BOSSES: Record<BossId, SpriteDef> = { ...BOSS_DEFS, ...ACT2_BOSS_DEFS };
+
 const DEFS: Partial<Record<SpriteId, SpriteDef>> = {
   ...CHARACTER_DEFS,
   ...CREATURE_A_DEFS,
   ...CREATURE_B_DEFS,
-  ...BOSS_DEFS,
+  ...BOSSES,
   ...PROJECTILE_DEFS,
   ...FX_DEFS,
 };

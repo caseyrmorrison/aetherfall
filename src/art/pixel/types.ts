@@ -50,7 +50,12 @@ export type BossId =
   | 'boss_ignis'
   | 'boss_seraphine'
   | 'boss_malachar'
-  | 'boss_malachar_true';
+  | 'boss_malachar_true'
+  // Act II (Solenne)
+  | 'boss_sandmaw'
+  | 'boss_nereth'
+  | 'boss_voltaris'
+  | 'boss_aurelian';
 
 export type ProjectileId =
   | 'proj_arrow'
@@ -62,7 +67,12 @@ export type ProjectileId =
   | 'proj_rock'
   | 'proj_snowball'
   | 'proj_bolt'
-  | 'proj_crystal';
+  | 'proj_crystal'
+  // Act II
+  | 'proj_sand'
+  | 'proj_bubble'
+  | 'proj_lightning'
+  | 'proj_sunbolt';
 
 export type FxId = 'fx_hit' | 'fx_explosion' | 'fx_smoke' | 'fx_sparkle' | 'fx_poof';
 
