@@ -9,8 +9,10 @@ import { renderBust, type Expression, type Spec } from './face';
 import { kai } from './characters/kai';
 import { lyra } from './characters/lyra';
 import { malachar } from './characters/malachar';
-import { blitC, fade, fillPolyCtx, glow, layer, sparkleSprite } from './illustrations/kit';
-import { OUTFIT, limb, palm } from './illustrations/figure';
+import { aurelian } from './characters/aurelian';
+import { blitC, fade, fillPolyCtx, frame, glow, layer, sparkleSprite } from './illustrations/kit';
+import { OUTFIT, fist, limb, palm } from './illustrations/figure';
+import { corona } from './illustrations/solenne';
 import { lightning } from './aura';
 import { speedLines } from './fx';
 import { rng, smooth } from './geom';
@@ -71,6 +73,20 @@ const DEFS: Record<CutInId, CutDef> = {
     lines: '#2ce8f5',
     glowCols: [C.white, C.cyan, C.sky],
     sparks: [C.white, C.cyan, C.cyan],
+    duration: 1.6,
+  },
+  aurelian_eclipse: {
+    spec: aurelian,
+    expr: 'smirk',
+    iris: [C.gold, C.yellow, C.white],
+    eyeGlow: C.yellow,
+    bg: [C.black, C.void0, C.plum, C.rust],
+    streak: [C.gold, C.yellow, C.orange],
+    edge: C.yellow,
+    edge2: C.orange,
+    lines: '#feae34',
+    glowCols: [C.white, C.yellow, C.gold],
+    sparks: [C.gold, C.yellow, C.magenta],
     duration: 1.6,
   },
   malachar_rage: {
@@ -158,6 +174,8 @@ export function cutIn(ctx: CanvasRenderingContext2D, id: CutInId, t: number, w: 
   const drift = Math.round(-hold * 14);
   if (id === 'kai_cannon') {
     cannonCharge(ctx, t, w, h, slide);
+  } else if (id === 'aurelian_eclipse') {
+    eclipseStrike(ctx, t, w, h, slide);
   } else {
     // eye close-up (drifts slowly to the left during the hold)
     const face = layer(`cut/${id}/face`, w, h, (r) => {
@@ -225,6 +243,134 @@ export function cutIn(ctx: CanvasRenderingContext2D, id: CutInId, t: number, w: 
   if (t > 0.12 && t < 0.24) fade(ctx, C.white, 1 - (t - 0.12) / 0.12, 0, 0, w, h);
 
   if (id === 'kai_cannon') cannonBeam(ctx, t, w, h, T);
+  if (id === 'aurelian_eclipse' && t > FLARE && t < FLARE + 0.12)
+    fade(ctx, C.yellow, 0.5 * (1 - (t - FLARE) / 0.12), 0, 0, w, h);
+}
+
+/* ------------------------------------------------------ aurelian_eclipse */
+
+const ECL_S = 1.3;
+const FLARE = 0.52;
+const BLADE = 220;
+const SUN = 25;
+const AUR = {
+  ...OUTFIT.kai,
+  sleeve: C.white,
+  sleeveSh: C.lightGray,
+  fore: C.white,
+  foreSh: C.lightGray,
+  bracer: C.gold,
+  bracerSh: C.orange,
+  hand: C.paleSkin,
+  handSh: C.paleShade,
+  line: C.plum,
+};
+
+function eclipsePlace(r: Raster, w: number, h: number): Raster {
+  return r.place(ECL_S, Math.atan(SLOPE), 51, 50, w / 2 - 118, h / 2 - 8 + 4);
+}
+
+/** Aurelian swings his greatsword up across the black sun, which flares. */
+function eclipseStrike(ctx: CanvasRenderingContext2D, t: number, w: number, h: number, slide: number): void {
+  const cy = h / 2 - 8;
+  // the black sun behind, on the right of the band
+  const sx = w / 2 + 112 + slide;
+  const sy = cy - 12 + SLOPE * 112;
+  const fl = t > FLARE ? smooth(1 - (t - FLARE) / 0.5) : 0;
+  blitC(ctx, glow(SUN * 2 + Math.round(fl * 30), [C.white, C.yellow, C.gold, C.orange, C.rust]), sx, sy);
+  const size = Math.ceil(SUN * 8.6);
+  const cor = frame('cut/aurelian_eclipse/corona', Math.floor(t * 14) % 8, 8, size, size, (r, i) =>
+    corona(r, size / 2, size / 2, SUN, i / 8, 13, 26),
+  );
+  blitC(ctx, cor, sx, sy);
+  if (fl > 0) blitC(ctx, sparkleSprite(4 + Math.round(fl * 10), C.white), sx + SUN * 0.72, sy - SUN * 0.72);
+
+  // Aurelian, arm raised
+  const fig = layer('cut/aurelian_eclipse/fig', w, h, (r) => {
+    eclipsePlace(r, w, h);
+    const bust = new Raster(w, h).copyTransform(r);
+    renderBust(bust, aurelian, 'smirk', {
+      variant: 'nohalo',
+      iris: [C.gold, C.yellow, C.white],
+      eyeGlow: C.yellow,
+      windX: -5,
+      windY: -2,
+      noMarks: true,
+    });
+    r.over(bust);
+    limb(
+      r,
+      AUR,
+      [
+        [84, 92],
+        [110, 84],
+        [122, 62],
+      ],
+      13,
+      10.5,
+      AUR.sleeve,
+      AUR.sleeveSh,
+      AUR.fore,
+      AUR.foreSh,
+    );
+    fist(r, AUR, 123, 58, 1);
+    r.rim(C.yellow, 1, 0);
+    r.rim(C.gold, 0, -1);
+  });
+
+  // greatsword: swings from low to aligned with the black sun (grip behind the fist)
+  const hr = eclipsePlace(new Raster(1, 1), w, h);
+  const hx = hr.X(123, 58) + slide;
+  const hy = hr.Y(123, 58);
+  const a1 = Math.atan2(sy - hy, sx - hx);
+  const a0 = a1 + 1.1;
+  const a = a0 + (a1 - a0) * smooth((t - 0.14) / (FLARE - 0.14));
+  const dx = Math.cos(a);
+  const dy = Math.sin(a);
+  const nx = -dy;
+  const ny = dx;
+  const P = (u: number, v: number): [number, number] => [hx + dx * u + nx * v, hy + dy * u + ny * v];
+  const poly = (pts: [number, number][], col: number): void =>
+    fillPolyCtx(
+      ctx,
+      pts.flatMap((p) => p),
+      HEX[col],
+      w,
+      h,
+    );
+  // grip + pommel behind the fist
+  poly([P(-16, -2), P(8, -2), P(8, 2), P(-16, 2)], C.darkBrown);
+  poly([P(-21, -4), P(-16, -4), P(-16, 4), P(-21, 4)], C.gold);
+  poly([P(-20, -2), P(-17, -2), P(-17, 2), P(-20, 2)], C.black);
+  ctx.drawImage(fig, Math.round(slide), 0);
+  // blade: outline, body, lit edge, shaded edge, gold fuller
+  const b0 = 13;
+  poly([P(b0, -9), P(BLADE - 20, -7), P(BLADE + 2, 0), P(BLADE - 20, 7), P(b0, 9)], C.plum);
+  poly([P(b0, -8), P(BLADE - 20, -6), P(BLADE, 0), P(BLADE - 20, 6), P(b0, 8)], C.lightGray);
+  poly([P(b0, -8), P(BLADE - 20, -6), P(BLADE, 0), P(BLADE - 20, -1.5), P(b0, -1.5)], C.white);
+  poly([P(b0, 5.5), P(BLADE - 20, 4), P(BLADE - 12, 3), P(BLADE - 20, 6), P(b0, 8)], C.gray);
+  poly([P(b0 + 4, -1), P(BLADE * 0.72, -0.6), P(BLADE * 0.72, 1.2), P(b0 + 4, 1.4)], C.gold);
+  // crossguard with a black-sun center, in front of the fist
+  poly([P(7, -17), P(14, -17), P(14, 17), P(7, 17)], C.plum);
+  poly([P(8, -16), P(13, -16), P(13, 16), P(8, 16)], C.gold);
+  poly([P(11, -16), P(13, -16), P(13, 16), P(11, 16)], C.orange);
+  poly([P(7, -4.5), P(14, -4.5), P(14, 4.5), P(7, 4.5)], C.black);
+  poly([P(9, -2.5), P(12, -2.5), P(12, 2.5), P(9, 2.5)], C.gold);
+  poly([P(10, -1.5), P(11, -1.5), P(11, 1.5), P(10, 1.5)], C.black);
+  // glint racing along the blade after the flare
+  const gu = (t - FLARE - 0.05) / 0.4;
+  if (gu > 0 && gu < 1) {
+    const [gx, gy] = P(16 + gu * (BLADE - 26), -3);
+    blitC(ctx, sparkleSprite(gu < 0.5 ? 6 : 4, C.white), gx, gy);
+  }
+  // pale gold eyes
+  const pulse = (Math.sin(t * 20) + 1) / 2;
+  for (const [ex, ey] of [
+    [40, 51],
+    [64.5, 51],
+  ]) {
+    blitC(ctx, sparkleSprite(pulse > 0.5 ? 4 : 3, C.yellow), hr.X(ex, ey) + slide - 5, hr.Y(ex, ey) - 6);
+  }
 }
 
 /* ------------------------------------------------------------ kai_cannon */
