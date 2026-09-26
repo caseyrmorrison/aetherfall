@@ -114,7 +114,20 @@ export interface WeaponInfo {
 
 // ----------------------------------------------------------- environment ----
 
-export type Theme = 'town' | 'forest' | 'cave' | 'volcano' | 'tundra' | 'citadel' | 'abyss';
+export type Theme =
+  | 'town'
+  | 'forest'
+  | 'cave'
+  | 'volcano'
+  | 'tundra'
+  | 'citadel'
+  | 'abyss'
+  // act II (Solenne)
+  | 'desert'
+  | 'ruins'
+  | 'storm'
+  | 'eclipse'
+  | 'oasis';
 
 export type GroundKind = 'floor' | 'floorAlt' | 'path' | 'bridge';
 
@@ -179,7 +192,40 @@ export type PropId =
   | 'sign'
   | 'boss_gate'
   | 'portal'
-  | 'torch_wall';
+  | 'torch_wall'
+  // act II: desert (Sunscar Dunes)
+  | 'palm_tree'
+  | 'cactus'
+  | 'sandstone_rock'
+  | 'sandstone_pillar'
+  | 'ruined_obelisk'
+  | 'desert_bones'
+  | 'dry_bush'
+  // act II: ruins (Sunken Temple)
+  | 'mangrove_tree'
+  | 'broken_column'
+  | 'coral_rock'
+  | 'seaweed'
+  | 'seashell'
+  | 'glow_coral'
+  // act II: storm (Stormspire)
+  | 'storm_rock'
+  | 'storm_obelisk'
+  | 'thunder_rod'
+  | 'wind_grass'
+  // act II: eclipse (Eclipse Sanctum)
+  | 'eclipse_pillar'
+  | 'sun_statue'
+  | 'sun_brazier'
+  | 'gold_rubble'
+  // act II: oasis town (Solenne)
+  | 'adobe_inn'
+  | 'adobe_shop'
+  | 'adobe_smithy'
+  | 'adobe_house'
+  | 'adobe_hall'
+  | 'market_awning'
+  | 'sand_crate';
 
 export interface PropInfo {
   w: number;

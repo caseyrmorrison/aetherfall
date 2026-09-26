@@ -164,6 +164,74 @@ function iceFloes(x: number, y: number, f: number, d: number): Col | undefined {
   return undefined;
 }
 
+/** Dark pool dimpled by rain: drops land, ring out and fade over the 4-frame loop. */
+function rainBody(seed: number) {
+  const base = waterBody('#1b2038', '#222a48', '#4a5680', '#8b9bb4', seed);
+  const drops = marks(seed, 3, 70);
+  const wrapD = (a: number, b: number) => {
+    const d = (((a - b) % T) + T) % T;
+    return d > T / 2 ? d - T : d;
+  };
+  return (x: number, y: number, f: number): Col => {
+    let c = base(x, y, f);
+    drops.forEach(([dx, dy], k) => {
+      const ph = (f + k) % 4;
+      const ox = wrapD(x, dx);
+      const oy = wrapD(y, dy);
+      if (ph === 0 && ox === 0 && oy === 0) c = PAL.lightGray;
+      else if (ph > 0 && ph < 3) {
+        const d = Math.hypot(ox / ph, oy / (ph * 0.55));
+        if (Math.abs(d - 1) < 0.34) c = ph === 1 ? '#6a78a4' : '#3c4670';
+      }
+    });
+    return c;
+  };
+}
+
+/** A night sky seen through the floor: indigo haze, twinkling white stars, a drifting gold mote. */
+function starBody(seed: number) {
+  const stars = marks(seed, 2, 40);
+  const mote = marks(seed, 1, 50)[0];
+  return (x: number, y: number, f: number): Col => {
+    const n = fbm16(x, y, seed);
+    let c: Col = PAL.black;
+    if (n > 0.55 || (n > 0.51 && bayer(x, y) > 0.5)) c = '#11112b';
+    if (n > 0.66 || (n > 0.63 && bayer(x, y) > 0.5)) c = '#191b42';
+    stars.forEach(([sx, sy], k) => {
+      const ph = (f + k * 3) % 4;
+      if (x === sx && y === sy) c = [PAL.slate, PAL.lightGray, PAL.white, PAL.gray][ph];
+      if (ph === 2 && Math.abs(x - sx) + Math.abs(y - sy) === 1) c = k === 0 ? '#8a5a2a' : PAL.darkSlate;
+    });
+    const px = (mote[0] + f) % T;
+    const py = (mote[1] + (f >> 1)) % T;
+    if (x === px && y === py) c = PAL.gold;
+    return c;
+  };
+}
+
+/** Lily pads resting near the bank (static, so the pads don't jitter). */
+function lilyPads(x: number, y: number, _f: number, d: number): Col | undefined {
+  if (d < 1.5 || d > 5) return undefined;
+  const cx = x >> 2;
+  const cy = y >> 2;
+  const h = rnd(cx, cy, 71);
+  if (h < 0.84) return undefined;
+  // a flattened round pad (4x2) with a notch, sometimes carrying a pink bloom
+  const pad = ['....', '.ab.', 'cbbd', '....'][y & 3][x & 3];
+  if (pad === '.') return undefined;
+  if (h > 0.95 && pad === 'a') return PAL.pink;
+  return { a: '#7fc06a', b: '#3e8948', c: '#2f6a52', d: '#1f5a4a' }[pad];
+}
+
+/** Murky scum, weed and floating leaves close to the bank. */
+function algae(x: number, y: number, f: number, d: number): Col | undefined {
+  if (d < 1.5 || d > 4.5) return undefined;
+  const h = rnd((x + ((f >> 1) & 1)) >> 1, y >> 1, 83);
+  if (h > 0.84) return (x + y) % 3 ? '#3e6a4a' : '#5a8a50';
+  if (h > 0.78 && d < 3) return '#2c5244';
+  return undefined;
+}
+
 // ---------------------------------------------------------------- styles ----
 
 const STYLES: Record<Theme, LiquidStyle> = {
@@ -271,6 +339,89 @@ const STYLES: Record<Theme, LiquidStyle> = {
     insWE: 2,
     faceH: 5,
     striate: false,
+  },
+  desert: {
+    // an oasis pool: clear turquoise water in a sandstone basin
+    body: waterBody('#136b7d', '#1a8090', '#4fcac8', '#e0fff8', 21),
+    nearShore: lilyPads,
+    top: '#c99474',
+    topDark: '#a8735f',
+    face: '#9a6452',
+    faceDark: '#6a4250',
+    rim: '#b07c66',
+    foam: '#dffaf2',
+    foam2: '#8fe0d8',
+    under: '#0e5064',
+    insN: 5,
+    insS: 2,
+    insWE: 2,
+    pebble: '#e4bf96',
+  },
+  ruins: {
+    // murky flood water over sunken flagstones
+    body: waterBody('#1c4541', '#23534d', '#4c8a76', '#a6dcc0', 23),
+    nearShore: algae,
+    top: '#3a5c56',
+    topDark: '#23403c',
+    face: '#2c4846',
+    faceDark: '#152a2b',
+    rim: '#3e8948',
+    foam: '#9fd0b0',
+    foam2: '#4c8a76',
+    under: '#12302e',
+    insN: 5,
+    insS: 2,
+    insWE: 2,
+    pebble: '#2f6a4a',
+  },
+  storm: {
+    // dark rain pools on the slate
+    body: rainBody(25),
+    top: '#3c4462',
+    topDark: '#23283f',
+    face: '#2b3151',
+    faceDark: '#141729',
+    rim: '#4a5476',
+    foam: '#8b9bb4',
+    foam2: '#4a5680',
+    under: '#10132a',
+    insN: 5,
+    insS: 2,
+    insWE: 2,
+    pebble: '#2e3452',
+  },
+  eclipse: {
+    // the starry void beneath the floating sanctum, rimmed with gold
+    body: starBody(27),
+    top: '#241e33',
+    topDark: '#0e0b16',
+    face: '#1a1527',
+    faceDark: '#0b0912',
+    rim: '#c48a2c',
+    foam: PAL.gold,
+    foam2: '#8a5a2a',
+    under: '#1f2150',
+    insN: 7,
+    insS: 2,
+    insWE: 2,
+    faceH: 5,
+    striate: false,
+  },
+  oasis: {
+    // town pools and canals: bright turquoise, sandstone kerb
+    body: waterBody('#157585', '#1c8a98', '#5ad4d0', '#e6fffa', 29),
+    nearShore: lilyPads,
+    top: '#d9ab80',
+    topDark: '#bd8866',
+    face: '#a86e56',
+    faceDark: '#7a4a42',
+    rim: '#efcfa4',
+    foam: '#e6fffa',
+    foam2: '#8fe6dc',
+    under: '#0f5868',
+    insN: 5,
+    insS: 2,
+    insWE: 2,
   },
 };
 

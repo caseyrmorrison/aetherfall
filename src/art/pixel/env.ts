@@ -23,6 +23,7 @@ import { NATURE } from './env/props-nature';
 import { DUNGEON } from './env/props-dungeon';
 import { TOWN } from './env/props-town';
 import { INTERACT } from './env/props-interact';
+import { ACT2 } from './env/props-act2';
 
 export const TILE = 16;
 
@@ -47,7 +48,7 @@ export const getWallTile: (theme: Theme, face: boolean, variant: number) => Canv
 
 // ------------------------------------------------------------------ props ---
 
-const PROPS: PropTable = { ...NATURE, ...DUNGEON, ...TOWN, ...INTERACT };
+const PROPS: PropTable = { ...NATURE, ...DUNGEON, ...TOWN, ...INTERACT, ...ACT2 };
 
 const FALLBACK: PropDef = {
   info: { w: 16, h: 16, anchorX: 8, anchorY: 15, frames: 1, fps: 0 },
