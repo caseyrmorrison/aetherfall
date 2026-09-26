@@ -33,6 +33,14 @@ const EXTRA = {
   memWarm1: '#8f8177',
   memWarm2: '#c7b8a8',
   memWarm3: '#e9ddcf',
+  /** Warm platinum hair ramp (Aurelian), light → dark. */
+  plat0: '#fdf8ea',
+  plat1: '#e8dcc0',
+  plat2: '#c2ad8a',
+  plat3: '#8a7560',
+  /** Deep brown skin (Tessaly). */
+  umber: '#8f5a43',
+  umberShade: '#663b33',
 } as const;
 
 export type ColorName = keyof typeof PAL | keyof typeof EXTRA;

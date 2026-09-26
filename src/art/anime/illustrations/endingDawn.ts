@@ -27,7 +27,8 @@ const BACKLIT = lut((i) => {
   return m[i] ?? i;
 });
 
-function kaiBack(r: Raster, sc: Raster, ph: number): void {
+/** Kai seen from behind (design units, feet at 0,0, ~64 tall), scarf and hair blowing right. */
+export function kaiBack(r: Raster, sc: Raster, ph: number): void {
   const wv = (k: number): number => Math.sin(ph + k) * 1.6;
   // scarf tails behind everything (blowing right)
   const tail = (y0: number, len: number, wd: number, k: number): void => {
@@ -217,7 +218,8 @@ function kaiBack(r: Raster, sc: Raster, ph: number): void {
   }
 }
 
-function lyraBack(r: Raster, sc: Raster, ph: number): void {
+/** Lyra seen from behind (design units, feet at 0,0), staff in her right hand. */
+export function lyraBack(r: Raster, sc: Raster, ph: number): void {
   const wv = (k: number): number => Math.sin(ph + k) * 2;
   // staff (in her right hand = viewer right)
   r.stroke([12, -58, 13.5, 0], 1.6, 1.6, C.darkBrown);

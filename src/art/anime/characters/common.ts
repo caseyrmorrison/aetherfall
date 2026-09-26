@@ -1,4 +1,5 @@
 /** Shared helpers for character specs (beards, crystals, stars). */
+import { C } from '../pal';
 import { cel, lock, type DrawCtx } from '../face';
 import { spline, type P } from '../geom';
 import type { Raster } from '../raster';
@@ -90,6 +91,50 @@ export function mustache(dc: DrawCtx, r: Raster, base: number, shade: number, dr
     shade,
     { pow: 1.2, wind: 0.2 },
   );
+}
+
+/**
+ * Black-sun emblem (design units): alternating long / short rays around a
+ * gold ring with a dark disc. Used for Aurelian's halo and chest emblem.
+ */
+export function blackSun(
+  r: Raster,
+  cx: number,
+  cy: number,
+  R: number,
+  o: {
+    rays?: number;
+    long?: number;
+    short?: number;
+    ring?: number;
+    ringW?: number;
+    disc?: number;
+    ray?: number;
+    rayShade?: number;
+    rot?: number;
+  } = {},
+): void {
+  const n = (o.rays ?? 12) * 2;
+  const rot = o.rot ?? -Math.PI / 2;
+  const hw = (Math.PI / n) * 0.75;
+  for (let i = 0; i < n; i++) {
+    const a = rot + (i / n) * Math.PI * 2;
+    const len = i % 2 === 0 ? (o.long ?? R * 0.55) : (o.short ?? R * 0.3);
+    const b = R * 0.9;
+    r.poly(
+      [
+        cx + Math.cos(a - hw) * b,
+        cy + Math.sin(a - hw) * b,
+        cx + Math.cos(a) * (R + len),
+        cy + Math.sin(a) * (R + len),
+        cx + Math.cos(a + hw) * b,
+        cy + Math.sin(a + hw) * b,
+      ],
+      i % 2 === 0 ? (o.ray ?? C.gold) : (o.rayShade ?? C.orange),
+    );
+  }
+  r.ellipse(cx, cy, R, R, o.ring ?? C.gold);
+  r.ellipse(cx, cy, R - (o.ringW ?? R * 0.14), R - (o.ringW ?? R * 0.14), o.disc ?? C.black);
 }
 
 /** Faceted crystal shard (diamond) with light / dark halves. */
