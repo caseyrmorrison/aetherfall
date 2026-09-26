@@ -1620,7 +1620,272 @@ const E: EnemyDef[] = [
   },
 ];
 
-export const ENEMIES: Readonly<Record<string, EnemyDef>> = Object.fromEntries(E.map((e) => [e.id, e]));
+// ------------------------------------------------------- world bosses ----
+
+/** A world boss built on another monster's art and moves: bigger, tougher, never wandering far. */
+function worldBoss(
+  base: string,
+  o: Partial<EnemyDef> & Pick<EnemyDef, 'id' | 'name' | 'lore' | 'boss'>,
+): EnemyDef {
+  const b = E.find((e) => e.id === base)!;
+  return { ...b, aggro: 170, drops: [], ...o };
+}
+
+/** Roaming world bosses that appear during world boss events, one per zone. */
+export const WORLD_BOSS_DEFS: readonly EnemyDef[] = [
+  worldBoss('thornmaw', {
+    id: 'wb_blightroot',
+    name: 'Blightroot',
+    hp: 3200,
+    atk: 15,
+    def: 12,
+    scale: 1.3,
+    xp: 1400,
+    gold: 1200,
+    boss: {
+      title: 'World Boss • The Undying Bloom',
+      music: 'boss',
+      phases: [
+        { at: 1, speedMult: 1, cooldownMult: 1 },
+        {
+          at: 0.66,
+          speedMult: 1,
+          cooldownMult: 0.8,
+          shout: 'The forest HUNGERS!',
+          summon: { enemy: 'sapling', count: 4 },
+        },
+        {
+          at: 0.33,
+          speedMult: 1,
+          cooldownMult: 0.6,
+          shout: 'ROOTS, RISE!',
+          summon: { enemy: 'mushroom', count: 3 },
+        },
+      ],
+    },
+    lore: 'A cutting of Thornmaw that took root elsewhere and never stopped growing. It wanders the woods when the shards stir.',
+  }),
+  worldBoss('crystal_golem', {
+    id: 'wb_prismatic',
+    name: 'Prismatic Colossus',
+    hp: 4000,
+    atk: 18,
+    def: 24,
+    scale: 1.25,
+    xp: 1800,
+    gold: 1600,
+    boss: {
+      title: 'World Boss • Heart of Every Crystal',
+      music: 'boss',
+      phases: [
+        { at: 1, speedMult: 1, cooldownMult: 1 },
+        {
+          at: 0.6,
+          speedMult: 1.15,
+          cooldownMult: 0.75,
+          shout: 'The caverns sing for me!',
+          summon: { enemy: 'shardling', count: 4 },
+        },
+        { at: 0.25, speedMult: 1.3, cooldownMult: 0.6, shout: 'SHATTER!' },
+      ],
+    },
+    lore: 'Every crystal in the caverns hums with a fragment of its song. Sometimes the song walks.',
+  }),
+  worldBoss('ignis', {
+    id: 'wb_pyrrhus',
+    name: 'Pyrrhus the Cinderwyrm',
+    hp: 4600,
+    atk: 22,
+    def: 22,
+    scale: 1.2,
+    xp: 2300,
+    gold: 2200,
+    boss: {
+      title: 'World Boss • Sire of Ignis',
+      music: 'boss',
+      phases: [
+        { at: 1, speedMult: 1, cooldownMult: 1 },
+        { at: 0.6, speedMult: 1.2, cooldownMult: 0.75, shout: 'My son was a candle. I am the SUN.' },
+        {
+          at: 0.3,
+          speedMult: 1.3,
+          cooldownMult: 0.6,
+          shout: 'BURN!',
+          summon: { enemy: 'fire_imp', count: 4 },
+        },
+      ],
+    },
+    lore: 'The ancient drake who raised Ignis. It sleeps under the lava lakes and wakes to hunt.',
+  }),
+  worldBoss('yeti', {
+    id: 'wb_grimfrost',
+    name: 'Old Grimfrost',
+    hp: 4400,
+    atk: 30,
+    def: 26,
+    speed: 40,
+    radius: 9,
+    mass: 1,
+    scale: 2.3,
+    xp: 2800,
+    gold: 2600,
+    immune: ['freeze', 'slow'],
+    attacks: [
+      {
+        type: 'melee',
+        arc: 3,
+        reach: 48,
+        windup: 0.7,
+        recover: 0.6,
+        cooldown: 1.6,
+        range: 52,
+        dmg: 1.8,
+        repeat: 1,
+        sfx: 'swing_heavy',
+      },
+      { type: 'nova', radius: 70, windup: 1, recover: 0.8, cooldown: 6, range: 70, dmg: 2, sfx: 'slam' },
+      {
+        type: 'shoot',
+        proj: { ...P.snowball, scale: 2, radius: 7 },
+        count: 5,
+        spread: 0.8,
+        windup: 0.8,
+        recover: 0.6,
+        cooldown: 3.5,
+        range: 220,
+        minRange: 60,
+        dmg: 1.2,
+      },
+      {
+        type: 'ring',
+        proj: P.iceshard,
+        count: 18,
+        waves: 2,
+        waveDelay: 0.45,
+        rotate: 0.17,
+        windup: 0.9,
+        recover: 0.8,
+        cooldown: 7,
+        range: 300,
+        dmg: 1,
+        phase: 1,
+        shout: 'RAAAWR!',
+      },
+      {
+        type: 'summon',
+        enemy: 'wolf_ice',
+        count: 3,
+        max: 5,
+        windup: 1,
+        recover: 0.8,
+        cooldown: 14,
+        range: 300,
+        dmg: 0,
+        sfx: 'summon',
+        weight: 0.6,
+      },
+    ],
+    boss: {
+      title: 'World Boss • King of the Frostveil',
+      music: 'boss',
+      phases: [
+        { at: 1, speedMult: 1, cooldownMult: 1 },
+        { at: 0.5, speedMult: 1.25, cooldownMult: 0.7, shout: 'GRIMFROST SMASH!' },
+      ],
+    },
+    lore: 'The oldest yeti alive. The pack follows its howl, and so do the blizzards.',
+  }),
+  worldBoss('shadow_knight', {
+    id: 'wb_warlord',
+    name: 'The Hollow Warlord',
+    hp: 5200,
+    atk: 34,
+    def: 30,
+    speed: 48,
+    radius: 8,
+    mass: 1,
+    scale: 2.2,
+    guard: 0.5,
+    xp: 3400,
+    gold: 3200,
+    attacks: [
+      {
+        type: 'melee',
+        arc: 2.6,
+        reach: 44,
+        windup: 0.5,
+        recover: 0.5,
+        cooldown: 1.5,
+        range: 46,
+        dmg: 1.4,
+        repeat: 2,
+        sfx: 'swing_heavy',
+      },
+      {
+        type: 'lunge',
+        speed: 300,
+        duration: 0.35,
+        windup: 0.6,
+        recover: 0.6,
+        cooldown: 3.5,
+        range: 140,
+        minRange: 50,
+        dmg: 1.5,
+      },
+      {
+        type: 'spiral',
+        proj: P.void,
+        arms: 4,
+        shots: 10,
+        interval: 0.15,
+        turn: 0.3,
+        windup: 0.9,
+        recover: 0.8,
+        cooldown: 8,
+        range: 300,
+        dmg: 1,
+        phase: 1,
+        shout: 'Kneel before the Void!',
+      },
+      { type: 'nova', radius: 64, windup: 0.9, recover: 0.8, cooldown: 6, range: 64, dmg: 1.8, sfx: 'slam' },
+      {
+        type: 'summon',
+        enemy: 'void_mage',
+        count: 2,
+        max: 4,
+        windup: 1,
+        recover: 0.8,
+        cooldown: 14,
+        range: 300,
+        dmg: 0,
+        sfx: 'summon',
+        weight: 0.6,
+      },
+    ],
+    boss: {
+      title: 'World Boss • First of the Hollow',
+      music: 'boss',
+      phases: [
+        { at: 1, speedMult: 1, cooldownMult: 1 },
+        { at: 0.5, speedMult: 1.2, cooldownMult: 0.7, shout: 'My king shall rise again!' },
+      ],
+    },
+    lore: 'The first knight to give his heart to Malachar. The armor still marches, looking for its king.',
+  }),
+];
+
+/** Which world boss haunts each zone. */
+export const WORLD_BOSS_BY_ZONE: Readonly<Record<string, string>> = {
+  forest: 'wb_blightroot',
+  cave: 'wb_prismatic',
+  volcano: 'wb_pyrrhus',
+  tundra: 'wb_grimfrost',
+  citadel: 'wb_warlord',
+};
+
+export const ENEMIES: Readonly<Record<string, EnemyDef>> = Object.fromEntries(
+  [...E, ...WORLD_BOSS_DEFS].map((e) => [e.id, e]),
+);
 
 export function enemyDef(id: string): EnemyDef {
   const d = ENEMIES[id];

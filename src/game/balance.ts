@@ -263,6 +263,17 @@ const STASH_TAB_COSTS = [5000, 20000, 60000, 150000];
 export const MAX_STASH_TABS = FREE_STASH_TABS + STASH_TAB_COSTS.length;
 export const stashTabCost = (owned: number): number => STASH_TAB_COSTS[owned - FREE_STASH_TABS] ?? Infinity;
 
+// ---------------------------------------------------------- world bosses ----
+
+/** Play time (seconds) before the first world boss, once events are unlocked. */
+export const WORLD_BOSS_FIRST_DELAY = 180;
+/** Play time between world boss events: [min, max] seconds. */
+export const WORLD_BOSS_INTERVAL: readonly [number, number] = [720, 1080];
+/** How long a world boss stays before leaving (it won't leave mid-fight). */
+export const WORLD_BOSS_DURATION = 480;
+/** World bosses are this many levels above the zone (or you, if you're higher). */
+export const WORLD_BOSS_LEVEL_BONUS = 2;
+
 /** Cost to reset the passive tree. */
 export const respecCost = (level: number): number => 50 + level * 25;
 
