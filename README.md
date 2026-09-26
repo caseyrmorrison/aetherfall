@@ -71,8 +71,8 @@ The art, music and sound effects are all generated in code; the repo contains no
 - **Town portals.** Press T to open a portal home, sell and craft, then step back through: the area is exactly
   as you left it, loot on the ground included.
 - **Storage.** A tabbed stash chest in town, shared by all three save slots (buy more tabs), Bag Expansions and
-  Charm Satchels from Mira, and
-  manual sorting: drag and drop items (or use Move) to arrange your bag and pick which charms are active.
+  Charm Satchels from Mira, and manual sorting: drag and drop items (or use Move) to arrange your bag and pick
+  which charms are active.
 - **Character sheet and paper doll.** Gear slots sit on the hero's body (head, neck, chest, hands, two rings,
   waist, feet, main hand). A Diablo / Path of Exile–style Stats tab shows DPS, toughness, damage reduction,
   attacks per second, recovery and every other stat, each with an explanation.
