@@ -21,7 +21,8 @@ import { aura, type AuraLayer, type AuraPalette } from './aura';
 
 export type { AuraLayer, AuraPalette };
 
-export type PortraitId = 'kai' | 'lyra' | 'maren' | 'brom' | 'mira' | 'seraphine' | 'malachar';
+export type PortraitId =
+  'kai' | 'lyra' | 'maren' | 'brom' | 'mira' | 'seraphine' | 'malachar' | 'aurelian' | 'tessaly';
 
 export type Expression =
   'neutral' | 'happy' | 'sad' | 'angry' | 'surprised' | 'determined' | 'hurt' | 'smirk' | 'shout';
@@ -49,9 +50,12 @@ export type IllustrationId =
   | 'malachar_powerup'
   | 'beam_clash'
   | 'rush_exchange'
-  | 'kai_kneeling';
+  | 'kai_kneeling'
+  | 'solenne_arrival'
+  | 'aurelian_reveal'
+  | 'eclipse_ending';
 
-export type CutInId = 'kai_surge' | 'lyra_support' | 'malachar_rage' | 'kai_cannon';
+export type CutInId = 'kai_surge' | 'lyra_support' | 'malachar_rage' | 'kai_cannon' | 'aurelian_eclipse';
 
 export const PORTRAIT_IDS: readonly PortraitId[] = [
   'kai',
@@ -61,6 +65,8 @@ export const PORTRAIT_IDS: readonly PortraitId[] = [
   'mira',
   'seraphine',
   'malachar',
+  'aurelian',
+  'tessaly',
 ];
 export const EXPRESSIONS: readonly Expression[] = [
   'neutral',
@@ -88,8 +94,17 @@ export const ILLUSTRATION_IDS: readonly IllustrationId[] = [
   'beam_clash',
   'rush_exchange',
   'kai_kneeling',
+  'solenne_arrival',
+  'aurelian_reveal',
+  'eclipse_ending',
 ];
-export const CUTIN_IDS: readonly CutInId[] = ['kai_surge', 'lyra_support', 'malachar_rage', 'kai_cannon'];
+export const CUTIN_IDS: readonly CutInId[] = [
+  'kai_surge',
+  'lyra_support',
+  'malachar_rage',
+  'kai_cannon',
+  'aurelian_eclipse',
+];
 
 /** Draw a bust portrait (head + shoulders) fitted into the rect. */
 export function drawPortrait(

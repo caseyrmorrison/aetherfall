@@ -18,7 +18,12 @@ export type CharacterId =
   | 'villager_man'
   | 'villager_woman'
   | 'child'
-  | 'guard';
+  | 'guard'
+  // Act II: Solenne
+  | 'tessaly'
+  | 'desert_merchant'
+  | 'desert_smith'
+  | 'order_mage';
 
 /** Regular enemies (side-view; 'dirs' reported by spriteInfo). */
 export type CreatureId =
@@ -42,7 +47,23 @@ export type CreatureId =
   | 'shadow_knight'
   | 'void_mage'
   | 'gargoyle'
-  | 'sapling';
+  | 'sapling'
+  // Act II: Sunscar Dunes
+  | 'scorpion'
+  | 'sand_wraith'
+  | 'dune_raider'
+  | 'cactoid'
+  // Act II: Sunken Temple
+  | 'drowned'
+  | 'reef_crab'
+  | 'naga_adept'
+  // Act II: Stormspire
+  | 'harpy'
+  | 'storm_elemental'
+  | 'stone_sentinel'
+  // Act II: Eclipse Sanctum
+  | 'eclipse_knight'
+  | 'dusk_wisp';
 
 export type BossId =
   | 'boss_thornmaw'
@@ -50,7 +71,12 @@ export type BossId =
   | 'boss_ignis'
   | 'boss_seraphine'
   | 'boss_malachar'
-  | 'boss_malachar_true';
+  | 'boss_malachar_true'
+  // Act II (Solenne)
+  | 'boss_sandmaw'
+  | 'boss_nereth'
+  | 'boss_voltaris'
+  | 'boss_aurelian';
 
 export type ProjectileId =
   | 'proj_arrow'
@@ -62,7 +88,12 @@ export type ProjectileId =
   | 'proj_rock'
   | 'proj_snowball'
   | 'proj_bolt'
-  | 'proj_crystal';
+  | 'proj_crystal'
+  // Act II
+  | 'proj_sand'
+  | 'proj_bubble'
+  | 'proj_lightning'
+  | 'proj_sunbolt';
 
 export type FxId = 'fx_hit' | 'fx_explosion' | 'fx_smoke' | 'fx_sparkle' | 'fx_poof';
 
@@ -114,7 +145,20 @@ export interface WeaponInfo {
 
 // ----------------------------------------------------------- environment ----
 
-export type Theme = 'town' | 'forest' | 'cave' | 'volcano' | 'tundra' | 'citadel' | 'abyss';
+export type Theme =
+  | 'town'
+  | 'forest'
+  | 'cave'
+  | 'volcano'
+  | 'tundra'
+  | 'citadel'
+  | 'abyss'
+  // act II (Solenne)
+  | 'desert'
+  | 'ruins'
+  | 'storm'
+  | 'eclipse'
+  | 'oasis';
 
 export type GroundKind = 'floor' | 'floorAlt' | 'path' | 'bridge';
 
@@ -179,7 +223,40 @@ export type PropId =
   | 'sign'
   | 'boss_gate'
   | 'portal'
-  | 'torch_wall';
+  | 'torch_wall'
+  // act II: desert (Sunscar Dunes)
+  | 'palm_tree'
+  | 'cactus'
+  | 'sandstone_rock'
+  | 'sandstone_pillar'
+  | 'ruined_obelisk'
+  | 'desert_bones'
+  | 'dry_bush'
+  // act II: ruins (Sunken Temple)
+  | 'mangrove_tree'
+  | 'broken_column'
+  | 'coral_rock'
+  | 'seaweed'
+  | 'seashell'
+  | 'glow_coral'
+  // act II: storm (Stormspire)
+  | 'storm_rock'
+  | 'storm_obelisk'
+  | 'thunder_rod'
+  | 'wind_grass'
+  // act II: eclipse (Eclipse Sanctum)
+  | 'eclipse_pillar'
+  | 'sun_statue'
+  | 'sun_brazier'
+  | 'gold_rubble'
+  // act II: oasis town (Solenne)
+  | 'adobe_inn'
+  | 'adobe_shop'
+  | 'adobe_smithy'
+  | 'adobe_house'
+  | 'adobe_hall'
+  | 'market_awning'
+  | 'sand_crate';
 
 export interface PropInfo {
   w: number;

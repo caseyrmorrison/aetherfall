@@ -185,6 +185,20 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     check: (g) => hasFlag(s(g), 'torment6_boss'),
   },
   {
+    id: 'act2_arrive',
+    name: 'Across the Sea',
+    desc: 'Reach Solenne.',
+    secret: true,
+    check: (g) => hasFlag(s(g), 'visited_solenne'),
+  },
+  {
+    id: 'act2_clear',
+    name: 'Dawnbringer',
+    desc: 'Defeat Aurelian and bring back the sun.',
+    secret: true,
+    check: (g) => hasFlag(s(g), 'act2_clear'),
+  },
+  {
     id: 'world_boss_1',
     name: 'Giant Slayer',
     desc: 'Defeat a world boss.',

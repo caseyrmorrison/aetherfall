@@ -52,7 +52,7 @@ import { CELL, TILE, TOWN_PORTAL_ID, type MapData, type MapObject } from './mapd
 import { Particles } from './particles';
 import { BG_COLOR, MapRenderer, type Drawable, type Light } from './render';
 import { fireCannon } from './skills';
-import { ZONES } from '../data/zones';
+import { hubFor, isTown, ZONES } from '../data/zones';
 import { TrialRun } from './trial';
 import { WorldBossDirector } from './worldboss';
 import { ASC_POINTS_PER_TRIAL } from '../data/ascendancy';
@@ -232,6 +232,11 @@ export class World {
       cave: '#5a6988',
       volcano: '#3e2731',
       tundra: '#ffffff',
+      desert: '#e4a672',
+      ruins: '#3e8948',
+      storm: '#8b9bb4',
+      eclipse: '#feae34',
+      oasis: '#ead4aa',
       citadel: '#8b9bb4',
       abyss: '#68386c',
     }[this.data.theme];
@@ -265,7 +270,12 @@ export class World {
     this.spawnEnemies();
     this.portalCast = null;
     this.trial = trialTier
-      ? new TrialRun(trialTier, save.hero.level, save.ascendancy.trials < trialTier)
+      ? new TrialRun(
+          trialTier,
+          save.hero.level,
+          save.ascendancy.trials < trialTier,
+          this.quests.unlockedZones(),
+        )
       : null;
     if (this.restoreFromPortal && this.portalStash?.mapId === mapId) {
       // back through a town portal: everything is where you left it
@@ -281,7 +291,7 @@ export class World {
     this.restoreFromPortal = false;
     this.worldBosses.onLoad(mapId);
     const tp = save.townPortal;
-    if (mapId === 'town' && tp)
+    if (isTown(mapId) && tp && hubFor(tp.map) === mapId)
       this.objects.push(
         new WorldObject({
           kind: 'portal',
@@ -859,15 +869,17 @@ export class World {
           shop: 'shop',
           smithy: 'smith',
           elder: null,
+          hall: null,
           house: null,
         };
         const s = svc[o.building];
         if (s) {
           audio.playSfx('door');
           this.hooks.service(s);
-        } else if (o.building === 'elder') {
-          const maren = this.npcs.find((n) => n.def.id === 'maren');
-          if (maren) this.hooks.talk(maren);
+        } else if (o.building === 'elder' || o.building === 'hall') {
+          // the elder's house and Harbor Hall: talk to whoever runs the town
+          const who = this.npcs.find((n) => n.def.id === (o.building === 'hall' ? 'tessaly' : 'maren'));
+          if (who) this.hooks.talk(who);
         } else this.hooks.sign('The door is locked. Someone inside is snoring loudly.');
         break;
       }
@@ -878,7 +890,7 @@ export class World {
         if (t.portalOpen(this)) {
           audio.playSfx('teleport');
           this.hooks.portal(o.to, o.spawn);
-        }
+        } else if (o.requires?.message) this.hooks.message(o.requires.message);
         break;
       case 'board':
         this.hooks.service('board');
@@ -934,7 +946,7 @@ export class World {
 
   /** Why a town portal can't be opened here, or null if it can. */
   townPortalBlocked(): string | null {
-    if (this.data.id === 'town') return 'You are already in town.';
+    if (isTown(this.data.id)) return 'You are already in town.';
     if (this.trial && !this.trial.done) return 'The trial seals you in. Walk out to forfeit.';
     if (this.player.state === 'dead') return 'You are dead.';
     if (this.boss && !this.boss.dead && this.bossIntroDone) return 'The guardian won’t let you leave!';
@@ -989,7 +1001,7 @@ export class World {
     this.stashForPortal();
     audio.playSfx('teleport');
     this.flashScreen('#2ce8f5', 0.2);
-    this.hooks.warp('town', 'town_portal');
+    this.hooks.warp(hubFor(this.data.id), 'town_portal');
   }
 
   /** Remember this area so returning through the portal finds it unchanged. */
@@ -2882,6 +2894,41 @@ export class World {
             drag: 0.1,
             emissive: true,
           });
+        break;
+      case 'sand':
+        // wind-blown grit streaming across the dunes
+        if (Math.random() < dt * 22)
+          this.particles.emit(cx - 4, cy + r(0, vh), {
+            count: 1,
+            color: ['#e4a672', '#ead4aa', '#d77643'],
+            angle: 0.15,
+            spread: 0.2,
+            speed: [60, 110],
+            life: [3, 5],
+            size: [1, 1],
+            drag: 0,
+            fadeSize: false,
+          });
+        break;
+      case 'rain':
+        // slanting rain with the odd lightning flicker
+        if (Math.random() < dt * 60)
+          this.particles.emit(cx + r(-60, vw), cy - 4, {
+            count: 1,
+            color: ['#8b9bb4', '#c0cbdc'],
+            angle: Math.PI / 2 - 0.3,
+            spread: 0.05,
+            speed: [220, 280],
+            life: [0.9, 1.3],
+            size: [1, 1],
+            drag: 0,
+            shape: 'line',
+            fadeSize: false,
+          });
+        if (Math.random() < dt * 0.08) {
+          this.flashScreen('#c0cbdc', 0.08);
+          audio.playSfx('lightning', { volume: 0.25 });
+        }
         break;
       case 'embers':
         if (Math.random() < dt * 10)

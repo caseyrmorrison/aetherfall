@@ -1,7 +1,7 @@
 # Aetherfall — Echoes of the Shattered Sky
 
 A pixel-art action RPG with anime cutscenes that runs in the browser. It has Souls-style
-dodge-roll combat, Diablo-style loot, a skill tree, five boss fights and an endless post-game.
+dodge-roll combat, Diablo-style loot, a skill tree, two story acts with nine boss fights, and an endless post-game.
 The art, music and sound effects are all generated in code; the repo contains no image or audio files.
 
 **▶ Play it: https://caseyrmorrison.github.io/aetherfall/**
@@ -39,6 +39,16 @@ The art, music and sound effects are all generated in code; the repo contains no
 | ![Town portal back to where you left](docs/screenshots/town-portal.png) | ![Crafting at Brom's forge](docs/screenshots/crafting.png)          |
 | ![The stash in town](docs/screenshots/stash.png)                        | ![A world boss event](docs/screenshots/world-boss.png)              |
 
+**Act II: The Dusk Shard**
+
+|                                                                                  |                                                                                |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| ![Solenne, the Act II hub](docs/screenshots/act2-solenne.png)                    | ![The Havenbrook portal now reaches Solenne](docs/screenshots/act2-portal.png) |
+| ![The Sunscar Dunes](docs/screenshots/act2-desert.png)                           | ![The Sunken Temple](docs/screenshots/act2-ruins.png)                          |
+| ![The Stormspire](docs/screenshots/act2-storm.png)                               | ![The Eclipse Sanctum](docs/screenshots/act2-sanctum.png)                      |
+| ![Aurelian, Grandmaster of the Endless Dusk](docs/screenshots/act2-aurelian.png) | ![The black sun over Solenne](docs/screenshots/act2-eclipse.png)               |
+| ![Dawn returns to Solenne](docs/screenshots/act2-ending.png)                     |                                                                                |
+
 ## Features
 
 - **Action combat.** Three-hit weapon combos, a dodge roll with invulnerability frames, and a _perfect dodge_
@@ -49,9 +59,12 @@ The art, music and sound effects are all generated in code; the repo contains no
   a beam struggle in the finale, and manga "impact frames" with zoom punches.
 - **Aether Cannon.** The ultimate is a full-screen energy beam that follows its cut-in, and bosses that
   reach a new phase freeze the fight to power up with an aura and a shockwave.
-- **Five zones and five bosses.** Each boss has multiple phases and telegraphed patterns, and there's a
-  transformation for the final boss. Zones are generated procedurally but always the same (seeded), and every run
-  checks that all key locations are reachable.
+- **Nine zones, nine bosses and two acts.** Each boss has multiple phases and telegraphed patterns. Zones are
+  generated procedurally but always the same (seeded), and every run checks that all key locations are reachable.
+- **Act II: The Dusk Shard.** After Malachar falls, a letter calls Kai and Lyra across the sea to Solenne, a desert
+  port city where the sun hasn't risen in thirty days. Four new chapters (levels 30–50) take you through the Sunscar
+  Dunes, the Sunken Temple, the Stormspire and the Eclipse Sanctum to face the Order's Grandmaster, Aurelian. Solenne
+  is a full second hub with its own shops, forge, inn, stash, bounty board, side quests and portal home.
 - **Grind as much as you like.** Enemies respawn when you rest. Loot comes in five rarities (six, counting the
   Abyss-only Abyssal tier) with random affixes, and there are 10 legendaries with unique effects. Elite monsters
   have modifiers such as Frenzied, Vampiric and Warded. There are repeatable bounties and a blacksmith who

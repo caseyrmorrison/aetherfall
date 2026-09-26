@@ -4,7 +4,7 @@ import { getIcon } from '../art/pixel';
 import { SKILLS } from '../data/skills';
 import { enemyDef } from '../data/enemies';
 import { QUESTS } from '../data/quests';
-import { ZONES } from '../data/zones';
+import { hubFor, isTown, ZONES } from '../data/zones';
 import { areaName } from '../world/maps';
 import { drawText, measureText } from '../engine/font';
 import { angleTo, clamp, TAU } from '../engine/math';
@@ -321,18 +321,23 @@ export class Hud {
   questTargetPos(world: World): { x: number; y: number } | null {
     const t = world.quests.target();
     if (!t || t.map !== world.data.id) {
-      // point toward the exit that leads to the target zone
-      if (t && world.data.id === 'town') {
-        const target = t.map.replace(/_boss$/, '');
-        const warp = world.data.objects.find((o) => o.kind === 'warp' && o.to === target);
+      if (!t) return null;
+      // point toward the exit (road or portal) that leads toward the target
+      const here = world.data.id;
+      const exitTo = (to: string): { x: number; y: number } | null => {
+        const warp = world.data.objects.find((o) => o.kind === 'warp' && o.to === to);
         if (warp && warp.kind === 'warp') return { x: warp.x + warp.w / 2, y: warp.y + warp.h / 2 };
-        const portal = world.data.objects.find((o) => o.kind === 'portal' && o.to === target);
-        if (portal) return { x: portal.x, y: portal.y - 16 };
+        const portal = world.data.objects.find((o) => o.kind === 'portal' && o.to === to);
+        return portal ? { x: portal.x, y: portal.y - 16 } : null;
+      };
+      const target = t.map.replace(/_boss$/, '');
+      if (isTown(here)) {
+        // a road out of this town, or the portal toward the other town
+        return (
+          exitTo(target) ?? (hubFor(target) !== here ? exitTo(here === 'town' ? 'citadel' : 'town') : null)
+        );
       }
-      if (t && world.data.id !== 'town' && !t.map.startsWith(world.data.id)) {
-        const warp = world.data.objects.find((o) => o.kind === 'warp' && o.to === 'town');
-        if (warp && warp.kind === 'warp') return { x: warp.x + warp.w / 2, y: warp.y + warp.h / 2 };
-      }
+      if (!t.map.startsWith(here)) return exitTo(hubFor(here));
       return null;
     }
     if (t.npc) {

@@ -33,8 +33,9 @@ export class WorldObject extends Entity {
         // lid opens when you walk up to it
         return { id: 'chest_rare', frame: dist(this.x, this.y, world.player.x, world.player.y) < 26 ? 1 : 0 };
       case 'portal': {
-        if (!this.portalOpen(world)) return null;
         const pi = propInfo('portal');
+        // sealed portals with a hint show as a still, dark ring
+        if (!this.portalOpen(world)) return o.requires?.message ? { id: 'portal', frame: 0 } : null;
         return { id: 'portal', frame: Math.floor(this.t * pi.fps) % pi.frames };
       }
       default:
@@ -64,6 +65,12 @@ export class WorldObject extends Entity {
       case 'portal':
         if (o.id === TOWN_PORTAL_ID) return `Return to ${areaName(o.to)}`;
         if (o.id === 'trial_home') return 'Return to Havenbrook';
+        if (o.to !== 'citadel')
+          return this.portalOpen(world)
+            ? `Portal to ${areaName(o.to)}`
+            : o.requires?.message
+              ? 'Examine'
+              : null;
         return this.portalOpen(world)
           ? world.game.save.flags['game_clear']
             ? 'Enter portal'

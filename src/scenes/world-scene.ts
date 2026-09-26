@@ -82,7 +82,21 @@ export class WorldScene implements Scene, WorldHooks {
     if (!mapId.startsWith('abyss')) setFlag(save, `visited_${mapId}`);
     if (mapId === 'town')
       this.hud.zoneCard = { title: 'Havenbrook', sub: 'A quiet village beneath the broken sky', t: 0 };
-    else if (zone)
+    else if (mapId === 'solenne') {
+      this.hud.zoneCard = { title: 'Solenne', sub: 'City of the Order, beneath the black sun', t: 0 };
+      if (first) {
+        // first arrival: a new respawn point, the arrival scene, and the quest moves on
+        const c = this.world.objects.find((o) => o.obj.id === 'solenne_crystal');
+        if (c) save.respawn = { map: 'solenne', x: c.x, y: c.y + 14 };
+        if (!save.discovered.includes('solenne_crystal')) save.discovered.push('solenne_crystal');
+        this.game.quests.onFlag('visited_solenne');
+        this.busy = true;
+        void playCutscene(this.game, 'act2_arrival').then(() => {
+          this.busy = false;
+          audio.playMusic('solenne');
+        });
+      }
+    } else if (zone)
       this.hud.zoneCard = {
         title: zone.name,
         sub: `Recommended Level ${zone.levels[0]}–${zone.levels[1]}`,
@@ -192,6 +206,10 @@ export class WorldScene implements Scene, WorldHooks {
     const hero = save.hero.name;
     const speaker = { who: npc.def.name, portrait: npc.def.portrait };
     const qt = this.game.quests.talk(npc.def.id);
+    if (qt?.cutscene) {
+      void playCutscene(this.game, qt.cutscene).then(() => audio.playMusic(this.world.data.music));
+      return;
+    }
     let steps: Step[];
     if (qt && (qt.lines.length || qt.offer)) {
       steps = qt.lines.map((l) => parseLine(l, hero, speaker));
@@ -234,6 +252,8 @@ export class WorldScene implements Scene, WorldHooks {
       { label: 'Sky Citadel', action: () => this.warp('citadel', 'entry') },
       { label: 'The Abyss \u2014 Floor 1', action: () => this.warp('abyss_1', 'entry') },
     ];
+    if (hasFlag(save, 'act2_start'))
+      choices.unshift({ label: 'Solenne, across the sea', action: () => this.warp('solenne', 'portal') });
     if (resume > 1)
       choices.push({
         label: `The Abyss \u2014 Floor ${resume}`,
@@ -241,7 +261,7 @@ export class WorldScene implements Scene, WorldHooks {
       });
     choices.push({ label: 'Stay', action: () => undefined });
     void showDialogue(this.game, [
-      { text: `The portal hums with two destinations. {gray}(Deepest Abyss floor: ${best}){/}` },
+      { text: `The portal hums, offering many destinations. {gray}(Deepest Abyss floor: ${best}){/}` },
       { choices },
     ]);
   }
@@ -413,6 +433,23 @@ export class WorldScene implements Scene, WorldHooks {
         nb.aggro = true;
       });
       return;
+    }
+    if (id === 'aurelian') {
+      const firstClear = !hasFlag(save, 'act2_clear');
+      setFlag(save, 'act2_clear');
+      this.game.saveNow();
+      if (firstClear) {
+        void playCutscene(this.game, 'act2_ending').then(() => {
+          this.game.banner = {
+            title: 'ACT II COMPLETE',
+            sub: 'The sun rises over Solenne',
+            t: 0,
+            color: '#feae34',
+          };
+          this.travelTo('solenne', 'start');
+        });
+        return;
+      }
     }
     if (id === 'malachar_true') {
       const firstClear = !hasFlag(save, 'game_clear');

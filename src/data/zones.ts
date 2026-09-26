@@ -236,13 +236,184 @@ export const ZONES: Record<string, ZoneDef> = {
     tint: 'rgba(104,56,108,0.08)',
     unlockFlag: 'boss_seraphine',
   },
+  // ------------------------------------------------ Act II (around Solenne) ----
+  desert: {
+    id: 'desert',
+    name: 'Sunscar Dunes',
+    theme: 'desert',
+    levels: [30, 35],
+    music: 'desert',
+    darkness: 0.2,
+    ambient: 'sand',
+    w: 88,
+    h: 76,
+    seed: 'dunes-v1',
+    entry: 'east',
+    back: { map: 'solenne', spawn: 'west' },
+    blocker: 'wall',
+    treeProp: 'palm_tree',
+    enemies: [
+      ['scorpion', 4],
+      ['dune_raider', 3],
+      ['sand_wraith', 2],
+      ['cactoid', 2],
+    ],
+    packs: 18,
+    packSize: [2, 4],
+    decor: [
+      ['desert_bones', 0.004],
+      ['dry_bush', 0.01],
+    ],
+    solids: [
+      ['palm_tree', 0.008],
+      ['cactus', 0.012],
+      ['sandstone_rock', 0.01],
+      ['ruined_obelisk', 0.003],
+    ],
+    liquidChance: 0.25,
+    altAmount: 0.4,
+    pathTrail: true,
+    boss: { enemy: 'sandmaw', arena: 'desert_boss' },
+    tint: 'rgba(247,118,34,0.06)',
+    unlockFlag: 'act2_arrived',
+    lockedMessage: 'Tessaly’s guards won’t open the western gate until you’ve spoken with her.',
+  },
+  ruins: {
+    id: 'ruins',
+    name: 'Sunken Temple',
+    theme: 'ruins',
+    levels: [35, 40],
+    music: 'ruins',
+    darkness: 0.4,
+    ambient: 'fireflies',
+    w: 76,
+    h: 92,
+    seed: 'sunken-v1',
+    entry: 'north',
+    back: { map: 'solenne', spawn: 'south' },
+    blocker: 'wall',
+    treeProp: 'mangrove_tree',
+    enemies: [
+      ['drowned', 4],
+      ['reef_crab', 3],
+      ['naga_adept', 3],
+    ],
+    packs: 18,
+    packSize: [2, 4],
+    decor: [
+      ['seaweed', 0.012],
+      ['seashell', 0.006],
+    ],
+    solids: [
+      ['broken_column', 0.01],
+      ['coral_rock', 0.01],
+      ['glow_coral', 0.004],
+      ['mangrove_tree', 0.004],
+    ],
+    liquidChance: 0.7,
+    altAmount: 0.35,
+    pathTrail: false,
+    boss: { enemy: 'nereth', arena: 'ruins_boss' },
+    lightProps: ['glow_coral'],
+    tint: 'rgba(25,60,62,0.08)',
+    unlockFlag: 'boss_sandmaw',
+    lockedMessage:
+      'The harbor stairs to the Sunken Temple are sealed. The journal in Sandmaw’s belly might explain why.',
+  },
+  storm: {
+    id: 'storm',
+    name: 'Stormspire',
+    theme: 'storm',
+    levels: [40, 45],
+    music: 'storm',
+    darkness: 0.35,
+    ambient: 'rain',
+    w: 76,
+    h: 96,
+    seed: 'stormspire-v1',
+    entry: 'west',
+    back: { map: 'solenne', spawn: 'east' },
+    blocker: 'wall',
+    treeProp: 'storm_rock',
+    enemies: [
+      ['harpy', 3],
+      ['storm_elemental', 3],
+      ['stone_sentinel', 3],
+    ],
+    packs: 18,
+    packSize: [2, 4],
+    decor: [['wind_grass', 0.014]],
+    solids: [
+      ['storm_rock', 0.012],
+      ['thunder_rod', 0.004],
+      ['storm_obelisk', 0.003],
+    ],
+    liquidChance: 0.35,
+    altAmount: 0.3,
+    pathTrail: true,
+    boss: { enemy: 'voltaris', arena: 'storm_boss' },
+    lightProps: ['thunder_rod'],
+    tint: 'rgba(18,78,137,0.08)',
+    unlockFlag: 'boss_nereth',
+    lockedMessage: 'The eastern cliff road is lashed by lightning. Nereth knew a way through the storm.',
+  },
+  sanctum: {
+    id: 'sanctum',
+    name: 'Eclipse Sanctum',
+    theme: 'eclipse',
+    levels: [45, 50],
+    music: 'eclipse',
+    darkness: 0.5,
+    ambient: 'void',
+    w: 80,
+    h: 96,
+    seed: 'sanctum-v1',
+    entry: 'south',
+    back: { map: 'solenne', spawn: 'sanctum' },
+    blocker: 'wall',
+    treeProp: 'eclipse_pillar',
+    enemies: [
+      ['eclipse_knight', 4],
+      ['dusk_wisp', 3],
+      ['stone_sentinel', 1],
+      ['sand_wraith', 1],
+    ],
+    packs: 18,
+    packSize: [2, 4],
+    decor: [['gold_rubble', 0.008]],
+    solids: [
+      ['eclipse_pillar', 0.01],
+      ['sun_statue', 0.004],
+      ['sun_brazier', 0.005],
+    ],
+    liquidChance: 0.5,
+    altAmount: 0.25,
+    pathTrail: true,
+    boss: { enemy: 'aurelian', arena: 'sanctum_boss' },
+    lightProps: ['sun_brazier'],
+    tint: 'rgba(254,174,52,0.05)',
+    unlockFlag: 'boss_voltaris',
+  },
 };
 
-export const ZONE_ORDER = ['forest', 'cave', 'volcano', 'tundra', 'citadel'] as const;
+/** Zones of the first act (around Havenbrook) and the second (around Solenne). */
+export const ACT1_ZONES = ['forest', 'cave', 'volcano', 'tundra', 'citadel'] as const;
+export const ACT2_ZONES = ['desert', 'ruins', 'storm', 'sanctum'] as const;
+export const ZONE_ORDER = [...ACT1_ZONES, ...ACT2_ZONES] as const;
+
+/** The town a zone belongs to (where its roads and town portals lead). */
+export const hubFor = (mapId: string): 'town' | 'solenne' =>
+  mapId === 'solenne' || (ACT2_ZONES as readonly string[]).includes(mapId.replace(/_boss$/, ''))
+    ? 'solenne'
+    : 'town';
+
+/** Towns: safe hubs with no monsters. */
+export const isTown = (mapId: string): boolean => mapId === 'town' || mapId === 'solenne';
 
 /** Display names for every map id (zones, arenas, town, abyss). */
 export function mapName(id: string): string {
   if (id === 'town') return 'Havenbrook';
+  if (id === 'solenne') return 'Solenne';
   if (id.startsWith('abyss')) return 'The Abyss';
   const z = ZONES[id.replace(/_boss$/, '')];
   if (!z) return id;

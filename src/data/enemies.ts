@@ -4,6 +4,7 @@
  */
 import type { ProjectileId, SpriteId } from '../art/pixel/types';
 import type { MaterialId } from '../game/types';
+import { ACT2_ENEMIES } from './enemies-act2';
 
 export type StatusKind = 'burn' | 'poison' | 'slow' | 'freeze';
 
@@ -1884,7 +1885,7 @@ export const WORLD_BOSS_BY_ZONE: Readonly<Record<string, string>> = {
 };
 
 export const ENEMIES: Readonly<Record<string, EnemyDef>> = Object.fromEntries(
-  [...E, ...WORLD_BOSS_DEFS].map((e) => [e.id, e]),
+  [...E, ...ACT2_ENEMIES, ...WORLD_BOSS_DEFS].map((e) => [e.id, e]),
 );
 
 export function enemyDef(id: string): EnemyDef {

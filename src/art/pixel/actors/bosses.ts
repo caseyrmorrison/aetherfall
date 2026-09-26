@@ -6,7 +6,7 @@ import { PAL } from '../../palette';
 import type { AnimName, BossId } from '../types';
 import { Buf, INK, mix, shade, type Col, type Pt, type Ramp } from './buf';
 import { anims, type SpriteDef } from './defs';
-import { rng, tri } from './shapes';
+import { bez, rng, stroke, tri } from './shapes';
 
 const K = '#000000';
 
@@ -14,29 +14,6 @@ function layer(w: number, h: number, ramp: Ramp, draw: (l: Buf) => void, rim = 0
   const l = new Buf(w, h);
   draw(l);
   return shade(l, ramp, { rim, bias });
-}
-
-/** Sample a quadratic bezier. */
-function bez(a: Pt, c: Pt, d: Pt, n: number): Pt[] {
-  const out: Pt[] = [];
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const u = 1 - t;
-    out.push([
-      u * u * a[0] + 2 * u * t * c[0] + t * t * d[0],
-      u * u * a[1] + 2 * u * t * c[1] + t * t * d[1],
-    ]);
-  }
-  return out;
-}
-
-/** Tapered stroke along points (thickness t0 → t1). */
-function stroke(b: Buf, pts: Pt[], t0: number, t1: number, col: Col): void {
-  pts.forEach(([x, y], i) => {
-    const t = pts.length > 1 ? i / (pts.length - 1) : 0;
-    const r = Math.max(0.5, (t0 + (t1 - t0) * t) / 2);
-    b.ellipse(x, y, r, r, col);
-  });
 }
 
 /** A faceted crystal prism from base (x,y) pointing along angle (radians, 0 = up). */
@@ -1356,7 +1333,7 @@ function malacharTrue(anim: AnimName, f: number): Buf {
 
 // ================================================================== defs ===
 
-export const BOSS_DEFS: Record<BossId, SpriteDef> = {
+export const BOSS_DEFS = {
   boss_thornmaw: {
     info: {
       w: 48,
@@ -1437,4 +1414,4 @@ export const BOSS_DEFS: Record<BossId, SpriteDef> = {
     },
     draw: (a, f) => malacharTrue(a, f),
   },
-};
+} satisfies Partial<Record<BossId, SpriteDef>>;

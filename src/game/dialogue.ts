@@ -27,6 +27,9 @@ const SPEAKERS: Record<string, { name: string; portrait?: PortraitId }> = {
   mira: { name: 'Mira', portrait: 'mira' },
   seraphine: { name: 'Seraphine', portrait: 'seraphine' },
   malachar: { name: 'Malachar', portrait: 'malachar' },
+  tessaly: { name: 'Tessaly', portrait: 'tessaly' },
+  aurelian: { name: 'Aurelian', portrait: 'aurelian' },
+  nereth: { name: 'Nereth' },
 };
 
 /**

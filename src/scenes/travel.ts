@@ -27,7 +27,13 @@ export class TravelScene implements Scene {
     const dests: (Dest | null)[] = [null];
     for (const id of game.save.discovered) {
       if (id === here) continue;
-      const map = id === 'town_crystal' ? 'town' : id.replace(/_crystal_[ab]$/, '');
+      // town crystals are named after their town; zone crystals are <zone>_crystal_a/b
+      const map =
+        id === 'town_crystal'
+          ? 'town'
+          : id === 'solenne_crystal'
+            ? 'solenne'
+            : id.replace(/_crystal_[ab]$/, '');
       try {
         const m = getMap(map);
         const o = m.objects.find((x) => x.id === id);

@@ -214,6 +214,125 @@ function crystalShard(f: number): Buf {
   return b;
 }
 
+// Act II projectiles --------------------------------------------------------
+
+/** A whirling ball of sand: spiral streaks spin through it, grit trails behind. */
+function sandBall(f: number): Buf {
+  const b = new Buf(12, 10);
+  const cx = 7.5;
+  const cy = 5;
+  orb(b, cx, cy, 3.4, [PAL.brown, PAL.tan, PAL.sand, '#f6e7c8'], 0.25);
+  // two spiral arms, a quarter turn per frame
+  for (let arm = 0; arm < 2; arm++) {
+    const a0 = (f / 4) * Math.PI * 2 + arm * Math.PI;
+    for (let r = 0.6; r <= 3.4; r += 0.35) {
+      const a = a0 + r * 1.1;
+      b.tint(cx + Math.cos(a) * r, cy + Math.sin(a) * r, r > 2.4 ? PAL.darkBrown : PAL.brown);
+    }
+  }
+  b.set(6, 3, '#fff4dc');
+  b.outline((n) => mix(n, INK, 0.55));
+  // grit streaming behind and orbiting grains
+  const r = rng(f + 11);
+  for (let i = 0; i < 6; i++) {
+    const x = Math.floor(r() * 4);
+    const y = 2 + Math.floor(r() * 6);
+    if (!b.has(x, y)) b.set(x, y, alpha(i % 2 ? PAL.tan : PAL.sand, 0.55 + x * 0.1));
+  }
+  const oa = (f / 4) * Math.PI * 2;
+  b.set(cx + Math.cos(oa) * 5, cy + Math.sin(oa) * 4.2, PAL.sand);
+  return b;
+}
+
+/** A wobbling, translucent orb of seawater. */
+function bubble(f: number): Buf {
+  const b = new Buf(10, 10);
+  const rx = [4.1, 4.4, 4.1, 3.8][f % 4];
+  const ry = [4.1, 3.8, 4.1, 4.4][f % 4];
+  b.ellipse(5, 5, rx, ry, alpha(PAL.sky, 0.55));
+  b.ellipse(5.6, 5.8, rx - 1.8, ry - 1.8, alpha(PAL.cyan, 0.35));
+  // thin rim: dark along the top-left, catching light along the bottom-right
+  const rim = new Buf(10, 10).ellipse(5, 5, rx, ry, K);
+  rim.each((_c, x, y) => {
+    const edge = !rim.has(x - 1, y) || !rim.has(x + 1, y) || !rim.has(x, y - 1) || !rim.has(x, y + 1);
+    if (!edge) return;
+    const lit = x + y > 10;
+    b.set(x, y, lit ? alpha('#c9fbff', 0.95) : alpha(PAL.blue, 0.85));
+  });
+  // specular highlight
+  b.set(3, 3, '#ffffff').set(4, 2, alpha('#ffffff', 0.9)).set(2, 4, alpha('#ffffff', 0.7));
+  b.set(6 + (f % 2), 7 - (f % 2), alpha('#ffffff', 0.6));
+  return b;
+}
+
+/** A crackling ball of lightning with arcs jumping off it. */
+function lightningBall(f: number): Buf {
+  const b = new Buf(12, 12);
+  const c = 6;
+  b.ellipse(c, c, 4.2, 4.2, alpha(PAL.sky, 0.3));
+  b.ellipse(c, c, 3, 3, alpha(PAL.cyan, 0.6));
+  b.ellipse(c, c, 2, 2, '#c9fbff');
+  b.ellipse(c, c, 1.2, 1.2, '#ffffff');
+  const r = rng(f * 7 + 3);
+  for (let i = 0; i < 3; i++) {
+    const a = r() * Math.PI * 2;
+    let x = c + Math.cos(a) * 1.5;
+    let y = c + Math.sin(a) * 1.5;
+    for (let k = 0; k < 4; k++) {
+      const aa = a + (r() - 0.5) * 1.6;
+      const nx = x + Math.cos(aa) * 1.4;
+      const ny = y + Math.sin(aa) * 1.4;
+      for (const [px, py] of Buf.linePts(x, y, nx, ny)) {
+        b.set(px, py, k < 2 ? '#ffffff' : PAL.cyan);
+      }
+      x = nx;
+      y = ny;
+    }
+  }
+  // stray spark trailing behind
+  b.set(1, f % 2 ? 4 : 8, PAL.cyan).set(0, f % 2 ? 5 : 7, alpha(PAL.cyan, 0.6));
+  return b;
+}
+
+/** A bolt of the black sun: a dark core in a gold corona, trailing flame. */
+function sunbolt(f: number): Buf {
+  const b = new Buf(14, 10);
+  const cx = 9;
+  const cy = 5;
+  // trailing flare
+  const tail = new Buf(14, 10);
+  const wob = [0, 0.5, 0, -0.5][f % 4];
+  tail.poly(
+    [
+      [cx - 1, cy - 3.2],
+      [1 - (f % 2), cy - 1.2 + wob],
+      [3, cy],
+      [0.5 + (f % 2), cy + 1.2 + wob],
+      [cx - 1, cy + 3.2],
+    ],
+    K,
+  );
+  tail.each((_c, x, y) => {
+    const t = x / cx;
+    tail.set(x, y, t < 0.3 ? alpha(PAL.orange, 0.6) : t < 0.6 ? PAL.gold : PAL.yellow);
+    if (Math.abs(y + 0.5 - cy) < 0.8 && t > 0.3) tail.set(x, y, '#fffbe0');
+  });
+  b.blit(tail);
+  // corona and rays
+  b.ellipse(cx, cy, 3.9, 3.9, PAL.gold);
+  b.ring(cx, cy, 3.9, 0.9, PAL.yellow);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + f * 0.26;
+    b.set(cx + Math.cos(a) * 4.6, cy + Math.sin(a) * 4.6, i % 2 ? PAL.yellow : '#ffffff');
+  }
+  // the dark disc
+  b.ellipse(cx, cy, 2.6, 2.6, INK);
+  b.ellipse(cx - 0.3, cy - 0.3, 1.6, 1.6, '#0d0a14');
+  b.set(cx + 1, cy + 1, PAL.orange);
+  b.outline((n) => (n === INK ? null : mix(n, INK, 0.6)));
+  return b;
+}
+
 // -------------------------------------------------------------------- fx ---
 
 function star(b: Buf, cx: number, cy: number, arm: number, core: Col, ray: Col, diag = false): void {
@@ -430,6 +549,10 @@ export const PROJECTILE_DEFS: Record<ProjectileId, SpriteDef> = {
   proj_snowball: one(8, 8, 2, 6, snowball),
   proj_bolt: one(10, 5, 3, 15, bolt),
   proj_crystal: one(10, 7, 2, 8, crystalShard),
+  proj_sand: one(12, 10, 4, 14, sandBall),
+  proj_bubble: one(10, 10, 4, 8, bubble),
+  proj_lightning: one(12, 12, 4, 15, lightningBall),
+  proj_sunbolt: one(14, 10, 4, 12, sunbolt),
 };
 
 export const FX_DEFS: Record<FxId, SpriteDef> = {

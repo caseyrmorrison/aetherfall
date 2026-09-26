@@ -19,6 +19,8 @@ export interface NpcDef {
   portrait?: PortraitId;
   facing?: Dir;
   wander?: number;
+  /** The town this person lives in (for quest markers). Defaults to Havenbrook. */
+  home?: 'town' | 'solenne';
   visible?: (s: SaveData) => boolean;
   lines: (c: NpcContext) => Step[];
 }
@@ -26,12 +28,19 @@ export interface NpcDef {
 const say = (text: string): Step => ({ text });
 const f = (s: SaveData, flag: string): boolean => hasFlag(s, flag);
 
-function gateGuard(id: string, zone: string, flag: string, dir: string): NpcDef {
+function gateGuard(
+  id: string,
+  zone: string,
+  flag: string,
+  dir: string,
+  home: 'town' | 'solenne' = 'town',
+): NpcDef {
   return {
     id,
-    name: 'Town Guard',
+    name: home === 'solenne' ? 'Harbor Guard' : 'Town Guard',
     sprite: 'guard',
     facing: 'down',
+    home,
     lines: ({ save }) =>
       f(save, flag)
         ? [say(`The ${dir} road is open again, thanks to you. ${zone} lies beyond. Stay sharp out there.`)]
@@ -51,7 +60,15 @@ export const NPCS: Record<string, NpcDef> = {
     facing: 'down',
     lines: ({ save, open }) => {
       const out: Step[] = [];
-      if (f(save, 'game_clear'))
+      if (f(save, 'act2_clear'))
+        out.push(
+          say('Two skies saved in one lifetime. Havenbrook will be telling stories about you for a century.'),
+        );
+      else if (f(save, 'act2_start'))
+        out.push(
+          say('Solenne is a long way from home, {hero}. The portal in the square will take you there.'),
+        );
+      else if (f(save, 'game_clear'))
         out.push(
           say(
             'The sky is whole again. I never thought I’d live to see it. Though… the Abyss beneath the portal still stirs.',
@@ -178,7 +195,8 @@ export const NPCS: Record<string, NpcDef> = {
     sprite: 'lyra',
     portrait: 'lyra',
     facing: 'down',
-    visible: (s) => hasFlag(s, 'boss_thornmaw'),
+    // in Act II she goes ahead to Solenne
+    visible: (s) => hasFlag(s, 'boss_thornmaw') && !hasFlag(s, 'visited_solenne'),
     lines: ({ save }) => [
       {
         who: 'Lyra',
@@ -206,6 +224,108 @@ export const NPCS: Record<string, NpcDef> = {
       },
     ],
   },
+  // --------------------------------------------------------------- Solenne ----
+  tessaly: {
+    id: 'tessaly',
+    name: 'Tessaly',
+    sprite: 'tessaly',
+    portrait: 'tessaly',
+    facing: 'down',
+    home: 'solenne',
+    lines: ({ save }) => [
+      say(
+        f(save, 'act2_clear')
+          ? 'Look at that — a sunrise. I’d forgotten how loud the gulls get when it’s warm. Thank you, {hero}.'
+          : f(save, 'boss_voltaris')
+            ? 'The sky portal burns gold now. Whatever waits in that Sanctum, Solenne is behind you.'
+            : f(save, 'boss_sandmaw')
+              ? 'Every day without sun the tide rises a little higher. Find out what the Grandmaster did.'
+              : 'Thirty days of dusk. The fishing boats can’t find the reefs and the crops are dying. We need that sun back.',
+      ),
+    ],
+  },
+  farid: {
+    id: 'farid',
+    name: 'Farid',
+    sprite: 'desert_merchant',
+    facing: 'down',
+    home: 'solenne',
+    lines: ({ open }) => [
+      say(
+        'Welcome, welcome! Farid’s Bazaar has survived sandstorms, pirates and a month of night. Buy something!',
+      ),
+      {
+        choices: [{ label: 'Show me your wares', action: () => open('shop') }, { label: 'Just browsing' }],
+      },
+    ],
+  },
+  kesh: {
+    id: 'kesh',
+    name: 'Kesh',
+    sprite: 'desert_smith',
+    facing: 'down',
+    home: 'solenne',
+    lines: ({ open }) => [
+      say(
+        'Brom from Havenbrook? Taught him half of what he knows. The other half he made up. Let’s see that gear.',
+      ),
+      {
+        choices: [{ label: 'Use the anvil', action: () => open('smith') }, { label: 'Not now' }],
+      },
+    ],
+  },
+  lyra_solenne: {
+    id: 'lyra_solenne',
+    name: 'Lyra',
+    sprite: 'lyra',
+    portrait: 'lyra',
+    facing: 'down',
+    home: 'solenne',
+    visible: (s) => hasFlag(s, 'visited_solenne'),
+    lines: ({ save }) => [
+      {
+        who: 'Lyra',
+        portrait: 'lyra',
+        expr: f(save, 'act2_clear') ? 'happy' : 'determined',
+        text: f(save, 'act2_clear')
+          ? 'The Order will need a new Grandmaster. …Don’t look at me like that. I’m thinking about it.'
+          : f(save, 'boss_nereth')
+            ? 'Aurelian taught me everything I know about the stars. I never thought I’d have to use it against him.'
+            : 'Solenne used to glow at night — every dome lit from the inside. Now it just… waits.',
+      },
+    ],
+  },
+  sella: {
+    id: 'sella',
+    name: 'Sella',
+    sprite: 'order_mage',
+    wander: 30,
+    home: 'solenne',
+    lines: ({ save }) => [
+      say(
+        f(save, 'boss_voltaris')
+          ? 'The Sanctum portal is lit! I studied its runes for six years. Never thought I’d see it open.'
+          : 'I’m an initiate of the Order. Most of the senior mages followed the Grandmaster to the Sanctum. None came back.',
+      ),
+    ],
+  },
+  orin: {
+    id: 'orin',
+    name: 'Orin',
+    sprite: 'order_mage',
+    wander: 30,
+    home: 'solenne',
+    lines: ({ save }) => [
+      say(
+        f(save, 'boss_nereth')
+          ? 'The storm on the Stormspire isn’t natural. Something up there is feeding on the lightning.'
+          : 'Our oracle, Nereth, dove into the Sunken Temple to scry the eclipse. That was three weeks ago.',
+      ),
+    ],
+  },
+  guard_solenne_w: gateGuard('guard_solenne_w', 'the Sunscar Dunes', 'act2_arrived', 'western', 'solenne'),
+  guard_solenne_e: gateGuard('guard_solenne_e', 'the Stormspire', 'boss_nereth', 'eastern', 'solenne'),
+  guard_solenne_s: gateGuard('guard_solenne_s', 'the Sunken Temple', 'boss_sandmaw', 'harbor', 'solenne'),
 };
 
 function tip(save: SaveData): string {

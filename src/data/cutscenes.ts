@@ -350,6 +350,162 @@ export const CUTSCENES: Record<string, CutStep[]> = {
 };
 
 /** Boss id → cutscene played the first time the boss is defeated. */
+// -------------------------------------------------------------- Act II ----
+Object.assign(CUTSCENES, {
+  act2_intro: [
+    { music: 'cutscene_calm' },
+    { illus: 'ending_dawn' },
+    { illusT: 6, freeze: true },
+    { fadeIn: 1 },
+    {
+      narrate:
+        'A month after the sky was made whole, a letter arrived in Havenbrook, sealed with a golden star.',
+    },
+    { say: 'lyra|surprised: It’s from the Order… from Solenne. {hero}, listen to this.' },
+    {
+      say: 'lyra|sad: “The sun has not risen over Solenne for thirty days. The Grandmaster has sealed himself away.”',
+    },
+    { say: 'lyra|sad: “Come home, Lyra. Bring the Shardbearer. We are running out of light.”' },
+    { say: 'kai|surprised: The sun… doesn’t rise? We fixed the sky!' },
+    { say: 'maren|neutral: You fixed ours. Solenne lies far across the sea, beyond the dunes.' },
+    { music: 'cutscene_tense' },
+    { say: 'lyra|determined: The portal in the square can carry us there. The Order built the first ones.' },
+    { say: 'kai|determined: Then let’s go get their sun back.' },
+    { fadeOut: 1 },
+    { illus: null },
+    { title: 'AETHERFALL', sub: 'Chapter VI — Dusk over Solenne', dur: 3.2 },
+  ],
+  act2_arrival: [
+    { music: 'cutscene_tense' },
+    { illus: 'solenne_arrival' },
+    { fadeIn: 1.2 },
+    { wait: 1.2 },
+    { say: 'kai|surprised: Is that… the sun? It’s black.' },
+    { say: 'lyra|sad: An eclipse that never ends. Solenne was the brightest city in the world, {hero}.' },
+    {
+      say: 'lyra|determined: Harbor Hall is in the old quarter. Tessaly runs the city now — she’ll know what happened.',
+    },
+    { fadeOut: 1 },
+    { illus: null },
+  ],
+  sandmaw_defeated: [
+    { music: 'cutscene_calm' },
+    { illus: 'solenne_arrival' },
+    { illusT: 2, freeze: true },
+    { fadeIn: 0.8 },
+    {
+      narrate:
+        'In the wyrm’s belly, among bones and broken crates, lay a leather journal stamped with a black sun.',
+    },
+    { say: 'lyra|surprised: That’s the Grandmaster’s seal. Aurelian’s journal!' },
+    { say: 'kai|determined: Let’s get it back to Tessaly. Maybe it tells us where he went.' },
+    { fadeOut: 1 },
+    { illus: null },
+    { title: 'AETHERFALL', sub: 'Chapter VII — The Drowned Oracle', dur: 3 },
+  ],
+  nereth_defeated: [
+    { music: 'cutscene_sad' },
+    { illus: null },
+    { fadeIn: 0.8 },
+    {
+      narrate:
+        'The dark glow drained from the serpent’s scales. For a moment, the oracle’s own eyes looked out.',
+    },
+    { say: 'nereth: Lyra…? You came home. I tried to warn them… I saw it all in the water.' },
+    {
+      say: 'nereth: The sixth shard, the Dusk Shard. The Order kept it hidden for a thousand years. Aurelian was its keeper.',
+    },
+    {
+      say: 'nereth: He sealed the Sanctum with a key of living lightning… and gave it to the storm to guard.',
+    },
+    { say: 'lyra|hurt: Nereth, hold on — we can help you!' },
+    { say: 'nereth: You already have. …Go. Bring back the morning.' },
+    { narrate: 'The oracle closed her eyes, and the tide carried her gently away.' },
+    { fadeOut: 1.2 },
+    { title: 'AETHERFALL', sub: 'Chapter VIII — Eye of the Storm', dur: 3 },
+  ],
+  voltaris_defeated: [
+    { music: 'cutscene_epic' },
+    { illus: 'kai_powerup', fade: 0.3 },
+    { illusLoop: [0.2, 1.2] },
+    { sfx: 'lightning' },
+    { flash: '#c0cbdc', dur: 0.3 },
+    { say: 'kai|hurt: The storm key… it’s pouring into my shard!' },
+    { shake: 4, dur: 1.2 },
+    { speedlines: true },
+    { say: 'kai|shout: I can feel the Sanctum… it’s calling back!' },
+    { speedlines: false },
+    { illusLoop: null },
+    { impact: 0.3, style: 'cyan' },
+    { say: 'lyra|determined: The sky portal in Solenne — it’ll be open now. This is it, {hero}.' },
+    { fadeOut: 1 },
+    { illus: null },
+    { title: 'AETHERFALL', sub: 'Chapter IX — The Endless Dusk', dur: 3.2 },
+  ],
+  aurelian_intro: [
+    { music: 'cutscene_tense' },
+    { illus: 'aurelian_reveal' },
+    { fadeIn: 1.2 },
+    { wait: 0.8 },
+    {
+      say: 'aurelian|neutral: Lyra. You’ve grown. And you’ve brought the boy who put the sky back together.',
+    },
+    { say: 'lyra|angry: Master, why? The whole city is dying in the dark!' },
+    {
+      say: 'aurelian|sad: I watched the Crystal fall. I buried friends under its shards. It will fall again, child — it always does.',
+    },
+    {
+      say: 'aurelian|determined: But a sky that never moves can never fall. The Dusk Shard will hold this moment forever. No more loss.',
+    },
+    { say: 'kai|determined: And no more mornings. No thanks.' },
+    { say: 'aurelian|smirk: Then show me, Shardbearer, that your light is worth the risk.' },
+    { fadeOut: 0.8 },
+    { illus: null },
+  ],
+  act2_ending: [
+    { music: 'cutscene_epic' },
+    { cutin: 'aurelian_eclipse' },
+    { illus: 'beam_clash' },
+    { illusLoop: [0.3, 2.8] },
+    { fadeIn: 0.4 },
+    { speedlines: true },
+    { say: 'aurelian|shout: Why won’t you let the world rest?!' },
+    { say: 'kai|shout: Because tomorrow is worth the risk!!' },
+    { illusLoop: null },
+    { illusT: 3 },
+    { impact: 0.35, style: 'light' },
+    { shake: 8, dur: 1 },
+    { speedlines: false },
+    { flash: '#ffffff', dur: 0.6 },
+    { music: 'cutscene_calm' },
+    { illus: null },
+    { fadeIn: 0.8 },
+    { say: 'aurelian|hurt: So bright… I had forgotten how bright it could be.' },
+    { say: 'aurelian|sad: Lyra… look after the Order. Look after the sky. Better than I did.' },
+    {
+      narrate:
+        'The Dusk Shard slipped from his hand and rose, trailing violet light, toward the Aether Crystal far above.',
+    },
+    { fadeOut: 1 },
+    { illus: 'eclipse_ending' },
+    { illusT: 0, freeze: true },
+    { fadeIn: 1.5 },
+    { say: 'kai|surprised: Lyra… look at the sun.' },
+    { illusT: 0, freeze: false },
+    { sfx: 'stinger_discovery' },
+    { wait: 5 },
+    { illusLoop: [5, 12] },
+    { narrate: 'And for the first time in thirty-one days, the sun rose over Solenne.' },
+    { say: 'lyra|happy: Listen… the gulls. The whole harbor is waking up.' },
+    { say: 'kai|happy: Two skies saved. Think the Order has a rule about taking a vacation?' },
+    { say: 'lyra|happy: I’ll look it up. Later. Right now I just want to watch the sunrise.' },
+    { wait: 2 },
+    { fadeOut: 2 },
+    { illus: null },
+    { title: 'AETHERFALL', sub: 'Act II — The End', dur: 4 },
+  ],
+} satisfies Record<string, CutStep[]>);
+
 export const BOSS_OUTRO: Record<string, string> = {
   thornmaw: 'thornmaw_defeated',
   crystal_golem: 'golem_defeated',
@@ -357,10 +513,15 @@ export const BOSS_OUTRO: Record<string, string> = {
   seraphine: 'seraphine_defeated',
   malachar: 'malachar_transform',
   malachar_true: 'ending',
+  sandmaw: 'sandmaw_defeated',
+  nereth: 'nereth_defeated',
+  voltaris: 'voltaris_defeated',
+  aurelian: 'act2_ending',
 };
 
 /** Boss id → cutscene played on the first encounter. */
 export const BOSS_INTRO: Record<string, string> = {
   seraphine: 'seraphine_intro',
   malachar: 'malachar_intro',
+  aurelian: 'aurelian_intro',
 };

@@ -3,13 +3,14 @@ import { audio } from '../audio';
 import { ENEMIES } from '../data/enemies';
 import { MATERIALS } from '../data/items';
 import {
-  CHALLENGES,
+  AUTO_QUESTS,
   QUESTS,
   SIDE_QUESTS,
   type Objective,
   type QuestDef,
   type QuestReward,
 } from '../data/quests';
+import { NPCS } from '../data/npcs';
 import { SKILLS } from '../data/skills';
 import { ZONES, ZONE_ORDER } from '../data/zones';
 import { rng } from '../engine/rng';
@@ -21,6 +22,8 @@ export interface QuestTalk {
   lines: string[];
   /** Offer: accepting starts the quest. */
   offer?: QuestDef;
+  /** A cutscene to play instead of dialogue. */
+  cutscene?: string;
 }
 
 export class QuestSystem {
@@ -93,6 +96,7 @@ export class QuestSystem {
 
   private advance(q: QuestState): void {
     const def = QUESTS[q.id];
+    for (const f of def.stageFlags?.[q.stage] ?? []) setFlag(this.save, f);
     q.stage++;
     q.progress = 0;
     if (q.stage >= def.objectives.length) {
@@ -213,10 +217,14 @@ export class QuestSystem {
     }
   }
 
-  /** Start any challenge whose requirement has been met. */
+  /** Start any challenge (or self-starting story quest) whose requirement has been met. */
   checkChallenges(): void {
-    for (const def of CHALLENGES) {
+    for (const def of AUTO_QUESTS) {
       if (this.save.quests[def.id] || (def.requires && !hasFlag(this.save, def.requires))) continue;
+      if (def.autoStart) {
+        this.start(def.id);
+        continue;
+      }
       this.start(def.id, true);
       audio.playSfx('quest_accept');
       this.game.toast(`New challenge: {gold}${def.name.replace('Challenge: ', '')}{/}`, 'ui_skull');
@@ -249,8 +257,9 @@ export class QuestSystem {
       }
       const last = q.stage === def.objectives.length - 1;
       const lines = def.talkLines?.[q.stage] ?? (last ? (def.complete ?? []) : []);
+      const cutscene = def.talkCutscene?.[q.stage];
       this.advance(q);
-      return { lines };
+      return { lines, cutscene };
     }
     for (const def of SIDE_QUESTS) {
       if (def.giver !== npc || this.save.quests[def.id]) continue;
@@ -334,7 +343,7 @@ export class QuestSystem {
     if (!o) return null;
     switch (o.type) {
       case 'talk':
-        return { map: 'town', npc: o.npc };
+        return { map: NPCS[o.npc]?.home ?? 'town', npc: o.npc };
       case 'boss':
         return { map: o.map, objectId: `${o.map}_gate` };
       case 'reach':
@@ -343,7 +352,7 @@ export class QuestSystem {
       case 'collect':
         return { map: o.zone };
       case 'flag':
-        return o.map ? { map: o.map } : null;
+        return o.map ? { map: o.map, objectId: o.objectId } : null;
       case 'counter':
         return null;
     }

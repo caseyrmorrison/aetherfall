@@ -18,6 +18,13 @@ const FLAT_PROPS: ReadonlySet<PropId> = new Set<PropId>([
   'bones',
   'reeds',
   'crystal_small',
+  'desert_bones',
+  'dry_bush',
+  'seaweed',
+  'seashell',
+  'glow_coral',
+  'wind_grass',
+  'gold_rubble',
 ]);
 
 export interface Drawable {
@@ -41,6 +48,11 @@ const TREE_FOR: Record<Theme, PropId[]> = {
   tundra: ['tree_snowpine', 'tree_snowpine', 'ice_spike'],
   citadel: ['pillar'],
   abyss: ['void_crystal'],
+  desert: ['sandstone_rock', 'sandstone_rock', 'cactus', 'palm_tree'],
+  ruins: ['mangrove_tree', 'mangrove_tree', 'broken_column'],
+  storm: ['storm_rock', 'storm_rock', 'storm_obelisk'],
+  eclipse: ['eclipse_pillar'],
+  oasis: ['palm_tree'],
 };
 
 export const BG_COLOR: Record<Theme, string> = {
@@ -51,6 +63,11 @@ export const BG_COLOR: Record<Theme, string> = {
   tundra: '#5a6988',
   citadel: '#181425',
   abyss: '#0b0a12',
+  desert: '#7a4a4e',
+  ruins: '#132a2b',
+  storm: '#1c2036',
+  eclipse: '#0b0a12',
+  oasis: '#8a5a4e',
 };
 
 export class MapRenderer {

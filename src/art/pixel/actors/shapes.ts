@@ -31,6 +31,19 @@ export function vol(dst: Buf, ramp: Ramp, draw: (l: Buf) => void, o: ShadeOpts =
   return l;
 }
 
+/** A fresh w×h layer with `draw` volume-shaded by `ramp` (not composited). */
+export function shaded(w: number, h: number, ramp: Ramp, draw: (l: Buf) => void, o: ShadeOpts = {}): Buf {
+  const l = new Buf(w, h);
+  draw(l);
+  return shade(l, ramp, o);
+}
+
+/** Offset a polyline progressively: point i moves by (dx, dy) · i / (n - 1). */
+export function bend(pts: readonly Pt[], dx: number, dy: number): Pt[] {
+  const n = Math.max(1, pts.length - 1);
+  return pts.map(([x, y], i) => [x + (dx * i) / n, y + (dy * i) / n] as Pt);
+}
+
 /** Like vol() but separated from what is already drawn by a dark edge. */
 export function volOver(
   dst: Buf,
@@ -55,6 +68,29 @@ export function limb(b: Buf, a: Pt, c: Pt, t0: number, t1: number, col: Col): Bu
     b.ellipse(x + 0.5, y + 0.5, Math.max(0.5, r), Math.max(0.5, r), col);
   });
   return b;
+}
+
+/** Sample a quadratic bezier (n + 1 points). */
+export function bez(a: Pt, c: Pt, d: Pt, n: number): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const u = 1 - t;
+    out.push([
+      u * u * a[0] + 2 * u * t * c[0] + t * t * d[0],
+      u * u * a[1] + 2 * u * t * c[1] + t * t * d[1],
+    ]);
+  }
+  return out;
+}
+
+/** Tapered stroke along points (thickness t0 → t1). */
+export function stroke(b: Buf, pts: readonly Pt[], t0: number, t1: number, col: Col): void {
+  pts.forEach(([x, y], i) => {
+    const t = pts.length > 1 ? i / (pts.length - 1) : 0;
+    const r = Math.max(0.5, (t0 + (t1 - t0) * t) / 2);
+    b.ellipse(x, y, r, r, col);
+  });
 }
 
 /** Filled triangle. */

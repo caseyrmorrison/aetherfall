@@ -688,6 +688,10 @@ export function generateArena(zoneId: string): MapData {
     volcano: 'obsidian_spike',
     tundra: 'ice_spike',
     citadel: 'pillar',
+    desert: 'sandstone_pillar',
+    ruins: 'broken_column',
+    storm: 'storm_obelisk',
+    sanctum: 'eclipse_pillar',
   };
   const pid = pillar[zoneId] ?? 'rock_big';
   for (const [ox, oy] of [

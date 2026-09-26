@@ -12,6 +12,9 @@ import { drawKaiPowerup, drawMalacharPowerup } from './powerup';
 import { drawBeamClash } from './beamClash';
 import { drawRushExchange } from './rushExchange';
 import { drawKaiKneeling } from './kaiKneeling';
+import { drawSolenneArrival } from './solenneArrival';
+import { drawAurelianReveal } from './aurelianReveal';
+import { drawEclipseEnding } from './eclipseEnding';
 
 export type IllusFn = (ctx: CanvasRenderingContext2D, t: number, w: number, h: number) => void;
 
@@ -30,4 +33,7 @@ export const ILLUS: Record<string, IllusFn> = {
   beam_clash: drawBeamClash,
   rush_exchange: drawRushExchange,
   kai_kneeling: drawKaiKneeling,
+  solenne_arrival: drawSolenneArrival,
+  aurelian_reveal: drawAurelianReveal,
+  eclipse_ending: drawEclipseEnding,
 };
