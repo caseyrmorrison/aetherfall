@@ -482,7 +482,19 @@ export const CONSUMABLES: Record<ConsumableId, ConsumableDef> = {
     desc: 'Take 20% less damage for 3 minutes.',
     price: 160,
   },
+  tonic_fortune: {
+    id: 'tonic_fortune',
+    name: 'Tonic of Fortune',
+    icon: 'icon_elixir',
+    desc: '+50% Magic Find and Gold Find for 5 minutes. (Crafted only.)',
+    price: 0,
+  },
 };
+
+/** Consumables sold by Mira (crafted-only ones have no price). */
+export const SHOP_CONSUMABLES = (Object.keys(CONSUMABLES) as ConsumableId[]).filter(
+  (id) => CONSUMABLES[id].price > 0,
+);
 
 export const MATERIALS: Record<MaterialId, MaterialDef> = {
   dust: {
@@ -496,24 +508,42 @@ export const MATERIALS: Record<MaterialId, MaterialDef> = {
     id: 'herb',
     name: 'Moonpetal',
     icon: 'icon_herb',
-    desc: 'A glowing herb from the Whispering Woods.',
+    desc: 'A glowing herb from the Whispering Woods. Used in brewing.',
     sell: 6,
   },
-  pelt: { id: 'pelt', name: 'Thick Pelt', icon: 'icon_pelt', desc: 'Warm fur from a wild beast.', sell: 8 },
+  pelt: {
+    id: 'pelt',
+    name: 'Thick Pelt',
+    icon: 'icon_pelt',
+    desc: 'Warm fur from a wild beast. Used to craft armor and tonics.',
+    sell: 8,
+  },
   crystal: {
     id: 'crystal',
     name: 'Cave Crystal',
     icon: 'icon_crystal',
-    desc: 'Resonates with faint aether.',
+    desc: 'Resonates with faint aether. Used to craft jewelry, weapons and dust.',
     sell: 14,
   },
-  ember: { id: 'ember', name: 'Ember Core', icon: 'icon_ember', desc: 'Still warm to the touch.', sell: 20 },
-  frost: { id: 'frost', name: 'Frost Essence', icon: 'icon_frost', desc: 'Never melts.', sell: 26 },
+  ember: {
+    id: 'ember',
+    name: 'Ember Core',
+    icon: 'icon_ember',
+    desc: 'Still warm to the touch. Used to forge weapons and brew tonics.',
+    sell: 20,
+  },
+  frost: {
+    id: 'frost',
+    name: 'Frost Essence',
+    icon: 'icon_frost',
+    desc: 'Never melts. Used to forge armor and brew tonics.',
+    sell: 26,
+  },
   void: {
     id: 'void',
     name: 'Void Fragment',
     icon: 'icon_void',
-    desc: 'A sliver of nothing. Unsettling.',
+    desc: 'A sliver of nothing. Unsettling. Used for charms and sockets.',
     sell: 34,
   },
 };

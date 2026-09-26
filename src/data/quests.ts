@@ -1,5 +1,6 @@
 /** Main story and side quest definitions. */
 import type { MaterialId, Rarity, Slot } from '../game/types';
+import type { SkillId } from './skills';
 
 export type Objective =
   | { type: 'talk'; npc: string; text: string }
@@ -7,7 +8,9 @@ export type Objective =
   | { type: 'collect'; material: MaterialId; count: number; text: string; zone: string }
   | { type: 'reach'; map: string; marker: string; text: string }
   | { type: 'boss'; boss: string; map: string; text: string }
-  | { type: 'flag'; flag: string; text: string; map?: string };
+  | { type: 'flag'; flag: string; text: string; map?: string }
+  /** A number kept in save flags reaching `count` (e.g. a best streak). */
+  | { type: 'counter'; counter: string; count: number; text: string };
 
 export interface QuestReward {
   xp?: number;
@@ -18,6 +21,8 @@ export interface QuestReward {
   elixirs?: number;
   flaskUpgrade?: boolean;
   flags?: string[];
+  /** Teaches a skill (challenge rewards). */
+  skill?: SkillId;
 }
 
 export interface QuestDef {
@@ -36,6 +41,8 @@ export interface QuestDef {
   talkLines?: Record<number, string[]>;
   /** Flag required before the giver offers this quest. */
   requires?: string;
+  /** Challenges start by themselves once `requires` is met (no giver needed). */
+  challenge?: boolean;
 }
 
 export const QUESTS: Record<string, QuestDef> = {
@@ -276,6 +283,69 @@ export const QUESTS: Record<string, QuestDef> = {
     ],
     complete: ['Fascinating… and terrifying. Here. This belonged to the first hero of Havenbrook.'],
   },
+  // ---------------------------------------------------------- challenges ----
+  ch_untouchable: {
+    id: 'ch_untouchable',
+    name: 'Challenge: Untouchable',
+    giver: 'maren',
+    main: false,
+    challenge: true,
+    requires: 'boss_thornmaw',
+    summary: 'Prove you can fight without being touched. A streak ends the moment anything hits you.',
+    objectives: [
+      {
+        type: 'counter',
+        counter: 'streak_nohit_best',
+        count: 30,
+        text: 'Defeat 30 enemies in a row without getting hit',
+      },
+    ],
+    reward: { xp: 2000, skill: 'shadowstep' },
+  },
+  ch_unbowed: {
+    id: 'ch_unbowed',
+    name: 'Challenge: Unbowed',
+    giver: 'maren',
+    main: false,
+    challenge: true,
+    requires: 'boss_crystal_golem',
+    summary:
+      'On Hard or Nightmare, defeat a guardian (or an Abyss guardian) without drinking a single flask. It can be at most 3 levels below you.',
+    objectives: [{ type: 'flag', flag: 'ch_unbowed_done', text: 'Beat a guardian on Hard+ without flasks' }],
+    reward: { xp: 6000, skill: 'earthshatter' },
+  },
+  ch_flawless: {
+    id: 'ch_flawless',
+    name: 'Challenge: Flawless',
+    giver: 'maren',
+    main: false,
+    challenge: true,
+    requires: 'boss_ignis',
+    summary:
+      'Defeat a guardian (or an Abyss guardian) without getting hit even once. It can be at most 3 levels below you.',
+    objectives: [{ type: 'flag', flag: 'ch_flawless_done', text: 'Beat a guardian without getting hit' }],
+    reward: { xp: 12000, skill: 'blizzard' },
+  },
+  ch_deathless: {
+    id: 'ch_deathless',
+    name: 'Challenge: Deathless Descent',
+    giver: 'maren',
+    main: false,
+    challenge: true,
+    requires: 'game_clear',
+    summary: 'Clear Abyss floors one after another without dying. Dying resets the streak.',
+    objectives: [
+      {
+        type: 'counter',
+        counter: 'abyss_streak_best',
+        count: 10,
+        text: 'Clear 10 Abyss floors in a row without dying',
+      },
+    ],
+    reward: { xp: 40000, skill: 'bloodrite' },
+  },
 };
 
-export const SIDE_QUESTS = Object.values(QUESTS).filter((q) => !q.main);
+export const CHALLENGES = Object.values(QUESTS).filter((q) => q.challenge);
+
+export const SIDE_QUESTS = Object.values(QUESTS).filter((q) => !q.main && !q.challenge);

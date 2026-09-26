@@ -30,6 +30,14 @@ The art, music and sound effects are all generated in code; the repo contains no
 | ![An Abyssal item's crimson loot beam, with gems](docs/screenshots/abyss-loot.png) | ![The gem pouch and socketed gear](docs/screenshots/gems-pouch.png) |
 | ![Choosing a gem for an empty socket](docs/screenshots/gems-socketing.png)         |                                                                     |
 
+**Endgame progression**
+
+|                                                                         |                                                                     |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| ![Ascendancy tree (Archmage)](docs/screenshots/ascendancy.png)          | ![A Trial of Ascension: Scorched Earth](docs/screenshots/trial.png) |
+| ![Paragon points](docs/screenshots/paragon.png)                         | ![Talent trees with two columns each](docs/screenshots/talents.png) |
+| ![Town portal back to where you left](docs/screenshots/town-portal.png) | ![Crafting at Brom's forge](docs/screenshots/crafting.png)          |
+
 ## Features
 
 - **Action combat.** Three-hit weapon combos, a dodge roll with invulnerability frames, and a _perfect dodge_
@@ -47,8 +55,20 @@ The art, music and sound effects are all generated in code; the repo contains no
   Abyss-only Abyssal tier) with random affixes, and there are 10 legendaries with unique effects. Elite monsters
   have modifiers such as Frenzied, Vampiric and Warded. There are repeatable bounties and a blacksmith who
   upgrades (+10), salvages and reforges gear.
-- **Character build.** 8 active skills, each with 5 ranks, plus an ultimate and 18 passive talents
-  across three trees. Talents can be reset at any time.
+- **Character build.** 12 active skills, each with 5 ranks, plus an ultimate, and 36 talents in three trees
+  (two columns each, with a capstone at the bottom of every column). Talents can be reset at any time.
+- **Challenge skills.** Four skills are only learned by beating hard challenges: Shadow Step (kill 30 enemies
+  in a row without getting hit), Earthshatter (beat a guardian on Hard+ without a flask), Blizzard (beat a
+  guardian without getting hit) and Blood Rite (clear 10 Abyss floors in a row without dying).
+- **Ascendancies (Path of Exile 2 style).** The statue in the square offers four Trials of Ascension: wave
+  survival arenas with twists like Haste, raining fire and no flasks. Each grants points for one of four
+  specializations: Blademaster, Warbringer, Shadowblade or Archmage, each with six build-defining notables.
+- **Paragon (Diablo 3 style).** After level 60, XP keeps earning Paragon levels with points in Core, Offense,
+  Defense and Utility. Main stats are uncapped; points can be moved around for free.
+- **Crafting.** Mira brews Elixirs, tonics and Phoenix Feathers, and Brom forges rare-or-better gear at your
+  level +2, never-cursed charms, Aether Dust and gem sockets, all from the materials monsters drop.
+- **Town portals.** Press T to open a portal home, sell and craft, then step back through: the area is exactly
+  as you left it, loot on the ground included.
 - **Character sheet and paper doll.** Gear slots sit on the hero's body (head, neck, chest, hands, two rings,
   waist, feet, main hand). A Diablo / Path of Exile–style Stats tab shows DPS, toughness, damage reduction,
   attacks per second, recovery and every other stat, each with an explanation.
@@ -66,7 +86,8 @@ The art, music and sound effects are all generated in code; the repo contains no
   - fast travel between crystals, a minimap, a full map with fog of war and a quest arrow
   - item comparison tooltips, "sell/salvage all junk", item locking, bag sorting, auto-loot
   - loot that lands out of reach (in a void pool or a wall) hops back onto the floor
-  - 4 difficulty levels you can change at any time, key rebinding and gamepad support
+  - 4 difficulty levels you can change at any time (plus 6 Torment tiers after the story), key rebinding and
+    gamepad support
   - touch controls on phones
   - damage numbers, enemy health bars, aim assist
   - reduced flashing and screen-shake settings, text speed and auto-advance

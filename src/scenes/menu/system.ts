@@ -10,14 +10,16 @@ import { LoadScene } from '../load';
 import { SettingsScene } from '../settings';
 import type { MenuScene, TabView } from './menu';
 
-type Opt = 'resume' | 'save' | 'load' | 'settings' | 'ngplus' | 'title';
+type Opt = 'resume' | 'portal' | 'save' | 'load' | 'settings' | 'ngplus' | 'title';
 
 export class SystemTab implements TabView {
   readonly label = 'System';
   private list: ListView<Opt>;
 
   constructor(private menu: MenuScene) {
-    const opts: Opt[] = ['resume', 'save', 'load', 'settings'];
+    const opts: Opt[] = ['resume'];
+    if (menu.ws.world.data.id !== 'town') opts.push('portal');
+    opts.push('save', 'load', 'settings');
     if (hasFlag(menu.game.save, 'game_clear')) opts.push('ngplus');
     opts.push('title');
     this.list = new ListView(opts, 13, opts.length, true);
@@ -36,6 +38,16 @@ export class SystemTab implements TabView {
     switch (this.list.selected) {
       case 'resume':
         return 'close';
+      case 'portal': {
+        const why = this.menu.ws.world.townPortalBlocked();
+        if (why) {
+          audio.playSfx('ui_error');
+          g.toast(why, 'ui_lock', 0, UI.bad);
+          return;
+        }
+        this.menu.ws.world.startTownPortal();
+        return 'close';
+      }
       case 'save':
         if (!this.canSave()) {
           audio.playSfx('ui_error');
@@ -108,6 +120,7 @@ export class SystemTab implements TabView {
     const s = g.save;
     const labels: Record<Opt, string> = {
       resume: 'Resume',
+      portal: `Town Portal {gray}(${g.app.input.label('townPortal')}){/}`,
       save: this.canSave() ? 'Save Game' : 'Save Game {gray}(in combat){/}',
       load: 'Load Game',
       settings: 'Settings & Controls',

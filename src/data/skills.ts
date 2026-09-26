@@ -2,7 +2,18 @@
 import type { IconId } from '../art/pixel/types';
 
 export type SkillId =
-  'slash' | 'whirlwind' | 'fireball' | 'frostnova' | 'heal' | 'lightning' | 'blades' | 'meteor';
+  | 'slash'
+  | 'whirlwind'
+  | 'fireball'
+  | 'frostnova'
+  | 'heal'
+  | 'lightning'
+  | 'blades'
+  | 'meteor'
+  | 'shadowstep'
+  | 'earthshatter'
+  | 'blizzard'
+  | 'bloodrite';
 
 export interface SkillDef {
   id: SkillId;
@@ -18,6 +29,10 @@ export interface SkillDef {
   multPerRank: number;
   /** Cooldown reduction per extra rank (seconds). */
   cdPerRank: number;
+  /** Fraction of max HP paid to cast (Blood Rite). */
+  hpCost?: number;
+  /** Unlocked by completing this challenge quest instead of by level. */
+  challenge?: string;
   desc: (rank: number) => string;
 }
 
@@ -142,6 +157,72 @@ export const SKILLS: Record<SkillId, SkillDef> = {
     desc: (r) =>
       `Call down a meteor at your target that crashes for ${pct(4.5 + 0.7 * (r - 1))} MAG and leaves burning ground.`,
   },
+  // ---- unlocked by challenges ----
+  shadowstep: {
+    id: 'shadowstep',
+    name: 'Shadow Step',
+    icon: 'skill_shadowstep',
+    unlockLevel: 0,
+    challenge: 'ch_untouchable',
+    mp: 12,
+    cooldown: 7,
+    maxRank: 5,
+    scaling: 'atk',
+    mult: 2.4,
+    multPerRank: 0.4,
+    cdPerRank: 0.4,
+    desc: (r) =>
+      `Vanish and reappear behind the nearest enemy, striking for ${pct(2.4 + 0.4 * (r - 1))} ATK. Always a critical hit.`,
+  },
+  earthshatter: {
+    id: 'earthshatter',
+    name: 'Earthshatter',
+    icon: 'skill_earthshatter',
+    unlockLevel: 0,
+    challenge: 'ch_unbowed',
+    mp: 22,
+    cooldown: 12,
+    maxRank: 5,
+    scaling: 'atk',
+    mult: 1.6,
+    multPerRank: 0.3,
+    cdPerRank: 0.6,
+    desc: (r) =>
+      `Split the ground ahead of you. The fissure erupts six times for ${pct(1.6 + 0.3 * (r - 1))} ATK each and slows enemies by 50%.`,
+  },
+  blizzard: {
+    id: 'blizzard',
+    name: 'Blizzard',
+    icon: 'skill_blizzard',
+    unlockLevel: 0,
+    challenge: 'ch_flawless',
+    mp: 28,
+    cooldown: 14,
+    maxRank: 5,
+    scaling: 'mag',
+    mult: 0.55,
+    multPerRank: 0.1,
+    cdPerRank: 0.6,
+    desc: (r) =>
+      `A blizzard rages at your target for 4s, striking every half second for ${pct(0.55 + 0.1 * (r - 1))} MAG and chilling enemies.`,
+  },
+  bloodrite: {
+    id: 'bloodrite',
+    name: 'Blood Rite',
+    icon: 'skill_bloodrite',
+    unlockLevel: 0,
+    challenge: 'ch_deathless',
+    mp: 0,
+    hpCost: 0.15,
+    cooldown: 22,
+    maxRank: 5,
+    scaling: 'none',
+    mult: 0,
+    multPerRank: 0,
+    cdPerRank: 1,
+    desc: (r) =>
+      `Sacrifice 15% of your HP to deal +${pct(0.3 + 0.06 * (r - 1))} damage and gain +5% Lifesteal for ${8 + (r - 1)}s.`,
+  },
 };
 
 export const SKILL_ORDER: readonly SkillId[] = [
@@ -153,7 +234,16 @@ export const SKILL_ORDER: readonly SkillId[] = [
   'lightning',
   'blades',
   'meteor',
+  'shadowstep',
+  'earthshatter',
+  'blizzard',
+  'bloodrite',
 ];
+
+/** Blood Rite's damage bonus at a rank. */
+export const bloodRiteBonus = (rank: number): number => 0.3 + 0.06 * Math.max(0, rank - 1);
+/** Blood Rite's duration at a rank. */
+export const bloodRiteDuration = (rank: number): number => 8 + Math.max(0, rank - 1);
 
 export function skillMult(def: SkillDef, rank: number): number {
   return def.mult + def.multPerRank * Math.max(0, rank - 1);
@@ -187,6 +277,25 @@ export interface PassiveEffects {
   executioner: number;
   overload: number;
   lastStand: number;
+  // second-column talents
+  basicDmg: number;
+  moveSpeed: number;
+  sunder: number;
+  finisher: number;
+  killHeal: number;
+  bladeStorm: number;
+  mpCost: number;
+  burnChance: number;
+  freezeDur: number;
+  chains: number;
+  skillCrit: number;
+  skillCritDmg: number;
+  skillExplode: number;
+  damageReduction: number;
+  evade: number;
+  staminaRegen: number;
+  thorns: number;
+  unyielding: number;
 }
 
 export const EMPTY_PASSIVES: Readonly<PassiveEffects> = Object.freeze({
@@ -209,12 +318,32 @@ export const EMPTY_PASSIVES: Readonly<PassiveEffects> = Object.freeze({
   executioner: 0,
   overload: 0,
   lastStand: 0,
+  basicDmg: 0,
+  moveSpeed: 0,
+  sunder: 0,
+  finisher: 0,
+  killHeal: 0,
+  bladeStorm: 0,
+  mpCost: 0,
+  burnChance: 0,
+  freezeDur: 0,
+  chains: 0,
+  skillCrit: 0,
+  skillCritDmg: 0,
+  skillExplode: 0,
+  damageReduction: 0,
+  evade: 0,
+  staminaRegen: 0,
+  thorns: 0,
+  unyielding: 0,
 });
 
 export interface PassiveDef {
   id: string;
   name: string;
   branch: Branch;
+  /** Column within the branch (each column is its own chain, top to bottom). */
+  col: 0 | 1;
   row: number;
   maxRank: number;
   requires?: string;
@@ -234,6 +363,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'sharpen',
     name: 'Sharpened Edge',
     branch: 'blade',
+    col: 0,
     row: 0,
     maxRank: 5,
     effect: { atkPct: 0.05 },
@@ -243,6 +373,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'keen',
     name: 'Keen Eye',
     branch: 'blade',
+    col: 0,
     row: 1,
     maxRank: 5,
     requires: 'sharpen',
@@ -253,6 +384,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'brutality',
     name: 'Brutality',
     branch: 'blade',
+    col: 0,
     row: 2,
     maxRank: 5,
     requires: 'keen',
@@ -263,6 +395,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'flurry',
     name: 'Flurry',
     branch: 'blade',
+    col: 0,
     row: 3,
     maxRank: 3,
     requires: 'brutality',
@@ -273,6 +406,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'bloodthirst',
     name: 'Bloodthirst',
     branch: 'blade',
+    col: 0,
     row: 4,
     maxRank: 3,
     requires: 'flurry',
@@ -283,6 +417,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'executioner',
     name: 'Executioner',
     branch: 'blade',
+    col: 0,
     row: 5,
     maxRank: 1,
     requires: 'bloodthirst',
@@ -294,6 +429,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'arcane_mind',
     name: 'Arcane Mind',
     branch: 'arcane',
+    col: 0,
     row: 0,
     maxRank: 5,
     effect: { magPct: 0.05 },
@@ -303,6 +439,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'deep_well',
     name: 'Deep Well',
     branch: 'arcane',
+    col: 0,
     row: 1,
     maxRank: 5,
     requires: 'arcane_mind',
@@ -313,6 +450,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'quickcast',
     name: 'Quickcast',
     branch: 'arcane',
+    col: 0,
     row: 2,
     maxRank: 5,
     requires: 'deep_well',
@@ -323,6 +461,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'empower',
     name: 'Empower',
     branch: 'arcane',
+    col: 0,
     row: 3,
     maxRank: 3,
     requires: 'quickcast',
@@ -333,6 +472,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'channel',
     name: 'Aether Channel',
     branch: 'arcane',
+    col: 0,
     row: 4,
     maxRank: 3,
     requires: 'empower',
@@ -343,6 +483,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'overload',
     name: 'Overload',
     branch: 'arcane',
+    col: 0,
     row: 5,
     maxRank: 1,
     requires: 'channel',
@@ -354,6 +495,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'vitality',
     name: 'Vitality',
     branch: 'guard',
+    col: 0,
     row: 0,
     maxRank: 5,
     effect: { hpPct: 0.05 },
@@ -363,6 +505,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'iron_skin',
     name: 'Iron Skin',
     branch: 'guard',
+    col: 0,
     row: 1,
     maxRank: 5,
     requires: 'vitality',
@@ -373,6 +516,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'nimble',
     name: 'Nimble',
     branch: 'guard',
+    col: 0,
     row: 2,
     maxRank: 3,
     requires: 'iron_skin',
@@ -383,6 +527,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'potion_master',
     name: 'Alchemist',
     branch: 'guard',
+    col: 0,
     row: 3,
     maxRank: 3,
     requires: 'nimble',
@@ -393,6 +538,7 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'second_wind',
     name: 'Second Wind',
     branch: 'guard',
+    col: 0,
     row: 4,
     maxRank: 3,
     requires: 'potion_master',
@@ -403,11 +549,210 @@ export const PASSIVES: readonly PassiveDef[] = [
     id: 'last_stand',
     name: 'Last Stand',
     branch: 'guard',
+    col: 0,
     row: 5,
     maxRank: 1,
     requires: 'second_wind',
     effect: { lastStand: 1 },
     desc: () => `Survive a fatal blow with 1 HP and become invulnerable for 2s (90s cooldown).`,
+  },
+  // Blade, second column
+  {
+    id: 'heavy_hands',
+    name: 'Heavy Hands',
+    branch: 'blade',
+    col: 1,
+    row: 0,
+    maxRank: 5,
+    effect: { basicDmg: 0.06 },
+    desc: (r) => `+${r * 6}% basic attack damage.`,
+  },
+  {
+    id: 'momentum',
+    name: 'Momentum',
+    branch: 'blade',
+    col: 1,
+    row: 1,
+    maxRank: 3,
+    requires: 'heavy_hands',
+    effect: { moveSpeed: 0.03 },
+    desc: (r) => `+${r * 3}% Move Speed.`,
+  },
+  {
+    id: 'sunder',
+    name: 'Sunder',
+    branch: 'blade',
+    col: 1,
+    row: 2,
+    maxRank: 5,
+    requires: 'momentum',
+    effect: { sunder: 0.08 },
+    desc: (r) => `Your hits ignore ${r * 8}% of enemy Defense.`,
+  },
+  {
+    id: 'finisher',
+    name: 'Finisher',
+    branch: 'blade',
+    col: 1,
+    row: 3,
+    maxRank: 3,
+    requires: 'sunder',
+    effect: { finisher: 0.15 },
+    desc: (r) => `The third hit of your combo deals +${r * 15}% damage.`,
+  },
+  {
+    id: 'relentless',
+    name: 'Relentless',
+    branch: 'blade',
+    col: 1,
+    row: 4,
+    maxRank: 3,
+    requires: 'finisher',
+    effect: { killHeal: 0.01 },
+    desc: (r) => `Kills restore ${r}% of Max HP and ${r * 5} stamina.`,
+  },
+  {
+    id: 'blade_storm',
+    name: 'Blade Storm',
+    branch: 'blade',
+    col: 1,
+    row: 5,
+    maxRank: 1,
+    requires: 'relentless',
+    effect: { bladeStorm: 1 },
+    desc: () => `The third hit of your combo also sends out a slashing gale for 70% ATK.`,
+  },
+  // Arcane, second column
+  {
+    id: 'efficiency',
+    name: 'Efficiency',
+    branch: 'arcane',
+    col: 1,
+    row: 0,
+    maxRank: 5,
+    effect: { mpCost: 0.05 },
+    desc: (r) => `Skills cost ${r * 5}% less MP.`,
+  },
+  {
+    id: 'pyromancy',
+    name: 'Pyromancy',
+    branch: 'arcane',
+    col: 1,
+    row: 1,
+    maxRank: 3,
+    requires: 'efficiency',
+    effect: { burnChance: 0.05 },
+    desc: (r) => `+${r * 5}% chance to set enemies ablaze with any hit.`,
+  },
+  {
+    id: 'cryomancy',
+    name: 'Cryomancy',
+    branch: 'arcane',
+    col: 1,
+    row: 2,
+    maxRank: 3,
+    requires: 'pyromancy',
+    effect: { freezeDur: 0.2 },
+    desc: (r) => `Your freezes and chills last ${r * 20}% longer.`,
+  },
+  {
+    id: 'conduction',
+    name: 'Conduction',
+    branch: 'arcane',
+    col: 1,
+    row: 3,
+    maxRank: 2,
+    requires: 'cryomancy',
+    effect: { chains: 1 },
+    desc: (r) => `Chain Lightning jumps to ${r} more ${r > 1 ? 'enemies' : 'enemy'}.`,
+  },
+  {
+    id: 'arcane_precision',
+    name: 'Arcane Precision',
+    branch: 'arcane',
+    col: 1,
+    row: 4,
+    maxRank: 3,
+    requires: 'conduction',
+    effect: { skillCrit: 0.04, skillCritDmg: 0.1 },
+    desc: (r) => `Skills gain +${r * 4}% crit chance and +${r * 10}% crit damage.`,
+  },
+  {
+    id: 'overflow',
+    name: 'Elemental Overflow',
+    branch: 'arcane',
+    col: 1,
+    row: 5,
+    maxRank: 1,
+    requires: 'arcane_precision',
+    effect: { skillExplode: 1 },
+    desc: () => `Enemies killed by your skills explode for 50% MAG around them.`,
+  },
+  // Guardian, second column
+  {
+    id: 'thick_hide',
+    name: 'Thick Hide',
+    branch: 'guard',
+    col: 1,
+    row: 0,
+    maxRank: 5,
+    effect: { damageReduction: 0.03 },
+    desc: (r) => `Take ${r * 3}% less damage.`,
+  },
+  {
+    id: 'evasion',
+    name: 'Evasion',
+    branch: 'guard',
+    col: 1,
+    row: 1,
+    maxRank: 3,
+    requires: 'thick_hide',
+    effect: { evade: 0.03 },
+    desc: (r) => `${r * 3}% chance to evade an attack completely.`,
+  },
+  {
+    id: 'endurance',
+    name: 'Endurance',
+    branch: 'guard',
+    col: 1,
+    row: 2,
+    maxRank: 3,
+    requires: 'evasion',
+    effect: { staminaRegen: 0.12 },
+    desc: (r) => `Stamina recovers ${r * 12}% faster.`,
+  },
+  {
+    id: 'thorns',
+    name: 'Thorns',
+    branch: 'guard',
+    col: 1,
+    row: 3,
+    maxRank: 3,
+    requires: 'endurance',
+    effect: { thorns: 0.15 },
+    desc: (r) => `Reflect ${r * 15}% of melee damage you take back at the attacker.`,
+  },
+  {
+    id: 'fortified',
+    name: 'Fortified',
+    branch: 'guard',
+    col: 1,
+    row: 4,
+    maxRank: 3,
+    requires: 'thorns',
+    effect: { defPct: 0.05, hpPct: 0.03 },
+    desc: (r) => `+${r * 5}% Defense and +${r * 3}% Max HP.`,
+  },
+  {
+    id: 'unyielding',
+    name: 'Unyielding',
+    branch: 'guard',
+    col: 1,
+    row: 5,
+    maxRank: 1,
+    requires: 'fortified',
+    effect: { unyielding: 1 },
+    desc: () => `Below 40% HP, take 25% less damage and deal 20% more.`,
   },
 ];
 

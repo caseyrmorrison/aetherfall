@@ -220,6 +220,110 @@ function shieldGlyph(): Grid {
   return done(g, '#0b1030');
 }
 
+function portalGlyph(): Grid {
+  const g = new Grid(S, S);
+  const B = [PAL.navy, PAL.blue, PAL.sky, PAL.cyan, PAL.white] as const;
+  g.ellipse(8, 8, 5.2, 6.8, (x, y, nx, ny) => {
+    const r = Math.hypot(nx, ny);
+    // bright rim, lit from the top-left
+    if (r > 0.8) return nx + ny < 0 ? PAL.cyan : PAL.sky;
+    // two spiral arms winding into a white-hot centre
+    const arm = Math.sin(Math.atan2(ny, nx) * 2 + r * 7.5) * 0.5 + 0.5;
+    return ramp(B, (1 - r) * 0.75 + arm * 0.4 - 0.1, x, y, 0.25);
+  });
+  g.set(8, 7, PAL.white).set(7, 8, PAL.white);
+  const d = done(g, '#0b1030');
+  d.set(2, 3, alpha(PAL.cyan, 0.8)).set(13, 11, alpha(PAL.cyan, 0.7)).set(14, 4, alpha(PAL.sky, 0.6));
+  return d;
+}
+
+function paragonGlyph(): Grid {
+  const g = new Grid(S, S);
+  // eight-point star: long cardinal rays, short diagonals
+  const pts: [number, number][] = [];
+  for (let i = 0; i < 16; i++) {
+    const ang = -Math.PI / 2 + (i * Math.PI) / 8;
+    const r = i % 2 ? 3.3 : i % 4 === 0 ? 7.4 : 5;
+    pts.push([8 + Math.cos(ang) * r, 8 + Math.sin(ang) * r]);
+  }
+  g.poly(pts, (x, y, nx, ny) =>
+    ramp([PAL.rust, PAL.gold, PAL.yellow, '#fff3b0'], 0.7 - nx * 0.3 - ny * 0.35, x, y, 0.3),
+  );
+  // cyan diamond core
+  g.poly(
+    [
+      [8, 5],
+      [10.6, 8],
+      [8, 11],
+      [5.4, 8],
+    ],
+    (x, y, nx, ny) => ramp([PAL.blue, PAL.sky, PAL.cyan, '#9ff6ff'], 0.65 - nx * 0.35 - ny * 0.4, x, y, 0.2),
+  );
+  g.set(7, 6, PAL.white).set(7, 7, '#9ff6ff');
+  const d = done(g, '#2a1a10');
+  d.set(2, 2, alpha(PAL.cyan, 0.8)).set(13, 13, alpha(PAL.cyan, 0.7)).set(13, 3, alpha(PAL.yellow, 0.7));
+  return d;
+}
+
+function craftGlyph(): Grid {
+  const g = new Grid(S, S);
+  // anvil: horn to the left, waist, heavy foot
+  g.hline(1, 12, 8, PAL.lightGray).hline(3, 12, 9, PAL.gray).set(2, 9, PAL.slate);
+  g.set(1, 8, PAL.gray).set(13, 8, PAL.gray).set(13, 9, PAL.slate);
+  g.rect(6, 10, 5, 2, PAL.slate).set(6, 10, PAL.gray);
+  g.hline(4, 12, 12, PAL.gray).hline(4, 12, 13, PAL.darkSlate).set(4, 12, PAL.lightGray);
+  g.hline(5, 11, 8, '#e8eef6');
+  // hammer raised above, handle toward the lower-left
+  for (let k = 0; k < 5; k++)
+    g.set(5 + k, 7 - k, k % 2 ? PAL.brown : PAL.tan).set(6 + k, 7 - k, PAL.darkBrown);
+  g.poly(
+    [
+      [8.5, 1.5],
+      [10.5, 0.5],
+      [14.5, 4.5],
+      [12.5, 6.5],
+    ],
+    (_x, _y, nx, ny) => (nx + ny < 0.1 ? PAL.lightGray : nx + ny < 0.9 ? PAL.gray : PAL.slate),
+  );
+  // sparks off the strike
+  g.set(2, 5, PAL.yellow).set(1, 3, PAL.gold).set(13, 6, PAL.yellow);
+  return done(g, '#1a1420');
+}
+
+function trialGlyph(): Grid {
+  const g = new Grid(S, S);
+  // laurel wreath: two leafy arcs open at the top
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++) {
+      const dx = x + 0.5 - 8;
+      const dy = y + 0.5 - 8.5;
+      const r = Math.hypot(dx, dy);
+      // angle measured from straight down, 0..PI on either side
+      const a = Math.acos(Math.max(-1, Math.min(1, dy / (r || 1))));
+      if (r < 4.6 || r > 6.9 || a > 2.75 || a < 0.3) continue;
+      const leaf = (a * 3.2) % 1;
+      if (r > 5.9 && leaf < 0.3) continue;
+      g.set(x, y, r > 5.8 ? (leaf > 0.65 ? PAL.yellow : PAL.gold) : r < 5.2 ? PAL.rust : PAL.gold);
+    }
+  // obelisk of the trials
+  g.poly(
+    [
+      [8, 4.5],
+      [9.4, 6],
+      [9.4, 10],
+      [6.6, 10],
+      [6.6, 6],
+    ],
+    (x) => (x < 8 ? '#fff3b0' : PAL.gold),
+  );
+  g.rect(6, 10, 4, 1, PAL.yellow).set(9, 10, PAL.gold);
+  g.rect(5, 11, 6, 1, PAL.gold).set(5, 11, PAL.yellow).set(10, 11, PAL.rust);
+  g.set(8, 7, PAL.rust);
+  // ribbon tying the branches
+  g.set(7, 14, PAL.red).set(8, 14, PAL.darkRed);
+  return done(g, '#2a1a10');
+}
+
 export const UI_ICONS = {
   ui_heart: heart,
   ui_mana: mana,
@@ -234,4 +338,8 @@ export const UI_ICONS = {
   ui_save: saveGlyph,
   ui_sword: swordGlyph,
   ui_shield: shieldGlyph,
+  ui_portal: portalGlyph,
+  ui_paragon: paragonGlyph,
+  ui_craft: craftGlyph,
+  ui_trial: trialGlyph,
 } as const;

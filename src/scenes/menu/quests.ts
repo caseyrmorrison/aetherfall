@@ -1,6 +1,7 @@
 /** Quests tab: journal with objectives, rewards and tracking. */
 import { audio } from '../../audio';
 import { QUESTS } from '../../data/quests';
+import { SKILLS } from '../../data/skills';
 import { drawText } from '../../engine/font';
 import type { Rect } from '../../engine/math';
 import type { QuestState } from '../../game/state';
@@ -15,7 +16,8 @@ export class QuestsTab implements TabView {
 
   private rows(): QuestState[] {
     const qs = Object.values(this.menu.game.save.quests);
-    const rank = (q: QuestState): number => (q.done ? 2 : QUESTS[q.id]?.main ? 0 : 1);
+    const rank = (q: QuestState): number =>
+      q.done ? 3 : QUESTS[q.id]?.main ? 0 : QUESTS[q.id]?.challenge ? 2 : 1;
     return qs.filter((q) => QUESTS[q.id]).sort((a, b) => rank(a) - rank(b));
   }
 
@@ -39,7 +41,7 @@ export class QuestsTab implements TabView {
     if (!this.list.items.length) drawText(ctx, 'No quests yet.', r.x + 4, r.y + 4, { color: UI.dim });
     this.list.draw(ctx, r.x, r.y + 2, listW, (q, x, y) => {
       const def = QUESTS[q.id];
-      const col = q.done ? UI.dim : def.main ? UI.accent : '#ffffff';
+      const col = q.done ? UI.dim : def.main ? UI.accent : def.challenge ? UI.cyan : '#ffffff';
       const mark = q.done ? '✓ ' : q.tracked ? '▶ ' : '';
       drawText(ctx, ellipsize(`${mark}${def.name}`, listW - 8), x, y, { color: col });
     });
@@ -48,7 +50,7 @@ export class QuestsTab implements TabView {
     const def = QUESTS[q.id];
     const lines: string[] = [
       `{gold}${def.name}{/}`,
-      `{gray}${def.main ? 'Main Story' : 'Side Quest'}{/}`,
+      `{gray}${def.main ? 'Main Story' : def.challenge ? 'Challenge' : 'Side Quest'}{/}`,
       '',
       def.summary,
       '',
@@ -69,6 +71,7 @@ export class QuestsTab implements TabView {
     if (rw.elixirs) rewards.push(`${rw.elixirs} Elixir`);
     if (rw.flaskUpgrade) rewards.push('Flask upgrade');
     if (rw.dust) rewards.push(`${rw.dust} dust`);
+    if (rw.skill) rewards.push(`{gold}new skill: ${SKILLS[rw.skill].name}{/}`);
     lines.push('', `Rewards: ${rewards.join(', ')}`);
     drawTooltip(ctx, lines, r.x + listW + 12, r.y + 2, r.w - listW - 12, r.h - 4);
   }

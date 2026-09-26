@@ -12,6 +12,7 @@ import { gem, type GemArtType } from './icons/gems';
 import { material } from './icons/materials';
 import { ITEM_ICONS } from './icons/items';
 import { SKILL_ICONS } from './icons/skills';
+import { EMBLEM_ICONS } from './icons/emblems';
 import { UI_ICONS } from './icons/ui';
 
 const EQUIP: Partial<Record<IconId, (tier: number) => Grid>> = {
@@ -31,7 +32,12 @@ const EQUIP: Partial<Record<IconId, (tier: number) => Grid>> = {
   icon_charm_grand: (t) => charm(material(t), 'grand'),
 };
 
-const OTHER: Partial<Record<IconId, () => Grid>> = { ...ITEM_ICONS, ...SKILL_ICONS, ...UI_ICONS };
+const OTHER: Partial<Record<IconId, () => Grid>> = {
+  ...ITEM_ICONS,
+  ...SKILL_ICONS,
+  ...EMBLEM_ICONS,
+  ...UI_ICONS,
+};
 
 const clampTier = (t: number | undefined) =>
   Math.max(0, Math.min(5, Math.floor(Number.isFinite(t) ? (t as number) : 0)));

@@ -7,7 +7,7 @@ import { Grid, alpha, mix, ramp, sphereLight, type Col } from '../env/raster';
 
 const S = 16;
 
-interface SkillPal {
+export interface SkillPal {
   /** background dark → light */
   bg: readonly [Col, Col, Col];
   /** frame bevel: dark, light */
@@ -16,7 +16,7 @@ interface SkillPal {
   sym: readonly [Col, Col];
 }
 
-function frame(p: SkillPal, octagon: boolean): Grid {
+export function frame(p: SkillPal, octagon: boolean): Grid {
   const g = new Grid(S, S);
   for (let y = 0; y < S; y++)
     for (let x = 0; x < S; x++) {
@@ -39,7 +39,7 @@ function frame(p: SkillPal, octagon: boolean): Grid {
 }
 
 /** Draw a symbol with a 1px drop shadow, clipped to the frame interior. */
-function symbol(g: Grid, draw: (s: Grid) => void, shadow: Col = alpha(PAL.black, 0.6)): Grid {
+export function symbol(g: Grid, draw: (s: Grid) => void, shadow: Col = alpha(PAL.black, 0.6)): Grid {
   const s = new Grid(S, S);
   draw(s);
   for (let y = 0; y < S; y++)
@@ -59,7 +59,7 @@ function inside(x: number, y: number): boolean {
   return x >= 2 && y >= 2 && x <= 13 && y <= 13;
 }
 
-function thick(s: Grid, pts: readonly [number, number][], edge: Col, core: Col): void {
+export function thick(s: Grid, pts: readonly [number, number][], edge: Col, core: Col): void {
   for (let i = 0; i + 1 < pts.length; i++) {
     const [ax, ay] = pts[i];
     const [bx, by] = pts[i + 1];
@@ -115,6 +115,26 @@ const P = {
     bg: [PAL.deepTeal, PAL.forest, PAL.darkGreen],
     rim: [PAL.rust, PAL.gold],
     sym: [PAL.gold, PAL.yellow],
+  },
+  shadow: {
+    bg: [PAL.black, '#2b1d45', '#553785'],
+    rim: [PAL.purple, '#b8a0ff'],
+    sym: ['#b8a0ff', PAL.white],
+  },
+  quake: {
+    bg: [PAL.plum, PAL.rust, PAL.orangeBrown],
+    rim: [PAL.darkBrown, PAL.orange],
+    sym: [PAL.orange, PAL.yellow],
+  },
+  blizzard: {
+    bg: [PAL.navy, PAL.blue, PAL.sky],
+    rim: [PAL.darkSlate, PAL.lightGray],
+    sym: ['#9fdcf7', PAL.white],
+  },
+  blood: {
+    bg: [PAL.black, PAL.plum, PAL.darkRed],
+    rim: [PAL.plum, PAL.red],
+    sym: [PAL.red, '#ffb3b8'],
   },
 } satisfies Record<string, SkillPal>;
 
@@ -341,6 +361,143 @@ function passiveGuard(): Grid {
   });
 }
 
+/** Reverse-grip dagger pointing down, centred on column cx. */
+function downDagger(
+  s: Grid,
+  cx: number,
+  c: { lit: Col; core: Col; shade: Col; guard: Col; grip: Col; pommel: Col },
+): void {
+  s.set(cx, 2, c.pommel).vline(cx, 3, 4, c.grip);
+  s.hline(cx - 2, cx + 2, 5, c.guard)
+    .set(cx - 2, 4, c.guard)
+    .set(cx + 2, 4, c.guard);
+  for (let y = 6; y <= 10; y++)
+    s.set(cx - 1, y, c.lit)
+      .set(cx, y, c.core)
+      .set(cx + 1, y, c.shade);
+  s.set(cx - 1, 11, c.lit).vline(cx, 11, 13, c.core);
+}
+
+function shadowstep(): Grid {
+  const p = P.shadow;
+  const VIO = '#8f6ad6';
+  const echo = (a: number) => ({
+    lit: alpha(VIO, a),
+    core: alpha(p.sym[0], a),
+    shade: alpha(VIO, a * 0.8),
+    guard: alpha(VIO, a),
+    grip: alpha(VIO, a * 0.8),
+    pommel: alpha(VIO, a),
+  });
+  return symbol(frame(p, false), (s) => {
+    // fading afterimages left behind by the blink
+    downDagger(s, 4, echo(0.35));
+    downDagger(s, 7, echo(0.6));
+    s.set(2, 12, alpha(VIO, 0.5)).set(5, 3, alpha(p.sym[0], 0.4));
+    downDagger(s, 11, {
+      lit: p.sym[1],
+      core: '#e8e0ff',
+      shade: p.sym[0],
+      guard: PAL.magenta,
+      grip: PAL.purple,
+      pommel: '#d9c8ff',
+    });
+    s.set(11, 13, p.sym[1]).set(9, 4, '#ff9ecb').set(13, 4, PAL.magenta);
+  });
+}
+
+function earthshatter(): Grid {
+  const p = P.quake;
+  return symbol(frame(p, false), (s) => {
+    // x=2..13; the fissure opens between two slabs heaved up toward it
+    s.stamp(
+      [
+        '......s.....',
+        '......d.st..',
+        '..st...sttb.',
+        '..bd....bbd.',
+        '.......Y.d..',
+        '.....o....t.',
+        '.....s....d.',
+        '...sstYO....',
+        '.ssttdkYss..',
+        'sttbbdYkdtss',
+        'tbbdddkOdbtt',
+        'bdddppRppddb',
+      ],
+      {
+        s: PAL.sand,
+        t: PAL.tan,
+        b: PAL.brown,
+        d: PAL.darkBrown,
+        p: PAL.plum,
+        y: PAL.yellow,
+        o: alpha(PAL.orange, 0.8),
+        Y: PAL.yellow,
+        O: PAL.orange,
+        R: PAL.darkRed,
+        k: PAL.darkRed,
+      },
+      2,
+      2,
+    );
+  });
+}
+
+function blizzard(): Grid {
+  const p = P.blizzard;
+  return symbol(frame(p, false), (s) => {
+    const C = [PAL.gray, PAL.lightGray, '#e8eef6', PAL.white] as const;
+    const cloud = (x: number, y: number, nx: number, ny: number) =>
+      y > 6 ? C[0] : ramp(C, sphereLight(nx, ny, 0.4) + 0.1, x, y, 0.2);
+    s.ellipse(5.5, 5.5, 2.6, 2.2, cloud).ellipse(9, 4.5, 3, 2.6, cloud).ellipse(11.5, 6, 2, 1.6, cloud);
+    s.hline(4, 12, 7, C[0]);
+    // wind-driven ice shards falling down-left
+    for (const [x, y] of [
+      [3, 11],
+      [7, 10],
+      [11, 10],
+      [5, 13],
+      [9, 13],
+    ] as const)
+      s.set(x, y, p.sym[1])
+        .set(x + 1, y - 1, p.sym[0])
+        .set(x + 2, y - 2, alpha(p.sym[0], 0.45));
+    s.set(13, 12, PAL.white).set(2, 9, alpha(PAL.white, 0.8)).set(12, 13, alpha(PAL.cyan, 0.9));
+  });
+}
+
+function bloodrite(): Grid {
+  const p = P.blood;
+  return symbol(frame(p, false), (s) => {
+    // rune circle behind the drop, with four glowing ticks
+    for (let y = 2; y <= 13; y++)
+      for (let x = 2; x <= 13; x++) {
+        const d = Math.hypot(x + 0.5 - 8, y + 0.5 - 8);
+        if (Math.abs(d - 5.4) < 0.5) s.set(x, y, alpha(PAL.hotPink, 0.55));
+      }
+    s.set(7, 2, PAL.gold).set(8, 2, PAL.gold).set(2, 7, PAL.gold).set(2, 8, PAL.gold);
+    s.set(13, 7, PAL.gold).set(13, 8, PAL.gold).set(7, 13, PAL.gold).set(8, 13, PAL.gold);
+    const D = [PAL.darkRed, PAL.red, PAL.red, PAL.pink] as const;
+    for (let y = 2; y < 14; y++)
+      for (let x = 3; x < 13; x++) {
+        const px = x + 0.5;
+        const py = y + 0.5;
+        const inDrop =
+          Math.hypot(px - 8, py - 9.3) < 3.6 ||
+          (py > 2.5 && py < 9.3 && Math.abs(px - 8) < (py - 2.5) * 0.52);
+        if (inDrop) s.set(x, y, ramp(D, sphereLight((px - 8) / 4, (py - 9) / 4.5, 0.2), x, y, 0.3));
+      }
+    // glowing rune carved into the drop
+    s.vline(8, 8, 11, PAL.yellow)
+      .set(7, 9, PAL.gold)
+      .set(6, 8, PAL.gold)
+      .set(9, 9, PAL.gold)
+      .set(10, 8, PAL.gold);
+    s.set(8, 8, '#fff3b0').set(6, 6, PAL.white).set(7, 5, '#ffd0d4');
+  });
+}
+
 export const SKILL_ICONS = {
   skill_slash: slash,
   skill_whirlwind: whirlwind,
@@ -354,4 +511,8 @@ export const SKILL_ICONS = {
   passive_blade: passiveBlade,
   passive_arcane: passiveArcane,
   passive_guard: passiveGuard,
+  skill_shadowstep: shadowstep,
+  skill_earthshatter: earthshatter,
+  skill_blizzard: blizzard,
+  skill_bloodrite: bloodrite,
 } as const;

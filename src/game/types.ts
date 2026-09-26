@@ -173,7 +173,7 @@ export interface Item {
   sockets?: (Gem | null)[];
 }
 
-export type ConsumableId = 'elixir' | 'phoenix' | 'tonic_might' | 'tonic_guard';
+export type ConsumableId = 'elixir' | 'phoenix' | 'tonic_might' | 'tonic_guard' | 'tonic_fortune';
 export type MaterialId = 'dust' | 'herb' | 'pelt' | 'crystal' | 'ember' | 'frost' | 'void';
 
 export interface ConsumableDef {

@@ -2,7 +2,15 @@
 import { audio } from '../audio';
 import { ENEMIES } from '../data/enemies';
 import { MATERIALS } from '../data/items';
-import { QUESTS, SIDE_QUESTS, type Objective, type QuestDef, type QuestReward } from '../data/quests';
+import {
+  CHALLENGES,
+  QUESTS,
+  SIDE_QUESTS,
+  type Objective,
+  type QuestDef,
+  type QuestReward,
+} from '../data/quests';
+import { SKILLS } from '../data/skills';
 import { ZONES, ZONE_ORDER } from '../data/zones';
 import { rng } from '../engine/rng';
 import { MAX_FLASK_UPGRADES } from './balance';
@@ -79,6 +87,7 @@ export class QuestSystem {
     if (!o) return '';
     if (o.type === 'kill') return `${Math.min(q.progress, o.count)}/${o.count}`;
     if (o.type === 'collect') return `${Math.min(this.save.materials[o.material] ?? 0, o.count)}/${o.count}`;
+    if (o.type === 'counter') return `best ${Math.min(this.save.flags[o.counter] ?? 0, o.count)}/${o.count}`;
     return '';
   }
 
@@ -104,6 +113,7 @@ export class QuestSystem {
   private alreadySatisfied(o: Objective): boolean {
     if (o.type === 'boss') return hasFlag(this.save, `boss_${o.boss}`);
     if (o.type === 'flag') return hasFlag(this.save, o.flag);
+    if (o.type === 'counter') return (this.save.flags[o.counter] ?? 0) >= o.count;
     return false;
   }
 
@@ -146,6 +156,13 @@ export class QuestSystem {
       );
     }
     for (const f of r.flags ?? []) setFlag(s, f);
+    if (r.skill && !s.hero.skills[r.skill]) {
+      s.hero.skills[r.skill] = 1;
+      const free = s.hero.slots.indexOf(null);
+      if (free >= 0) s.hero.slots[free] = r.skill;
+      audio.playSfx('stinger_legendary');
+      g.toast(`New skill learned: {gold}${SKILLS[r.skill].name}{/}`, SKILLS[r.skill].icon);
+    }
     if (r.xp) g.giveXp(r.xp);
   }
 
@@ -185,6 +202,24 @@ export class QuestSystem {
     for (const q of this.active()) {
       const o = this.objective(q);
       if (o?.type === 'flag' && o.flag === flag) this.advance(q);
+    }
+  }
+
+  /** Counter objectives (streaks, records) complete once the number is reached. */
+  checkCounters(): void {
+    for (const q of this.active()) {
+      const o = this.objective(q);
+      if (o?.type === 'counter' && (this.save.flags[o.counter] ?? 0) >= o.count) this.advance(q);
+    }
+  }
+
+  /** Start any challenge whose requirement has been met. */
+  checkChallenges(): void {
+    for (const def of CHALLENGES) {
+      if (this.save.quests[def.id] || (def.requires && !hasFlag(this.save, def.requires))) continue;
+      this.start(def.id, true);
+      audio.playSfx('quest_accept');
+      this.game.toast(`New challenge: {gold}${def.name.replace('Challenge: ', '')}{/}`, 'ui_skull');
     }
   }
 
@@ -309,6 +344,8 @@ export class QuestSystem {
         return { map: o.zone };
       case 'flag':
         return o.map ? { map: o.map } : null;
+      case 'counter':
+        return null;
     }
   }
 }

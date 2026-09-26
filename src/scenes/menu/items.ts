@@ -57,6 +57,11 @@ export class ItemsTab implements TabView {
         g.invalidateStats();
         audio.playSfx('potion');
         break;
+      case 'tonic_fortune':
+        g.buffs.fortune = 300;
+        g.invalidateStats();
+        audio.playSfx('potion');
+        break;
       case 'phoenix':
         audio.playSfx('ui_error');
         g.toast('Phoenix Feathers activate automatically when you fall.', 'icon_phoenix');
@@ -104,12 +109,16 @@ export class ItemsTab implements TabView {
       drawTooltip(ctx, lines, r.x + listW + 12, r.y + 2, r.w - listW - 12);
     }
     const g = this.menu.game;
-    let y = r.y + r.h - 30;
+    let y = r.y + r.h - 40;
     if (g.buffs.might > 0) {
       drawText(ctx, `Might: ${Math.ceil(g.buffs.might)}s`, r.x + listW + 16, y, { color: UI.bad });
       y += 10;
     }
-    if (g.buffs.guard > 0)
+    if (g.buffs.guard > 0) {
       drawText(ctx, `Guarding: ${Math.ceil(g.buffs.guard)}s`, r.x + listW + 16, y, { color: UI.mana });
+      y += 10;
+    }
+    if (g.buffs.fortune > 0)
+      drawText(ctx, `Fortune: ${Math.ceil(g.buffs.fortune)}s`, r.x + listW + 16, y, { color: UI.accent });
   }
 }

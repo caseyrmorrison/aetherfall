@@ -6,9 +6,11 @@ import type { SkillId } from '../data/skills';
 import { SKILLS, SKILL_ORDER } from '../data/skills';
 import { MAX_LEVEL, xpToNext } from './balance';
 import { equipTargetFor } from './items';
+import { newAscendancy, type AscendancyState } from './ascendancy';
+import { newParagon, paragonXpToNext, type ParagonState } from './paragon';
 import type { ConsumableId, Difficulty, EquipSlot, Item, MaterialId } from './types';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface QuestState {
   id: string;
@@ -47,6 +49,8 @@ export interface HeroState {
   flaskHp: number;
   flaskMp: number;
   flaskUpgrades: number;
+  /** Levels past the cap (Diablo 3 style). */
+  paragon: ParagonState;
 }
 
 export interface SaveData {
@@ -85,6 +89,12 @@ export interface SaveData {
   };
   droppedGold: { map: string; x: number; y: number; amount: number } | null;
   shop: { stock: Item[]; refreshedAt: number };
+  /** Torment tier (0 = off) stacked on Nightmare after the story is beaten. */
+  torment: number;
+  /** Where an open town portal leads back to (null = none open). */
+  townPortal: { map: string; x: number; y: number } | null;
+  /** Ascendancy class, trials and notables (Path of Exile 2 style). */
+  ascendancy: AscendancyState;
 }
 
 export const INVENTORY_SIZE = 60;
@@ -117,6 +127,7 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
       flaskHp: BASE_FLASK_HP,
       flaskMp: BASE_FLASK_MP,
       flaskUpgrades: 0,
+      paragon: newParagon(),
     },
     inventory: [],
     equipment: {
@@ -154,6 +165,9 @@ export function newGame(slot: number, name: string, difficulty: Difficulty): Sav
     },
     droppedGold: null,
     shop: { stock: [], refreshedAt: 0 },
+    torment: 0,
+    townPortal: null,
+    ascendancy: newAscendancy(),
   };
 }
 
@@ -172,13 +186,24 @@ export function setFlag(s: SaveData, f: string, v = 1): void {
 export interface LevelUpResult {
   levels: number;
   newSkills: SkillId[];
+  /** Paragon levels gained (XP past the level cap). */
+  paragonLevels: number;
 }
 
 /** Grant XP; handles multiple level-ups, skill points and skill unlocks. */
 export function grantXp(s: SaveData, amount: number): LevelUpResult {
   const h = s.hero;
-  const result: LevelUpResult = { levels: 0, newSkills: [] };
-  if (h.level >= MAX_LEVEL) return result;
+  const result: LevelUpResult = { levels: 0, newSkills: [], paragonLevels: 0 };
+  if (h.level >= MAX_LEVEL) {
+    const p = h.paragon;
+    p.xp += Math.max(0, Math.round(amount));
+    while (p.xp >= paragonXpToNext(p.level)) {
+      p.xp -= paragonXpToNext(p.level);
+      p.level++;
+      result.paragonLevels++;
+    }
+    return result;
+  }
   h.xp += Math.max(0, Math.round(amount));
   while (h.level < MAX_LEVEL && h.xp >= xpToNext(h.level)) {
     h.xp -= xpToNext(h.level);
@@ -186,7 +211,7 @@ export function grantXp(s: SaveData, amount: number): LevelUpResult {
     h.skillPoints++;
     result.levels++;
     for (const id of SKILL_ORDER) {
-      if (SKILLS[id].unlockLevel === h.level && !h.skills[id]) {
+      if (!SKILLS[id].challenge && SKILLS[id].unlockLevel === h.level && !h.skills[id]) {
         h.skills[id] = 1;
         result.newSkills.push(id);
         const free = h.slots.indexOf(null);
@@ -201,7 +226,8 @@ export function grantXp(s: SaveData, amount: number): LevelUpResult {
 /** Skills unlocked by level that the hero is missing (e.g. after loading an old save). */
 export function syncUnlockedSkills(s: SaveData): void {
   for (const id of SKILL_ORDER) {
-    if (SKILLS[id].unlockLevel <= s.hero.level && !s.hero.skills[id]) s.hero.skills[id] = 1;
+    const def = SKILLS[id];
+    if (!def.challenge && def.unlockLevel <= s.hero.level && !s.hero.skills[id]) s.hero.skills[id] = 1;
   }
 }
 
@@ -304,7 +330,7 @@ export function migrate(raw: unknown): SaveData | null {
   const merged: SaveData = {
     ...base,
     ...s,
-    hero: { ...base.hero, ...s.hero },
+    hero: { ...base.hero, ...s.hero, paragon: { ...base.hero.paragon, ...(s.hero.paragon ?? {}) } },
     stats: { ...base.stats, ...(s.stats ?? {}) },
     shop: s.shop ?? base.shop,
     version: SAVE_VERSION,
@@ -318,6 +344,9 @@ export function migrate(raw: unknown): SaveData | null {
   merged.equipment = { ...base.equipment, ...eq } as Record<EquipSlot, Item | null>;
   // v2 -> v3: the gem pouch (added by the base merge above when missing)
   merged.gems = { ...(s.gems ?? {}) };
+  // v3 -> v4: paragon (merged into hero above), Torment, town portal and ascendancy
+  merged.ascendancy = { ...base.ascendancy, ...(s.ascendancy ?? {}) };
+  merged.torment = s.torment ?? 0;
   syncUnlockedSkills(merged);
   return merged;
 }

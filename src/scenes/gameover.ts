@@ -2,7 +2,6 @@
 import { audio } from '../audio';
 import type { Scene } from '../engine/app';
 import { drawText } from '../engine/font';
-import { DIFFICULTY } from '../game/balance';
 import type { Game } from '../game/game';
 import { ListView, UI } from '../ui/widgets';
 import type { WorldScene } from './world-scene';
@@ -63,7 +62,7 @@ export class GameOverScene implements Scene {
       scale: 3,
       alpha: a,
     });
-    const loss = DIFFICULTY[this.game.save.difficulty].goldLossOnDeath;
+    const loss = this.game.difficulty.goldLossOnDeath;
     drawText(
       ctx,
       loss > 0

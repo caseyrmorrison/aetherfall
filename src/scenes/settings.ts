@@ -3,7 +3,8 @@ import { audio } from '../audio';
 import type { Scene } from '../engine/app';
 import { drawText } from '../engine/font';
 import { ACTION_LABELS, DEFAULT_KEYS, keyLabel, REBINDABLE, type Action } from '../engine/input';
-import { DIFFICULTY } from '../game/balance';
+import { DIFFICULTY, MAX_TORMENT } from '../game/balance';
+import { hasFlag } from '../game/state';
 import type { Game } from '../game/game';
 import type { Settings, TextSpeed } from '../game/settings';
 import type { Difficulty } from '../game/types';
@@ -49,17 +50,23 @@ export class SettingsScene implements Scene {
       {
         kind: 'choice',
         label: 'Difficulty',
-        get: () => DIFFICULTY[game.hasSave ? game.save.difficulty : s().difficulty].label,
+        get: () => (game.hasSave ? game.difficulty.label : DIFFICULTY[s().difficulty].label),
         cycle: (d) => {
+          // after the story, Nightmare continues into Torment I-VI
+          const torment = game.hasSave && hasFlag(game.save, 'game_clear') ? MAX_TORMENT : 0;
+          const n = DIFFS.length + torment;
           const cur = game.hasSave ? game.save.difficulty : s().difficulty;
-          const next = DIFFS[(DIFFS.indexOf(cur) + d + DIFFS.length) % DIFFS.length];
+          const curIdx = DIFFS.indexOf(cur) + (game.hasSave && cur === 'nightmare' ? game.save.torment : 0);
+          const idx = (curIdx + d + n) % n;
+          const next = DIFFS[Math.min(idx, DIFFS.length - 1)];
           if (game.hasSave) {
             game.save.difficulty = next;
+            game.save.torment = Math.max(0, idx - (DIFFS.length - 1));
             game.invalidateStats();
           }
           s().difficulty = next;
         },
-        help: 'Change any time. Harder difficulties drop better loot.',
+        help: 'Change any time. Harder difficulties drop better loot. Beat the story to unlock Torment.',
       },
       {
         kind: 'choice',

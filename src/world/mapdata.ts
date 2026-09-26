@@ -13,6 +13,9 @@ export const CELL = {
 } as const;
 export type Cell = (typeof CELL)[keyof typeof CELL];
 
+/** Id of the town-side portal that leads back to where a town portal was opened. */
+export const TOWN_PORTAL_ID = 'town_portal';
+
 /** Ground kinds for floor cells. */
 export const GROUND = { Floor: 0, Alt: 1, Path: 2 } as const;
 
@@ -56,6 +59,8 @@ export type MapObject =
       requires?: { flag: string; message: string };
     }
   | { kind: 'marker'; id: string; x: number; y: number }
+  /** The Statue of the First Hero: Trials of Ascension. */
+  | { kind: 'trial'; id: string; x: number; y: number }
   | { kind: 'board'; id: string; x: number; y: number };
 
 export interface EnemySpawn {

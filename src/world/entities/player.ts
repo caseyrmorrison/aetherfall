@@ -31,6 +31,8 @@ interface Swing {
 }
 
 export const STAMINA_MAX = 100;
+/** Spells that Spell Echo can repeat. */
+const ECHO_SKILLS: readonly SkillId[] = ['fireball', 'frostnova', 'lightning', 'meteor', 'blizzard'];
 const ROLL_COST = 28;
 const ROLL_TIME = 0.32;
 const ROLL_IFRAMES = 0.26;
@@ -64,6 +66,16 @@ export class Player extends Actor {
   blades: { t: number; count: number; angle: number; mult: number; hitCd: Map<Enemy, number> } | null = null;
   hot: { t: number; perSec: number } | null = null;
   lastStandCd = 0;
+  /** Riposte: hits left that are guaranteed crits. */
+  guaranteedCrits = 0;
+  /** Shadow Veil: time left for the empowered hit after a roll. */
+  veilT = 0;
+  /** Retaliation cooldown. */
+  retaliateCd = 0;
+  /** Spell Echo: a skill about to be cast again for free. */
+  echoCast: { id: SkillId; rank: number; t: number } | null = null;
+  /** Juggernaut: enemies already smashed by the current roll. */
+  private rollHits = new Set<Enemy>();
   phoenixUsed = false;
   seraphCd = 0;
   surgeInvuln = 0;
@@ -129,6 +141,17 @@ export class Player extends Actor {
     this.surgeInvuln = Math.max(0, this.surgeInvuln - dt);
     this.flaskCd = Math.max(0, this.flaskCd - dt);
     this.lastStandCd = Math.max(0, this.lastStandCd - dt);
+    this.veilT = Math.max(0, this.veilT - dt);
+    this.retaliateCd = Math.max(0, this.retaliateCd - dt);
+    if (this.echoCast) {
+      this.echoCast.t -= dt;
+      if (this.echoCast.t <= 0 && this.state !== 'dead') {
+        const { id, rank } = this.echoCast;
+        this.echoCast = null;
+        world.popText(this.x, this.y - 26, 'Echo!', '#2ce8f5', { small: true });
+        castSkill(world, this, id, rank);
+      }
+    }
     this.seraphCd = Math.max(0, this.seraphCd - dt);
     this.attackBuffer = Math.max(0, this.attackBuffer - dt);
     this.dodgeBuffer = Math.max(0, this.dodgeBuffer - dt);
@@ -145,6 +168,8 @@ export class Player extends Actor {
     // regen (out-of-combat bonus)
     const regenMult = world.inCombat ? 1 : 3;
     this.regenAcc += st.hpRegen * regenMult * dt;
+    // Blood and Iron: regenerate fast when badly hurt
+    if (st.asc.has('wb_bloodiron') && this.hp < this.maxHp * 0.35) this.regenAcc += this.maxHp * 0.02 * dt;
     if (this.hot) {
       this.regenAcc += this.hot.perSec * dt;
       this.hot.t -= dt;
@@ -157,7 +182,8 @@ export class Player extends Actor {
     }
     this.mp = Math.min(this.maxMp, this.mp + st.mpRegen * regenMult * dt);
     this.staminaDelay -= dt;
-    if (this.staminaDelay <= 0) this.stamina = Math.min(STAMINA_MAX, this.stamina + 55 * dt);
+    if (this.staminaDelay <= 0)
+      this.stamina = Math.min(STAMINA_MAX, this.stamina + 55 * (1 + st.passives.staminaRegen) * dt);
 
     const dot = this.tickStatuses(dt);
     if (dot > 0) world.hurtPlayerRaw(dot, true);
@@ -175,6 +201,7 @@ export class Player extends Actor {
       if (input.pressed('potionHp')) this.drinkFlask(world, 'hp');
       if (input.pressed('potionMp')) this.drinkFlask(world, 'mp');
       if (input.pressed('ultimate')) world.tryUltimate();
+      if (input.pressed('townPortal')) world.startTownPortal();
       for (let i = 0; i < 4; i++) {
         if (input.pressed(`skill${i + 1}` as 'skill1')) this.trySkill(world, hero.slots[i]);
       }
@@ -228,6 +255,13 @@ export class Player extends Actor {
         wantVY = Math.sin(this.rollAngle) * sp;
         if (this.stateT > 0.04 && Math.floor(this.stateT / 0.05) !== Math.floor((this.stateT - dt) / 0.05))
           this.pushTrail(0.5);
+        // Juggernaut: rolls smash through enemies
+        if (st.asc.has('wb_juggernaut'))
+          for (const e of world.enemiesNear(this.x, this.y, 16)) {
+            if (this.rollHits.has(e)) continue;
+            this.rollHits.add(e);
+            world.playerHit(e, { power: 'atk', mult: 1.2, knock: 160, dir: this.rollAngle, heavy: true });
+          }
         if (this.stateT >= ROLL_TIME) {
           this.state = 'free';
           if (this.attackBuffer > 0) this.startSwing(world);
@@ -360,7 +394,8 @@ export class Player extends Actor {
       combo: this.combo,
       hit: new Set(),
       fired: false,
-      echo: world.game.stats().legendaries.has('echo_blade'),
+      // Echo of the First Hero echoes every swing; Flowing Steel echoes the combo finisher
+      echo: st.legendaries.has('echo_blade') || (third && st.asc.has('bm_flowing')),
     };
     this.state = 'attack';
     this.stateT = 0;
@@ -382,7 +417,18 @@ export class Player extends Actor {
     }
     audio.playSfx(kind === 'greatsword' ? 'swing_heavy' : kind === 'dagger' ? 'swing_light' : 'swing');
     world.addSlash(this, sw.aim, sw.arc, sw.range, sw.combo, kind);
-    if (sw.combo === 3 && world.game.stats().legendaries.has('dragonbreath')) world.fireWave(this, sw.aim);
+    const st = world.game.stats();
+    if (sw.combo === 3) {
+      if (st.legendaries.has('dragonbreath')) world.fireWave(this, sw.aim);
+      if (st.passives.bladeStorm) world.slashGale(this, sw.aim, 0.7);
+      if (st.asc.has('wb_earthshaker'))
+        world.shockwave(
+          this.x + Math.cos(sw.aim) * sw.range * 0.7,
+          this.y + Math.sin(sw.aim) * sw.range * 0.7,
+          40,
+          0.7,
+        );
+    }
     if (sw.echo) world.echoSlash(this, sw.aim, sw.arc, sw.range, sw.mult * 0.6, sw.knock);
   }
 
@@ -418,6 +464,8 @@ export class Player extends Actor {
     this.swing = null;
     this.dodgeBuffer = 0;
     this.perfectUsed = false;
+    this.rollHits.clear();
+    if (st.asc.has('sb_veil')) this.veilT = ROLL_TIME + 1.5;
     audio.playSfx('dodge');
     world.particles.emit(this.x, this.y, {
       count: 6,
@@ -442,25 +490,42 @@ export class Player extends Actor {
       audio.playSfx('ui_error', { volume: 0.5 });
       return;
     }
-    if (this.mp < def.mp) {
+    const st = world.game.stats();
+    const cost = Math.round(def.mp * (1 - Math.min(0.5, st.passives.mpCost)));
+    if (this.mp < cost) {
       audio.playSfx('no_mana');
       world.popText(this.x, this.y - 22, 'Not enough MP', '#0099db', { small: true });
       return;
     }
-    const st = world.game.stats();
-    this.mp -= def.mp;
-    this.cooldowns[id] = skillCooldown(def, rank) * (1 - st.cdr);
+    if (def.hpCost && this.hp <= this.maxHp * def.hpCost + 1) {
+      audio.playSfx('ui_error', { volume: 0.5 });
+      world.popText(this.x, this.y - 22, 'Not enough HP', '#e43b44', { small: true });
+      return;
+    }
+    this.mp -= cost;
+    this.cooldowns[id] = this.skillCooldownFor(id, world);
     this.swing = null;
     this.state = 'cast';
     this.stateT = 0;
     this.castT = 0.18;
     this.aim = this.assistedAim(world, 180, 0.6);
     castSkill(world, this, id, rank);
+    // Spell Echo: some spells may fire a second time
+    if (st.asc.has('am_echo') && ECHO_SKILLS.includes(id) && Math.random() < 0.25)
+      this.echoCast = { id, rank, t: 0.3 };
+  }
+
+  /** A skill's full cooldown with Cooldown Reduction and notables applied. */
+  skillCooldownFor(id: SkillId, world: World): number {
+    const st = world.game.stats();
+    const rank = world.game.save.hero.skills[id] ?? 1;
+    let cd = skillCooldown(SKILLS[id], rank) * (1 - st.cdr);
+    if (id === 'slash' && st.asc.has('bm_saint')) cd *= 0.5;
+    return cd;
   }
 
   cooldownFrac(id: SkillId, world: World): number {
-    const rank = world.game.save.hero.skills[id] ?? 1;
-    const total = skillCooldown(SKILLS[id], rank) * (1 - world.game.stats().cdr);
+    const total = this.skillCooldownFor(id, world);
     return total > 0 ? (this.cooldowns[id] ?? 0) / total : 0;
   }
 
@@ -519,6 +584,11 @@ export class Player extends Actor {
     const hero = world.game.save.hero;
     const st = world.game.stats();
     if (this.flaskCd > 0 || this.state === 'dead') return;
+    if (world.trial?.noFlasks && !world.trial.done) {
+      audio.playSfx('ui_error');
+      world.popText(this.x, this.y - 22, 'No Respite: flasks are sealed', '#e43b44', { small: true });
+      return;
+    }
     if (kind === 'hp') {
       if (hero.flaskHp <= 0) {
         audio.playSfx('ui_error');
@@ -527,6 +597,7 @@ export class Player extends Actor {
       }
       if (this.hp >= this.maxHp) return;
       hero.flaskHp--;
+      world.noteFlask();
       const amt = Math.round(this.maxHp * 0.45 * st.flaskPotency);
       this.hp = Math.min(this.maxHp, this.hp + amt);
       world.popText(this.x, this.y - 20, `+${amt}`, '#63c74d');

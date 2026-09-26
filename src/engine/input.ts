@@ -27,7 +27,8 @@ export type Action =
   | 'tabPrev'
   | 'tabNext'
   | 'menuAlt'
-  | 'menuAlt2';
+  | 'menuAlt2'
+  | 'townPortal';
 
 export const ACTIONS: readonly Action[] = [
   'up',
@@ -53,6 +54,7 @@ export const ACTIONS: readonly Action[] = [
   'tabNext',
   'menuAlt',
   'menuAlt2',
+  'townPortal',
 ];
 
 /** Actions shown (and rebindable) in the controls menu. */
@@ -71,6 +73,7 @@ export const REBINDABLE: readonly Action[] = [
   'ultimate',
   'potionHp',
   'potionMp',
+  'townPortal',
   'menu',
   'map',
   'pause',
@@ -100,6 +103,7 @@ export const ACTION_LABELS: Record<Action, string> = {
   tabNext: 'Next Tab',
   menuAlt: 'Menu Action',
   menuAlt2: 'Menu Action 2',
+  townPortal: 'Town Portal',
 };
 
 export type KeyBindings = Record<Action, string[]>;
@@ -128,6 +132,7 @@ export const DEFAULT_KEYS: KeyBindings = {
   tabNext: ['KeyE', 'PageDown'],
   menuAlt: ['KeyX'],
   menuAlt2: ['KeyC'],
+  townPortal: ['KeyT'],
 };
 
 // Standard gamepad button indices
@@ -155,6 +160,7 @@ const PAD: Record<Action, number[]> = {
   tabNext: [5],
   menuAlt: [2],
   menuAlt2: [3],
+  townPortal: [10],
 };
 
 export const PAD_LABELS: Record<number, string> = {
@@ -168,6 +174,8 @@ export const PAD_LABELS: Record<number, string> = {
   7: 'RT',
   8: 'SEL',
   9: 'START',
+  10: 'L3',
+  11: 'R3',
   12: 'UP',
   13: 'DOWN',
   14: 'LEFT',

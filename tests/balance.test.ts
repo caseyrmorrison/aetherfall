@@ -53,15 +53,15 @@ describe('damage', () => {
 
   it('defense reduces damage but is capped', () => {
     expect(defenseReduction(0, 10)).toBe(0);
-    expect(defenseReduction(1e9, 10)).toBeLessThanOrEqual(0.8);
+    expect(defenseReduction(1e9, 10)).toBeLessThanOrEqual(0.75);
     expect(computeDamage({ ...base, defenderDef: 200 }).amount).toBeLessThan(computeDamage(base).amount);
   });
 
   it('level difference matters in both directions', () => {
     expect(levelDiffMod(15, 10)).toBeGreaterThan(1);
     expect(levelDiffMod(5, 10)).toBeLessThan(1);
-    expect(levelDiffMod(100, 1)).toBeLessThanOrEqual(1.5);
-    expect(levelDiffMod(1, 100)).toBeGreaterThanOrEqual(0.5);
+    expect(levelDiffMod(100, 1)).toBeLessThanOrEqual(1.3);
+    expect(levelDiffMod(1, 100)).toBeGreaterThanOrEqual(0.6);
   });
 });
 

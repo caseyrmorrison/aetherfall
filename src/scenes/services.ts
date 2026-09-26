@@ -1,6 +1,6 @@
 /** Town services: Mira's shop, Brom's forge, the bounty board, the inn and talent respec. */
 import { audio } from '../audio';
-import { CONSUMABLES } from '../data/items';
+import { CONSUMABLES, SHOP_CONSUMABLES } from '../data/items';
 import { ENEMIES } from '../data/enemies';
 import type { Service } from '../data/npcs';
 import { ZONES } from '../data/zones';
@@ -42,6 +42,7 @@ import {
   UI,
 } from '../ui/widgets';
 import { ConfirmScene } from './confirm';
+import { CraftView } from './craft-view';
 import type { WorldScene } from './world-scene';
 
 export function openService(game: Game, ws: WorldScene, kind: Service): void {
@@ -175,8 +176,9 @@ type SupplyRow = { kind: 'consumable'; id: ConsumableId } | { kind: 'flask' } | 
 export const mysteryCharmPrice = (level: number): number => 120 + level * 35;
 
 export class ShopScene extends TabbedService {
-  tabs = ['Buy', 'Sell', 'Supplies'];
+  tabs = ['Buy', 'Sell', 'Supplies', 'Brew'];
   title = "Mira's Curios";
+  private brew: CraftView;
   private buy: ListView<Item>;
   private sell: ListView<Item>;
   private supplies: ListView<SupplyRow>;
@@ -184,13 +186,14 @@ export class ShopScene extends TabbedService {
   constructor(game: Game) {
     super(game);
     this.refreshStock();
+    this.brew = new CraftView(game, 'alchemy');
     this.buy = new ListView(game.save.shop.stock, 12, 14, false);
     this.sell = new ListView(this.sellable(), 12, 14, false);
     this.supplies = new ListView<SupplyRow>(
       [
         { kind: 'flask' },
         { kind: 'charm' },
-        ...(Object.keys(CONSUMABLES) as ConsumableId[]).map((id) => ({ kind: 'consumable' as const, id })),
+        ...SHOP_CONSUMABLES.map((id) => ({ kind: 'consumable' as const, id })),
       ],
       14,
       8,
@@ -225,10 +228,18 @@ export class ShopScene extends TabbedService {
     return this.game.save.inventory.filter((i) => !i.locked);
   }
 
+  protected override onTab(): void {
+    this.brew.reset();
+  }
+
   update(): void {
     const input = this.game.app.input;
     if (this.handleTabs()) return;
     const s = this.game.save;
+    if (this.tab === 3) {
+      if (this.brew.update() === 'cancel') this.close();
+      return;
+    }
     if (this.tab === 0) {
       const r = this.buy.update(input);
       if (r === 'cancel') return this.close();
@@ -332,6 +343,17 @@ export class ShopScene extends TabbedService {
     const s = this.game.save;
     const listW = Math.min(220, f.w - 150);
     const input = this.game.app.input;
+    if (this.tab === 3) {
+      this.brew.render(ctx, f);
+      drawHints(
+        ctx,
+        input,
+        [...this.brew.hints(), ['tabNext', 'Tab'], ['cancel', 'Leave']],
+        f.x + f.w - 6,
+        f.y + f.h - 14,
+      );
+      return;
+    }
     const tipX = f.x + listW + 14;
     const tipW = f.w - listW - 20;
     if (this.tab === 0 || this.tab === 1) {
@@ -447,12 +469,14 @@ export class ShopScene extends TabbedService {
 
 // ----------------------------------------------------------------- smith ----
 export class SmithScene extends TabbedService {
-  tabs = ['Upgrade', 'Salvage', 'Reforge'];
+  tabs = ['Upgrade', 'Salvage', 'Reforge', 'Craft'];
   title = "Brom's Forge";
   private list: ListView<Item>;
+  private crafting: CraftView;
 
   constructor(game: Game) {
     super(game);
+    this.crafting = new CraftView(game, 'forge');
     this.list = new ListView(this.items(), 12, 14, false);
   }
 
@@ -465,6 +489,7 @@ export class SmithScene extends TabbedService {
   }
 
   protected override onTab(): void {
+    this.crafting.reset();
     this.list.setItems(this.items());
   }
 
@@ -476,6 +501,10 @@ export class SmithScene extends TabbedService {
   update(): void {
     const input = this.game.app.input;
     if (this.handleTabs()) return;
+    if (this.tab === 3) {
+      if (this.crafting.update() === 'cancel') this.close();
+      return;
+    }
     this.list.setItems(this.items());
     const r = this.list.update(input);
     if (r === 'cancel') return this.close();
@@ -565,6 +594,17 @@ export class SmithScene extends TabbedService {
     const f = this.frame(ctx);
     const s = this.game.save;
     const input = this.game.app.input;
+    if (this.tab === 3) {
+      this.crafting.render(ctx, f);
+      drawHints(
+        ctx,
+        input,
+        [...this.crafting.hints(), ['tabNext', 'Tab'], ['cancel', 'Leave']],
+        f.x + f.w - 6,
+        f.y + f.h - 14,
+      );
+      return;
+    }
     const listW = Math.min(220, f.w - 150);
     this.list.visibleRows = Math.floor((f.h - 44) / 12);
     const equipped = new Set(EQUIP_SLOTS.map((sl) => s.equipment[sl]?.uid));

@@ -1,7 +1,8 @@
 /** One-time contextual tips (onboarding). Each tip shows once per save, non-blocking. */
 import type { Action } from '../engine/input';
 import { drawText, wrapText } from '../engine/font';
-import { hasFlag, setFlag } from '../game/state';
+import { TRIALS } from '../data/trials';
+import { hasFlag, INVENTORY_SIZE, setFlag } from '../game/state';
 import type { World } from '../world/world';
 import { drawPanel, UI } from './widgets';
 
@@ -19,6 +20,11 @@ const TIPS: Record<string, string> = {
   skills: 'New skill unlocked! Use skills with [skill1]–[skill4]. Assign and rank them up in the menu.',
   perfect:
     'Rolling at the very last moment triggers a Perfect Dodge: time slows and your Surge charges faster.',
+  portal:
+    'Bag full? Press [townPortal] to open a Town Portal: sell in town, then step back through to return exactly where you left.',
+  trial:
+    'The statue in the square now offers Trials of Ascension. Beat them to choose a specialization and learn powerful notables.',
+  paragon: 'Max level! XP now earns Paragon levels. Spend the points in the Paragon tab of the menu [menu].',
 };
 
 export class Tips {
@@ -55,6 +61,9 @@ export class Tips {
     if (this.save.hero.level >= 2) this.show('level');
     if (this.save.hero.level >= 3) this.show('skills');
     if (this.save.stats.kills >= 15) this.show('perfect');
+    if (this.save.inventory.length >= INVENTORY_SIZE - 2 && w.data.id !== 'town') this.show('portal');
+    if (hasFlag(this.save, TRIALS[0].requires) && w.data.id === 'town') this.show('trial');
+    if (this.save.hero.paragon.level > 0) this.show('paragon');
 
     if (this.current) {
       this.current.t += dt;
