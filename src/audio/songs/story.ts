@@ -104,6 +104,86 @@ export const town: SongDef = {
 };
 
 // ---------------------------------------------------------------------------------------------
+// SOLENNE — sun-bleached harbor city under the eclipse: warm, homey and a little wistful.
+// D harmonic minor (A phrygian-dominant colour, Bb -> C# augmented seconds) on a reed "ney",
+// oud arpeggios and a maqsum hand-drum groove; B turns to the warm relative major, C is the
+// sunless harbor at dusk. 100 bpm, loop ~77 s.
+
+const SOL_A =
+  'o5 a4. b-8 a8 g8 f8 e8 | f8 e8 d8 e8 c+2 | d4. e8 f8 g8 a8 b-8 | a4 g8 f8 g2 | f4. g8 a8 b-8 >c+8 d8 | c+4. <b-8 a2 | b-4 a8 g8 f8 e8 d8 c+8 | d2. r4 |';
+const SOL_B =
+  'o5 d4 f4 b-4. a8 | a4. g8 f4 c4 | d4 g4 b-4. a8 | a2. r4 | >d4. c8 <b-4 a4 | a4 >c4< a4 f4 | g4. a8 b-4 >d4< | >c+4< a4 e4 g4 |';
+const SOL_C =
+  'o5 g2. a8 b-8 | b-4. g8 e-4 d4 | f2 d4 f4 | a2. r4 | b-2. a8 g8 | g4. f8 e-4 g4 | d2 e4 f4 | e2 c+4 <a4 |';
+// maqsum: doum (low tom) on 1 & 3, tek (rim) on 1&, 2&, 4; shaker 8ths leaning on the off-beats
+const SOL_DRUMS = 't:x.......x....... r:..x...x.....x... x:o.x.o.x.o.x.o.x.';
+const solAcc = { oud: '02123212', pad: '*', bass: '0..20.2.', drums: SOL_DRUMS };
+const solA: Section = {
+  bars: 8,
+  ch: 'Dm | A7 | Dm | Gm | Bb | A | Gm A7 | Dm',
+  lead: SOL_A,
+  ...solAcc,
+};
+
+export const solenne: SongDef = {
+  bpm: 100,
+  gain: 0.72,
+  delay: { beats: 0.75, fb: 0.25 },
+  tracks: {
+    lead: {
+      inst: { ...P.flute, wave: 'reed', gain: 0.1, lp: 2600, breath: 0.05, vib: 24, vrate: 5.4 },
+      rev: 0.25,
+      dly: 0.12,
+    },
+    kanun: { inst: { ...P.harp, gain: 0.08 }, rev: 0.25, dly: 0.1, pan: 0.2 },
+    flute: { inst: { ...P.flute, gain: 0.12 }, rev: 0.3, dly: 0.15 },
+    oud: {
+      inst: { ...P.pluck, gain: 0.16 },
+      kind: 'pat',
+      step: 0.5,
+      lo: 50,
+      tones: 'triad',
+      rev: 0.15,
+      pan: -0.25,
+    },
+    pad: { inst: { ...P.strings, gain: 0.03 }, kind: 'pad', lo: 53, rev: 0.4 },
+    bass: { inst: { ...P.bassPluck, gain: 0.2 }, kind: 'pat', step: 0.5, lo: 38, tones: 'triad' },
+    bell: { inst: { ...P.bell, gain: 0.1 }, rev: 0.5, pan: 0.3 },
+    drums: { inst: P.kit, kind: 'drums', vol: 0.6, rev: 0.12 },
+  },
+  sections: {
+    intro: {
+      bars: 4,
+      ch: 'Dm | Eb | Dm | A7',
+      bell: 'o4 d1 | r1 | a1 | r1 |',
+      ...solAcc,
+    },
+    A: solA,
+    B: {
+      bars: 8,
+      ch: 'Bb | F | Gm | Dm | Bb | F | Gm | A7',
+      lead: SOL_B,
+      ...solAcc,
+      // busier harbor bustle: ghosted teks and a clap every other bar
+      drums: 't:x.......x....... r:..x.o.x...o.x.o. x:o.x.o.x.o.x.o.x. p:................|............x...',
+    },
+    A2: { ...solA, kanun: SOL_A },
+    C: {
+      bars: 8,
+      ch: 'Gm | Ebmaj7 | Bb | F | Gm | Eb | A7sus4 | A',
+      flute: SOL_C,
+      bell: 'o4 d1 | r1 | r1 | r1 |',
+      oud: '0.1.2.1.',
+      pad: '*',
+      bass: '0...2...',
+      drums: 't:x............... x:o.x.o.x.o.x.o.x.',
+    },
+  },
+  order: ['intro', 'A', 'B', 'A2', 'C'],
+  loopTo: 'A',
+};
+
+// ---------------------------------------------------------------------------------------------
 // CUTSCENE_CALM — gentle, C major, 70 bpm
 
 const CALM_A = 'o5 g2. e4 | e2. c4 | <a2 >c4 e4 | d2. r4 | g2. b4 | a4. g8 e2 | f4 a4 >c4< a4 | g2 d2 |';

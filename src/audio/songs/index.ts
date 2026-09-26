@@ -1,8 +1,8 @@
 /** Song registry. */
 import type { MusicId } from '../index';
 import type { SongDef } from '../notation';
-import { boss, final_boss } from './battle';
-import { abyss, cave, citadel, forest, tundra, volcano } from './exploration';
+import { boss, final_boss, final_boss2 } from './battle';
+import { abyss, cave, citadel, desert, eclipse, forest, ruins, storm, tundra, volcano } from './exploration';
 import {
   credits,
   cutscene_calm,
@@ -10,6 +10,7 @@ import {
   cutscene_sad,
   cutscene_tense,
   gameover,
+  solenne,
   title,
   town,
   victory,
@@ -18,14 +19,20 @@ import {
 export const SONGS: Record<MusicId, SongDef> = {
   title,
   town,
+  solenne,
   forest,
   cave,
   volcano,
   tundra,
   citadel,
   abyss,
+  desert,
+  ruins,
+  storm,
+  eclipse,
   boss,
   final_boss,
+  final_boss2,
   cutscene_calm,
   cutscene_sad,
   cutscene_tense,
