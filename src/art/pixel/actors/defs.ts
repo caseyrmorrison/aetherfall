@@ -10,6 +10,15 @@ export interface SpriteDef {
   draw(anim: AnimName, frame: number, dir: FaceDir): Buf;
 }
 
+/** Def for a side-view sprite authored facing right (dirs 2) or with no facing (dirs 1). */
+export function sideDef(
+  info: Omit<SpriteInfo, 'dirs'>,
+  fn: (anim: AnimName, f: number) => Buf,
+  dirs: 1 | 2 = 2,
+): SpriteDef {
+  return { info: { ...info, dirs }, draw: (anim, f) => fn(anim, f) };
+}
+
 /** Shorthand for anim tables: anims({ idle: [2, 2], move: [4, 8] }). */
 export function anims(
   t: Partial<Record<AnimName, readonly [number, number]>>,

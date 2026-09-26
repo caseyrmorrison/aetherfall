@@ -447,6 +447,232 @@ const HEADS = {
       ],
     },
   },
+  // Tessaly: tricorn hat, grey-streaked braid over her right shoulder
+  tricorn: {
+    down: {
+      y: 1,
+      rows: [
+        '.....tTTTTt.....',
+        '....tTUUTTTt....',
+        '.G..tTUTTTTt..G.',
+        '.tG.TTTTTTTT.Gt.',
+        '.tTGTTTTTTTTGTt.',
+        '..ttGGGGGGGGtt..',
+        '..hXSSSSSSSSHh..',
+        '..hXSESSSSESSh..',
+        '..hHSeSSSSeSsh..',
+        '..hHbSSSSSSbsh..',
+        '..hX.sSSSSSs....',
+        '..Hh..sSSSs.....',
+        '..hX............',
+        '..Hh............',
+        '..hX............',
+        '...G............',
+        '...X............',
+      ],
+    },
+    up: {
+      y: 1,
+      rows: [
+        '.....tTTTTt.....',
+        '....tTTTTTTt....',
+        '.G..tTTTTTTt..G.',
+        '.tG.TTTTTTTT.Gt.',
+        '.tTGTTTTTTTTGTt.',
+        '..ttGGGGGGGGtt..',
+        '..hHHXHHHHHHHh..',
+        '..hHXHHHHHHXHh..',
+        '..hHHHHHHHXHHh..',
+        '..hHHHHHHXHHHh..',
+        '...hHHHHHHHXXh..',
+        '....hhsSSshHXh..',
+        '...........hX...',
+      ],
+    },
+    right: {
+      y: 1,
+      rows: [
+        '.....tTTTt......',
+        '....tTUUTTt.....',
+        '.G..tUTTTTTt.G..',
+        '.tG.TTTTTTTT.Gt.',
+        '.tTGTTTTTTTTGTt.',
+        '..ttGGGGGGGGtt..',
+        '..hXHHHHHHHSSS..',
+        '..hHXHHhSSSSES..',
+        '..hHXHhSSSSSeSS.',
+        '...hHhSsSSSbSS..',
+        '....hhSSSSSSs...',
+        '....Xh.sSSSs....',
+        '.....hX.........',
+        '.....Xh.........',
+        '.....hX.........',
+        '......G.........',
+        '......X.........',
+      ],
+    },
+  },
+  // desert merchant: saffron head wrap with a teal band
+  wrap: {
+    down: {
+      y: 1,
+      rows: [
+        '.....jJJJJj.....',
+        '....jJIIJJJj....',
+        '...jJIJJJJJJj...',
+        '..jJJJJJJJJJJj..',
+        '..jFFFFFfFFFFj..',
+        '..jJJJJJJJJJJj..',
+        '..jsSSSSSSSSsj..',
+        '..jSSESSSSESSj..',
+        '..jSSeSSSSeSsj..',
+        '...SbSSSSSSbs...',
+        '....sSSSSSSs....',
+        '.....sSSSSs.....',
+      ],
+    },
+    up: {
+      y: 1,
+      rows: [
+        '.....jJJJJj.....',
+        '....jJIJJJJj....',
+        '...jJIJJJJJJj...',
+        '..jJJJJJJJJJJj..',
+        '..jFFFFFFFFFFj..',
+        '..jJJJJJJJJJJj..',
+        '..jjJJJJJJJJjj..',
+        '..jJJjJJJJjJJj..',
+        '...jJJJJJJJJj...',
+        '....jjJJJJjj....',
+        '.....jJJJJj.....',
+        '......jJJj......',
+        '......jJJj......',
+      ],
+    },
+    right: {
+      y: 1,
+      rows: [
+        '....jjJJJj......',
+        '...jJIIJJJj.....',
+        '..jJIJJJJJJj....',
+        '..jJJJJJJJJJj...',
+        '..jFFFFFFFfFj...',
+        '..jJJJJJJJJJSs..',
+        '..jJJJJJJjSSSS..',
+        '..jJJJJJjSSSES..',
+        '.jJjJJJjSSSSeSS.',
+        '.jJ.jjSsSSSbSS..',
+        '.jJ...sSSSSSs...',
+        '..j....sSSSs....',
+      ],
+    },
+  },
+  // desert smith: shaved head, gold earring in the right ear
+  shaved: {
+    down: {
+      y: 2,
+      rows: [
+        '.....sSSSSs.....',
+        '....sSllSSSs....',
+        '...sSlSSSSSSs...',
+        '..sSSSSSSSSSSs..',
+        '..sSSSSSSSSSSs..',
+        '..sSnnSSSSnnSs..',
+        '..sSSESSSSESSs..',
+        '..sSSeSSSSeSss..',
+        '..OSbSSSSSSbs...',
+        '....sSSSSSSs....',
+        '.....sSSSSs.....',
+      ],
+    },
+    up: {
+      y: 2,
+      rows: [
+        '.....sSSSSs.....',
+        '....sSllSSSs....',
+        '...sSlSSSSSSs...',
+        '..sSSSSSSSSSSs..',
+        '..sSSSSSSSSSSs..',
+        '..sSSSSSSSSSSs..',
+        '..sSSSSSSSSSSs..',
+        '..sSSSSSSSSSSs..',
+        '...sSSSSSSSSsO..',
+        '....ssSSSSss....',
+        '.....sSSSSs.....',
+      ],
+    },
+    right: {
+      y: 2,
+      rows: [
+        '.....sSSSSs.....',
+        '....sSllSSSs....',
+        '...sSlSSSSSSs...',
+        '..sSSSSSSSSSSs..',
+        '..sSSSSSSSSSSS..',
+        '..sSSSSSSSSnnS..',
+        '..sSSssSSSSSES..',
+        '..sSSssSSSSSeSS.',
+        '...sSOSsSSSbSS..',
+        '....ssSSSSSSs...',
+        '......sSSSSs....',
+      ],
+    },
+  },
+  // Order of Stars mage: white hood with gold trim, brown fringe
+  hood: {
+    down: {
+      y: 1,
+      rows: [
+        '......zZZz......',
+        '....zZZZZZZz....',
+        '...zZZZZZZZZz...',
+        '..zZZZZZZZZZZz..',
+        '.zZZYYYYYYYYZZz.',
+        '.zZYhHHHHHHhYZz.',
+        '.zZYHHSSSSHHYZz.',
+        '.zZYSESSSSESYZz.',
+        '.zZYSeSSSSeSYZz.',
+        '.zZzYbSSSSbYzZz.',
+        '..zZzYsSSsYzZz..',
+        '...zzZYYYYZzz...',
+      ],
+    },
+    up: {
+      y: 1,
+      rows: [
+        '......zZZz......',
+        '....zZZZZZZz....',
+        '...zZZZZZZZZz...',
+        '..zZZZZzZZZZZz..',
+        '.zZZZZZzZZZZZZz.',
+        '.zZZZZZzZZZZZZz.',
+        '.zZZZZZzZZZZZZz.',
+        '.zZZZZZzZZZZZZz.',
+        '.zZZZZZzZZZZZZz.',
+        '.zzZZZZzZZZZZzz.',
+        '..zzZZZzZZZZzz..',
+        '...zzZZzZZZzz...',
+        '.....zzYYzz.....',
+      ],
+    },
+    right: {
+      y: 1,
+      rows: [
+        '....zZZZz.......',
+        '..zZZZZZZz......',
+        '.zZZZZZZZZz.....',
+        '.zZZZZZZZZZz....',
+        '.zZZZZZZZZYYz...',
+        '.zZZZZZZZYhHHY..',
+        '.zZZZZZZYhHSSSY.',
+        '.zZZZZZzYSSSSES.',
+        '.zZZZZzYSSSSSeS.',
+        '.zZZZZzYSsSSSbS.',
+        '..zZZZzYsSSSSs..',
+        '...zzzYYsSSs....',
+      ],
+    },
+  },
 } as const satisfies Record<string, HeadSet>;
 
 type HeadStyle = keyof typeof HEADS;
@@ -476,6 +702,11 @@ const FACE_OVERLAYS = {
       ],
     },
   },
+  goatee: {
+    down: { y: 11, rows: ['.....wWWWWw.....', '......WWWW......', '.......ww.......'] },
+    up: { y: 11, rows: [] },
+    right: { y: 11, rows: ['.........WWWWw..', '..........WWw...', '...........w....'] },
+  },
   mustache: {
     down: { y: 10, rows: ['.....WWWWWW.....', '.....W....W.....'] },
     up: { y: 10, rows: [] },
@@ -485,7 +716,7 @@ const FACE_OVERLAYS = {
 
 // ---------------------------------------------------------- definitions ---
 
-type BodyKind = 'tunic' | 'robe' | 'dress' | 'burly' | 'plump' | 'armor' | 'mantle';
+type BodyKind = 'tunic' | 'robe' | 'dress' | 'burly' | 'plump' | 'armor' | 'mantle' | 'coat' | 'layered';
 type Letters = Record<string, Col>;
 
 interface CharDef {
@@ -497,6 +728,10 @@ interface CharDef {
   prop?: 'star' | 'stick' | 'spear';
   scarf?: boolean;
   hem?: boolean;
+  /** Gold hem + front seam on robes. */
+  trim?: boolean;
+  /** Order of Stars star badge on the chest (and back). */
+  emblem?: boolean;
 }
 
 const SKIN: Letters = {
@@ -740,6 +975,109 @@ const CHARS: Record<CharacterId, CharDef> = {
       v: PAL.darkBrown,
     }),
   },
+  // ---------------------------------------------------- Act II: Solenne
+  tessaly: {
+    head: 'tricorn',
+    body: 'coat',
+    pal: pal({
+      T: PAL.navy,
+      t: INK,
+      U: PAL.darkSlate,
+      G: PAL.gold,
+      H: PAL.plum,
+      h: INK,
+      X: PAL.gray,
+      S: '#9a5c45',
+      s: PAL.darkBrown,
+      l: PAL.brown,
+      b: '#b0584c',
+      e: PAL.navy,
+      C: PAL.blue,
+      c: PAL.navy,
+      D: '#2a6cb0',
+      A: PAL.white,
+      a: PAL.lightGray,
+      B: PAL.darkBrown,
+      P: PAL.sand,
+      p: PAL.tan,
+      K: PAL.darkBrown,
+      k: PAL.plum,
+    }),
+  },
+  desert_merchant: {
+    head: 'wrap',
+    body: 'layered',
+    face: 'mustache',
+    pal: pal({
+      J: PAL.sand,
+      j: PAL.tan,
+      I: PAL.white,
+      F: '#1f9192',
+      f: PAL.gold,
+      W: PAL.plum,
+      w: INK,
+      e: PAL.darkBrown,
+      S: '#dfa47f',
+      s: '#b87a5c',
+      C: '#1f9192',
+      c: '#1c5566',
+      D: '#48c7b0',
+      A: PAL.gold,
+      a: PAL.orange,
+      B: PAL.rust,
+      G: PAL.yellow,
+      K: PAL.darkBrown,
+      k: PAL.plum,
+    }),
+  },
+  desert_smith: {
+    head: 'shaved',
+    body: 'burly',
+    face: 'goatee',
+    pal: pal({
+      W: PAL.plum,
+      w: INK,
+      S: PAL.skinShade,
+      s: PAL.brown,
+      l: PAL.tan,
+      b: PAL.orangeBrown,
+      n: PAL.plum,
+      O: PAL.gold,
+      e: PAL.plum,
+      C: PAL.sand,
+      c: PAL.tan,
+      D: '#fff4dc',
+      A: PAL.darkBrown,
+      a: PAL.plum,
+      B: INK,
+      G: PAL.gold,
+      P: PAL.darkRed,
+      p: PAL.plum,
+      K: PAL.darkBrown,
+      k: PAL.plum,
+    }),
+  },
+  order_mage: {
+    head: 'hood',
+    body: 'robe',
+    trim: true,
+    emblem: true,
+    pal: pal({
+      Z: PAL.white,
+      z: PAL.lightGray,
+      Y: PAL.gold,
+      H: PAL.brown,
+      h: PAL.darkBrown,
+      e: PAL.sky,
+      C: '#e4eaf2',
+      c: PAL.lightGray,
+      D: PAL.white,
+      B: PAL.gold,
+      G: PAL.yellow,
+      K: PAL.darkBrown,
+      k: PAL.plum,
+    }),
+  },
 };
 
 // ------------------------------------------------------------------ rig ---
@@ -868,7 +1206,7 @@ function legSide(b: Buf, q: Letters, hx: number, hy: number, fx: number, fy: num
 
 function drawLegs(b: Buf, d: CharDef, q: Letters, L: Lay, p: Pose): void {
   const dy = p.dy;
-  const short = d.body === 'robe' || d.body === 'dress' || d.body === 'mantle';
+  const short = d.body === 'robe' || d.body === 'dress' || d.body === 'mantle' || d.body === 'layered';
   if (p.dir !== 'right') {
     let lL = 0;
     let lR = 0;
@@ -977,6 +1315,12 @@ function drawTorso(b: Buf, d: CharDef, q: Letters, L: Lay, p: Pose): void {
         b.set(7 + x, top, q.c).set(8 + x, top, q.c);
       }
       if (side) for (let y = belt + 1; y <= 21; y++) b.set(9 + x, y, q.c);
+      if (d.trim) {
+        // gold hem and front seam
+        for (let i = 0; i < FW; i++) if (b.get(i, 21) !== null) b.set(i, 21, q.B);
+        if (front) for (let y = belt + 1; y <= 20; y++) b.set(8 + x, y, q.B);
+        if (side) for (let y = belt + 1; y <= 20; y++) b.set(10 + x + (y >= 19 ? 1 : 0), y, q.B);
+      }
       break;
     }
     case 'dress': {
@@ -1134,6 +1478,90 @@ function drawTorso(b: Buf, d: CharDef, q: Letters, L: Lay, p: Pose): void {
       }
       break;
     }
+    case 'coat': {
+      // long captain's coat: open over a shirt, gold buttons, skirts to the knee
+      const [x0, x1] = side ? [5, 10] : [4, 11];
+      for (let y = top; y < belt; y++) rowFill(y, x0, x1, q.D, q.C, q.c);
+      if (front) {
+        for (let y = top; y < belt; y++) b.set(7 + x, y, q.A).set(8 + x, y, q.a);
+        b.set(6 + x, top, q.D).set(9 + x, top, q.c);
+        b.set(6 + x, top + 1, q.G).set(9 + x, top + 1, q.G);
+        b.set(6 + x, top + 3, q.G).set(9 + x, top + 3, q.G);
+      } else if (side) {
+        b.set(10 + x, top, q.A).set(10 + x, top + 1, q.a);
+        b.set(9 + x, top + 1, q.G).set(9 + x, top + 3, q.G);
+      } else {
+        b.hline(x0 + 1 + x, x1 - 1 + x, top, q.c);
+      }
+      b.hline(x0 + x, x1 + x, belt, q.B);
+      if (front) b.set(7 + x, belt, q.G).set(8 + x, belt, q.G);
+      if (side) b.set(x1 + x, belt, q.G);
+      for (let y = belt + 1; y <= 20; y++) {
+        const w = y >= 19 ? 1 : 0;
+        if (front) {
+          rowFill(y, x0 - w, 6, q.D, q.C, q.c);
+          rowFill(y, 9, x1 + w, q.C, q.C, q.c);
+        } else if (side) {
+          rowFill(y, x0 - 1 - w, x1, q.D, q.C, q.c);
+        } else {
+          rowFill(y, x0 - w, x1 + w, q.D, q.C, q.c);
+          if (y > belt + 1) b.set(8 + x, y, q.c);
+        }
+      }
+      // gold-trimmed hem and back half-belt buttons
+      for (let i = 0; i < FW; i++) {
+        const c = b.get(i, 20);
+        if (c === q.C || c === q.D || c === q.c) b.set(i, 20, q.G);
+      }
+      if (!front && !side) b.set(6 + x, belt, q.G).set(9 + x, belt, q.G);
+      break;
+    }
+    case 'layered': {
+      // teal outer robe open over a saffron under-robe, knotted sash
+      for (let y = top; y <= 21; y++) {
+        const wide = y >= 19 ? 1 : 0;
+        const [x0, x1] = side ? [5 - wide, 10 + wide] : [4 - wide, 11 + wide];
+        rowFill(y, x0, x1, q.D, q.C, q.c);
+        if (y === 21) b.hline(x0 + x + 1, x1 + x, 21, q.c);
+      }
+      if (front) {
+        for (let y = top; y <= 21; y++) {
+          const w = y > belt ? Math.min(2, Math.floor((y - belt) / 2)) : 0;
+          for (let i = 7 - w; i <= 8 + w; i++) b.set(i + x, y, i === 8 + w ? q.a : q.A);
+        }
+        b.set(6 + x, top, q.A).set(9 + x, top, q.a);
+      } else if (side) {
+        for (let y = top; y <= 21; y++) b.set(10 + x + (y >= 19 ? 1 : 0), y, y > belt ? q.A : q.a);
+        b.set(9 + x, top, q.A);
+      } else {
+        // shawl draped over the shoulders
+        b.hline(4 + x, 11 + x, top, q.A)
+          .hline(5 + x, 10 + x, top + 1, q.A)
+          .hline(6 + x, 9 + x, top + 2, q.a);
+      }
+      const [s0, s1] = side ? [5, 10] : [4, 11];
+      b.hline(s0 + x, s1 + x, belt, q.B);
+      if (front)
+        b.set(9 + x, belt, q.G)
+          .set(9 + x, belt + 1, q.B)
+          .set(10 + x, belt + 2, q.B);
+      else if (side)
+        b.set(5 + x, belt + 1, q.B)
+          .set(4 + x, belt + 2, q.B)
+          .set(6 + x, belt, q.G);
+      else b.set(5 + x, belt + 1, q.B).set(5 + x, belt + 2, q.G);
+      break;
+    }
+  }
+  if (d.emblem) {
+    // Order of Stars badge
+    const [ex, ey] =
+      p.dir === 'right' ? [9 + x, top + 2] : p.dir === 'up' ? [8 + x, top + 3] : [9 + x, top + 2];
+    b.set(ex, ey - 1, q.B)
+      .set(ex - 1, ey, q.B)
+      .set(ex, ey, q.G)
+      .set(ex + 1, ey, q.B)
+      .set(ex, ey + 1, q.B);
   }
 }
 
@@ -1605,6 +2033,10 @@ export const CHARACTER_DEFS: Record<CharacterId, SpriteDef> = {
   villager_woman: charDef('villager_woman'),
   child: charDef('child'),
   guard: charDef('guard'),
+  tessaly: charDef('tessaly'),
+  desert_merchant: charDef('desert_merchant'),
+  desert_smith: charDef('desert_smith'),
+  order_mage: charDef('order_mage'),
 };
 
 /**
